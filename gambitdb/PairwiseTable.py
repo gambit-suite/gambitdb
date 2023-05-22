@@ -8,7 +8,7 @@ import tempfile
 class PairwiseTable:
     def __init__(self, options):
         self.logger = logging.getLogger(__name__)
-        self.assemblydirectory = options.assemblydirectory
+        self.assembly_directory = options.assembly_directory
         self.signatures_output_filename = options.signatures_output_filename
         self.distance_table_output_filename = options.distance_table_output_filename
         self.kmer = options.kmer
@@ -44,10 +44,10 @@ class PairwiseTable:
     def create_assembly_list(self):
         self.logger.debug('create_assembly_list')
         assembly_list = tempfile.NamedTemporaryFile(mode='w', delete=False)
-        for assembly in os.listdir(self.assemblydirectory):
+        for assembly in os.listdir(self.assembly_directory):
             # limit filenames to a list of prefixes for FASTA files and can include gz files
             if any(assembly.endswith(ext) for ext in self.valid_extensions):
-                assembly_list.write('%s/%s\n' % (self.assemblydirectory, assembly))
+                assembly_list.write('%s/%s\n' % (self.assembly_directory, assembly))
         assembly_list.close()
         return assembly_list.name
 

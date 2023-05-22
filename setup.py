@@ -1,6 +1,4 @@
 import os
-import shutil
-import sys
 import glob
 from setuptools import setup, find_packages
 
@@ -12,7 +10,7 @@ if os.path.exists('VERSION'):
   version = open('VERSION').read().strip()
 
 setup(
-    name='scagaire',
+    name='gambitdb',
     version=version,
     description='gambitdb: a database of bacterial classification',
 	long_description=read('README.md'),

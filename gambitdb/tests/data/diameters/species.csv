@@ -1,0 +1,4 @@
+species_taxid,parent_taxid,parent_name,parent_rank,name,rank
+1,4,Aaosphaeria,genus,Aaosphaeria arxii,species
+2,5,Agaricus,genus,Agaricus bisporus,species
+3,6,Alternaria,genus,Alternaria alternata,species
