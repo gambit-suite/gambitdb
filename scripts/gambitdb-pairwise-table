@@ -1,0 +1,51 @@
+#!/usr/bin/env python3
+import sys
+import argparse
+import pkg_resources
+sys.path.append('../')
+sys.path.append('./')
+from gambitdb.PairwiseTable import PairwiseTable
+
+version = ''
+try:
+    version = pkg_resources.get_distribution("gambitdb").version
+except pkg_resources.DistributionNotFound:
+    version = 'x.y.z'
+
+parser = argparse.ArgumentParser(
+    description = 'Given a directory of assemblies in FASTA format, generate a table of pairwise distances',
+    usage = 'gambitdb-pairwise-table [options]',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+# Required input files
+parser.add_argument('assembly_directory',  help='A directory containing assemblies in FASTA format', type=str)
+
+# Output files
+parser.add_argument('--signatures_output_filename', '-s', help='Output filename for genome signatures', default = 'signatures.h5')
+parser.add_argument('--distance_table_output_filename', '-p', help='Output filename for pairwise distance table', default = 'pw-dists.csv')
+
+# Optional input parameters for gambit
+parser.add_argument('--kmer',	 '-k', help='Length of the k-mer to use', type=int, default = 11)
+parser.add_argument('--kmer_prefix', '-f', help='Kmer prefix', default = 'ATGAC')
+
+parser.add_argument('--debug', action='store_true', help='Turn on debugging', default = False)
+parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
+
+options = parser.parse_args()
+
+# extra debugging with a proper stack trace and profiling
+if options.debug:
+    import cProfile, pstats, io
+    pr = cProfile.Profile()
+    pr.enable()
+    
+    PairwiseTable(options).generate_sigs_and_pairwise_table()
+    
+    pr.disable()
+    s = io.StringIO()
+    sortby = 'cumulative'
+    ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+    ps.print_stats()
+    print(s.getvalue())
+else:
+    PairwiseTable(options).generate_sigs_and_pairwise_table()
