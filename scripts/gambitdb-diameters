@@ -1,0 +1,62 @@
+#!/usr/bin/env python3
+import sys
+import argparse
+import pkg_resources
+import logging
+sys.path.append('../')
+sys.path.append('./')
+from gambitdb.Diameters import Diameters
+
+version = ''
+try:
+    version = pkg_resources.get_distribution("gambitdb").version
+except pkg_resources.DistributionNotFound:
+    version = 'x.y.z'
+
+parser = argparse.ArgumentParser(
+    description = 'Given files containing assembly metadata, pairwise distances and species taxon information output a new species file with diameters, and a min-inter file',
+    usage = 'gambitdb-diameters [options]',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+# Required input files
+parser.add_argument('genome_assembly_metadata',  help='A CSV containing the assembly file and path, and the species taxon ID', type=str)
+parser.add_argument('pairwise_distances_filename',  help='A pairwise distance file between each assembly', type=str)
+parser.add_argument('species_taxon_filename',  help='A CSV containing species taxon IDs', type=str)
+
+# Output files
+parser.add_argument('--species_taxon_output_filename', '-s', help='Output filename for the modified species taxon IDs plus diameters', default = 'species_data_diameters.csv', type=str)
+parser.add_argument('--min_inter_output_filename', '-i', help='Output filename for min inter values', default = 'min_inter.csv', type=str)
+
+parser.add_argument('--debug', action='store_true', help='Turn on debugging', default = False)
+parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
+
+options = parser.parse_args()
+logging.basicConfig(filename='output_logfile.txt', level=logging.DEBUG)
+
+# extra debugging with a proper stack trace and profiling
+if options.debug:
+    import cProfile, pstats, io
+    pr = cProfile.Profile()
+    pr.enable()
+    options.verbose = True
+
+    Diameters(options.genome_assebmly_metadata, 
+              options.pairwise_distances_filename, 
+              options.species_taxon_filename, 
+              options.species_taxon_output_filename, 
+              options.min_inter_output_filename, 
+              options.verbose ).calculate_diameters()
+    
+    pr.disable()
+    s = io.StringIO()
+    sortby = 'cumulative'
+    ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+    ps.print_stats()
+    print(s.getvalue())
+else:
+    Diameters(options.genome_assebmly_metadata, 
+              options.pairwise_distances_filename, 
+              options.species_taxon_filename, 
+              options.species_taxon_output_filename, 
+              options.min_inter_output_filename, 
+              options.verbose ).calculate_diameters()

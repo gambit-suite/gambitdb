@@ -1,0 +1,81 @@
+#!/usr/bin/env python3
+import sys
+import argparse
+import pkg_resources
+import logging
+sys.path.append('../')
+sys.path.append('./')
+from gambitdb.GambitDb import GambitDb
+
+version = ''
+try:
+    version = pkg_resources.get_distribution("gambitdb").version
+except pkg_resources.DistributionNotFound:
+    version = 'x.y.z'
+
+parser = argparse.ArgumentParser(
+    description = 'Generate a Gambit database',
+    usage = 'gambitdb [options]',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+# Required input files
+parser.add_argument('assembly_directory',  help='A directory containing assemblies in FASTA format', type=str)
+parser.add_argument('genome_assembly_metadata',  help='A CSV containing the assembly file and path, and the species taxon ID', type=str)
+parser.add_argument('species_taxon_filename',  help='CSV containing species taxonomy, may be generated automatically from assembly metadata if missing', type=str)
+
+# optional input files
+parser.add_argument('--species_to_remove', '-x', help='Optional file containing a list of species to remove (1 per line)', type=str)
+parser.add_argument('--accessions_to_remove', '-y', help='Optional file containing a list of accession numbers to remove (1 per line)', type=str)
+
+# Output options that you probably want to change
+parser.add_argument('--output_directory', '-d', help='Output directory', default = 'output_dir', type=str)
+
+# Optional output file names that you probably want to leave as defaults
+parser.add_argument('--signatures_output_filename', '-s', help='Output filename for genome signatures', default = 'database.gs', type=str)
+parser.add_argument('--database_output_filename', '-g', help='Output filename for core database', default = 'database.gdb', type=str)
+parser.add_argument('--accession_removed_output_filename', '-c', help='Output filename for a list of accessions removed', default = 'accessions_removed.csv', type=str)
+parser.add_argument('--species_removed_output_filename', '-w', help='Output filename for a list of species removed', default = 'species_removed.csv', type=str)
+parser.add_argument('--species_taxon_output_filename', '-t', help='Output filename for a list of species taxon IDs', default = 'species_taxon.csv', type=str)
+parser.add_argument('--genome_assembly_metadata_output_filename', '-m', help='Output filename for a list of genome assembly metadata', default = 'genome_assembly_metadata.csv', type=str)
+
+# Optional input parameters for gambit
+parser.add_argument('--kmer',	 '-k', help='Length of the k-mer to use', type=int, default = 11)
+parser.add_argument('--kmer_prefix', '-f', help='Kmer prefix', default = 'ATGAC', type=str)
+parser.add_argument('--minimum_ngenomes', '-n', help='Minimum number of genomes for a species to be included', default = 1, type=int)
+parser.add_argument('--cpus',	 '-p', help='Number of cpus to use', type=int, default = 1)
+parser.add_argument('--small_cluster_ngenomes', help='Minimum number of genomes for a species to be included in a small cluster, along with --small_cluster_diameter', default = 4, type=int)
+parser.add_argument('--small_cluster_diameter', help='Maximum diameter of a species to be included in a small cluster along with --small_cluster_ngenomes', default = 0.7, type=float)
+
+# Vary how subspecies splitting operates
+parser.add_argument('--maximum_diameter', help='The maximum diameter to allow before attempting to split a species into subspecies', default = 0.7, type=float)
+parser.add_argument('--minimum_cluster_size', help='After splitting a species into subspecies, this is the minimum number of genomes which must be present, otherwise the genome is removed.', default = 2, type=int)
+
+parser.add_argument('--debug', action='store_true', help='Turn on debugging', default = False)
+parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
+
+options = parser.parse_args()
+
+logging.basicConfig(filename='output_logfile.txt', level=logging.DEBUG)
+
+
+GambitDb(options.output_directory,
+         options.assembly_directory, 
+         options.genome_assembly_metadata,
+         options.species_taxon_filename,
+         options.species_to_remove,
+         options.accessions_to_remove,
+         options.accession_removed_output_filename,
+         options.species_removed_output_filename,
+         options.signatures_output_filename, 
+         options.database_output_filename, 
+         options.species_taxon_output_filename,
+         options.genome_assembly_metadata_output_filename,
+         options.kmer, 
+         options.kmer_prefix, 
+         options.minimum_ngenomes,
+         options.cpus,
+         options.small_cluster_ngenomes,
+         options.small_cluster_diameter,
+         options.maximum_diameter,
+         options.minimum_cluster_size,
+         options.verbose).generate_gambit_db()

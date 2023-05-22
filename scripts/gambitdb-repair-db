@@ -1,0 +1,129 @@
+#!/usr/bin/env python3
+import argparse
+import numpy as np
+import sqlite3
+import shutil
+import logging
+
+import pkg_resources
+version = ''
+try:
+    version = pkg_resources.get_distribution("gambitdb").version
+except pkg_resources.DistributionNotFound:
+    version = 'x.y.z'
+
+parser = argparse.ArgumentParser(
+    description = 'Given a GAMBIT database, repair it',
+    usage = 'gambitdb-repair-db [options]',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+# Required input files
+parser.add_argument('database_main_filename', help='An SQLite database', type=str)
+
+# Output
+parser.add_argument('--database_output_filename', '-d', help='Output filename for database', default = 'fixed_database.gdb', type=str)
+
+parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
+options = parser.parse_args()
+
+# setup logging
+if options.verbose:
+    logging.basicConfig(level=logging.DEBUG)
+else:
+    logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# copy the database so we dont modify the original
+logger.debug("Copy main database to: " + options.database_output_filename)
+shutil.copy(options.database_main_filename, options.database_output_filename)
+
+# Connect to the database
+main_db_connection = sqlite3.connect(options.database_output_filename)
+
+# count the number of genus in the taxa table and log
+genus_count = main_db_connection.execute("SELECT COUNT(*) FROM taxa WHERE rank = 'genus'")
+logger.info("Initial Genus count: " + str(next(genus_count)[0]))
+# count the number of species in the taxa table and log
+species_count = main_db_connection.execute("SELECT COUNT(*) FROM taxa WHERE rank = 'species'")
+logger.info("Initial Species count: " + str(next(species_count)[0]))
+
+# get all genus grouped by genus name from the taxa table. sort by id low to high.
+duplicate_genus_counts = main_db_connection.execute("SELECT name, COUNT(*) as count FROM taxa WHERE rank = 'genus' GROUP BY name HAVING count >= 2 ORDER BY name ASC")
+for genus_name, genus_count in duplicate_genus_counts:
+    logger.debug("Found duplicate genus name: " + genus_name + " with count: " + str(genus_count))
+
+    # get all the genus ids for this genus name
+    duplicate_genus_ids = main_db_connection.execute("SELECT id FROM taxa WHERE rank = 'genus' AND name = ? ORDER BY id ASC", (genus_name,))
+
+    # get the first genus id
+    first_genus_id = next(duplicate_genus_ids)[0]
+    genus_distance_threshold = main_db_connection.execute("SELECT distance_threshold FROM taxa WHERE id = ?", (first_genus_id,))
+    genus_distance_threshold = next(genus_distance_threshold)[0]
+    largest_genus_distance_threshold = genus_distance_threshold
+
+    # iterate over the remaining genus ids and replace them with the first genus id
+    for genus_id in duplicate_genus_ids:
+        logger.debug("Replacing genus id: " + str(genus_id[0]) + " with genus id: " + str(first_genus_id))
+
+        # count the number of species that will be updated and log
+        species_count = main_db_connection.execute("SELECT COUNT(*) FROM taxa WHERE parent_id = ? AND rank LIKE 'species' ", (genus_id[0],))
+        logger.debug("Species count\t" + str(next(species_count)[0]) + "\tGenus\t" + genus_name + "\t" + str(genus_id[0]) + "\t" + str(first_genus_id))
+
+        # find the largest distance_threshold for the species that will be updated
+        distance_threshold = main_db_connection.execute("SELECT MAX(distance_threshold) FROM taxa WHERE parent_id = ? AND rank LIKE 'species' ", (genus_id[0],))
+        distance_threshold = next(distance_threshold)[0]
+        if distance_threshold > largest_genus_distance_threshold:
+            largest_genus_distance_threshold = distance_threshold
+
+        main_db_connection.execute("UPDATE taxa SET parent_id = ? WHERE parent_id = ? AND rank LIKE 'species' ", (first_genus_id, genus_id[0]))
+
+    # delete the duplicate genus ids
+    main_db_connection.execute("DELETE FROM taxa WHERE rank = 'genus' AND name = ? AND id != ?", (genus_name, first_genus_id))
+    if largest_genus_distance_threshold > genus_distance_threshold and largest_genus_distance_threshold != 0 and largest_genus_distance_threshold < 1:
+        logger.debug("Updating distance_threshold from " + str(genus_distance_threshold) + " to " + str(largest_genus_distance_threshold) + " for genus " + genus_name)
+        main_db_connection.execute("UPDATE taxa SET distance_threshold = ? WHERE id = ?", (largest_genus_distance_threshold, first_genus_id))
+
+# count the number of genus in the taxa table and log
+genus_count = main_db_connection.execute("SELECT COUNT(*) FROM taxa WHERE rank = 'genus'")
+logger.info("Final Genus count: " + str(next(genus_count)[0]))
+# count the number of species in the taxa table and log
+species_count = main_db_connection.execute("SELECT COUNT(*) FROM taxa WHERE rank = 'species'")
+logger.info("Final Species count: " + str(next(species_count)[0]))
+
+# get all genus grouped by genus name from the taxa table. sort by id low to high.
+duplicate_genus_counts = main_db_connection.execute("SELECT name, COUNT(*)  as count FROM taxa WHERE rank = 'genus' GROUP BY name HAVING count >= 2 ORDER BY name ASC")
+duplicate_genus_counts = np.array(list(duplicate_genus_counts))
+logger.info("No. of remaining duplicate genus: " + str(len(duplicate_genus_counts)))
+
+# loop over all species and check to see if the parent_id is in the table
+# if not, then log a warning
+species_ids = main_db_connection.execute("SELECT id, parent_id FROM taxa WHERE rank = 'species'")
+for species_id, parent_id in species_ids:
+    if parent_id is None:
+        logger.warning("Species id: " + str(species_id) + " has no parent_id")
+    # look up the parent_id in the taxa table (as id), which should exist
+    parent_ids = main_db_connection.execute("SELECT id FROM taxa WHERE id = ?", (parent_id,))
+    try:
+        next(parent_ids)
+    except StopIteration:
+        logger.warning("Species id: " + str(species_id) + " has parent_id: " + str(parent_id) + " which does not exist in the taxa table")
+
+# Fill in missing accession numbers
+main_db_connection.execute("UPDATE genomes SET refseq_acc = genbank_acc WHERE genbank_acc IS NOT NULL AND refseq_acc IS NULL")
+
+# Check to see if there are any orphaned genomes which point directly to a genus (there shouldnt be any)
+orphaned_count = main_db_connection.execute("SELECT count(taxa.name) FROM taxa INNER JOIN genome_annotations ON taxa.id = genome_annotations.taxon_id WHERE  taxa.rank = 'genus';") 
+orphaned_count = next(orphaned_count)[0]
+if orphaned_count > 0:
+    logger.warning("Found " + str(orphaned_count) + " orphaned genomes which point directly to a genus which cannot be fixed programatically. Please fix manually.")
+else:
+    logger.debug("No orphaned genomes found")
+
+
+# Commit connection
+main_db_connection.commit()
+
+# Close the connection
+main_db_connection.close()
+
+logger.debug("Final patched database file: " + options.database_output_filename)

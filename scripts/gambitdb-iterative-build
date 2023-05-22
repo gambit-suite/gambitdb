@@ -1,0 +1,212 @@
+#!/usr/bin/env python3
+# Take in a database/sigs file and a GTDB spreadsheet and iteratively add species 
+
+import sys
+import argparse
+import pkg_resources
+import logging
+import sqlite3
+import tempfile
+import os
+import re
+import pandas as pd
+import numpy as np
+sys.path.append('../')
+sys.path.append('./')
+
+
+from gambitdb.GtdbSpreadsheetParser import GtdbSpreadsheetParser
+
+version = ''
+try:
+    version = pkg_resources.get_distribution("gambitdb").version
+except pkg_resources.DistributionNotFound:
+    version = 'x.y.z'
+
+parser = argparse.ArgumentParser(
+    description = 'Iteratively add species to a database',
+    usage = 'gambitdb-iterative-build [options]',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+# Required input files
+parser.add_argument('signatures_main_filename', help='A signatures .h5 file created by gambit signatures', type=str)
+parser.add_argument('database_main_filename', help='An SQLite database', type=str)
+parser.add_argument('gtdb_metadata_spreadsheet',  help='GTDB database', type=str)
+
+
+parser.add_argument('--species_added',  help='file containing a list of species added', type=str, default='species_added')
+parser.add_argument('--min_genomes',  help='minimum genomes a species must have', type=int, default=2)
+parser.add_argument('--species_to_ignore', help='file containing a list of species to ignore', type=str)
+
+parser.add_argument('--rank', '-r', help='taxonomic rank (genus/species)', default = 'species', type=str)
+
+parser.add_argument('--cpus',	 '-p', help='Number of cpus to use', type=int, default = 1)
+
+options = parser.parse_args()
+
+# Find the species in the existing database
+main_db_connection = sqlite3.connect(options.database_main_filename)
+taxa = [row[0] for row in main_db_connection.execute("SELECT name FROM taxa WHERE rank LIKE '"+ options.rank+"'  ORDER BY name ASC")]
+
+with open(options.species_added, "w") as f:
+    f.write("\t".join(['action','species', 'closest_diameter', 'ngenomes']) + "\n")
+               
+
+# Create a temporary working directory
+with tempfile.TemporaryDirectory() as temp_dir:
+    print("Overall temp directory: " +str(temp_dir))
+    # Copy the gtdb_metadata_spreadsheet file to the temp_dir
+    spreadsheet = temp_dir+'/gtdb_metadata_spreadsheet.tsv'
+    filtered_spreadsheet = spreadsheet+'.tmp'
+    os.system('cp '+options.signatures_main_filename+' '+ temp_dir+'/input_db.gs')
+    os.system('cp '+options.gtdb_metadata_spreadsheet+' '+ spreadsheet)
+    os.system('cp '+options.database_main_filename+' '+ temp_dir+'/input_db.gdb')
+
+    # read in options.species_to_ignore which has one species per line
+    with open(options.species_to_ignore) as f:
+        taxa_to_ignore = f.readlines()
+    taxa_to_ignore = [x.strip() for x in taxa_to_ignore]
+    taxa = taxa + taxa_to_ignore
+
+    # Loop over the spreadsheet and check if any taxa is in the row, if it is, ignore
+    patterns = [re.compile(t) for t in taxa]
+    # Open the input and output files
+    with open(spreadsheet, 'r') as f, open(filtered_spreadsheet, 'w') as o:
+        # Loop over each line in the input file
+        for line in f:
+            # Check if the line contains any of the patterns
+            if any(pattern.search(line) for pattern in patterns):
+                continue
+            # If the line does not contain any of the patterns, write it to the output file
+            o.write(line)
+
+    # now we have a spreadsheet with novel species
+    g = GtdbSpreadsheetParser(filtered_spreadsheet, 
+                      95,
+                      5,
+                      400,
+                      False,
+                      False,
+                      options.min_genomes,
+                      '',
+                      temp_dir+'/species_taxa.csv', temp_dir+'/assembly_metadata.csv', temp_dir+'/accessions_to_download.csv',  False, False ).generate_spreadsheets()
+    os.system('rm '+temp_dir+'/assembly_metadata.csv')
+    os.system('rm '+temp_dir+'/accessions_to_download.csv')
+    species = []
+    # open species_taxa.csv with pandas and read it into a data frame
+    species_details = pd.read_csv(temp_dir+'/species_taxa.csv')
+    # filter the rows so that the column rank must be equal to 'species'
+    species_details = species_details[species_details['rank'] == 'species']
+    # sort the rows with the largest ngenomes first
+    species_details = species_details.sort_values(by=['ngenomes'], ascending=False)
+
+    # create an array from the name column
+    species = species_details['name'].to_numpy()
+
+    # for each species, create a new database
+    for species_index, s in enumerate(species):
+        print("Creating database for species "+ str(s) + "("+ str(species_index) +"/"+ str(len(species)) +")")
+        g = GtdbSpreadsheetParser(filtered_spreadsheet, 
+                      95,
+                      5,
+                      400,
+                      False,
+                      False,
+                      options.min_genomes,
+                      s,
+                      temp_dir+'/species_taxa.csv', temp_dir+'/assembly_metadata.csv', temp_dir+'/accessions_to_download.csv',  False, False ).generate_spreadsheets()
+        
+        # count the number of lines in the file temp_dir+'/accessions_to_download.csv'
+        num_accessions = len(open(temp_dir+'/accessions_to_download.csv').readlines())
+
+        # if the file temp_dir+'/accessions_to_download.csv' has less than 2 lines, continue
+        if num_accessions < options.min_genomes:
+            print("Not enough files to download so skipping species:"+ str(s))
+            with open(options.species_added, "a+") as f:
+                    f.write("\t".join(['skipped_ngenomes', str(s), str(0.0), str(num_accessions)]) + "\n")
+            continue
+
+        # create a temporary subdirectory for this species
+        with tempfile.TemporaryDirectory() as temp_dir2:
+            print("Species specific temp directory: " + str(temp_dir2) + " for species: "+ str(s))
+            # copy 'species_taxa.csv', 'assembly_metadata.csv', 'accessions_to_download.csv', into this directory
+            os.system('cp '+temp_dir+'/species_taxa.csv '+temp_dir2+'/species_taxa.csv')
+            os.system('cp '+temp_dir+'/assembly_metadata.csv '+temp_dir2+'/assembly_metadata.csv')
+            os.system('cp '+temp_dir+'/accessions_to_download.csv '+temp_dir2+'/accessions_to_download.csv')
+
+            os.system('mkdir '+temp_dir2+'/fasta')
+            os.system('mkdir '+temp_dir2+'/intermediate_files')
+            os.system('mkdir '+temp_dir2+'/final')
+            os.system('mkdir '+temp_dir2+'/patched')
+
+            # NCBI doesnt like too many downloads at once
+            download_cpus = options.cpus
+            if options.cpus > 8:
+                download_cpus = 8
+
+            os.system('ncbi-genome-download -r 3 -A '+temp_dir2+'/accessions_to_download.csv -F fasta  -o '+temp_dir2+'/fasta --flat-output -s genbank -p '+str(download_cpus)+' bacteria')
+            os.system('ncbi-genome-download -r 3 -A '+temp_dir2+'/accessions_to_download.csv -F fasta  -o '+temp_dir2+'/fasta --flat-output -s refseq -p '+str(download_cpus)+' bacteria')
+
+            directory_path = temp_dir2+'/fasta'
+            for filename in os.listdir(directory_path):
+                if filename.endswith('_genomic.fna.gz'):
+                    parts = filename.split('_')
+                    new_filename = parts[0] + '_' + parts[1] + '.fna.gz'
+                    os.rename(os.path.join(directory_path, filename), os.path.join(directory_path, new_filename))
+
+            os.system('./scripts/gambitdb -v --cpus '+ str(options.cpus)+' -d '+temp_dir2+'/intermediate_files '+temp_dir2+'/fasta '+temp_dir2+'/assembly_metadata.csv '+temp_dir2+'/species_taxa.csv')
+            os.system('./scripts/gambit-create --database_output_filename '+temp_dir2+'/final/database.gdb --signatures_output_filename '+temp_dir2+'/final/database.gs '+temp_dir2+'/intermediate_files/genome_assembly_metadata.csv '+temp_dir2+'/intermediate_files/species_taxon.csv '+temp_dir2+'/intermediate_files/database.gs')
+
+            if not os.path.exists(temp_dir2+'/final/database.gs') or os.stat(temp_dir2+'/final/database.gs').st_size == 0:
+                print("No /final/database.gs file so skipping species:"+ str(s))
+                with open(options.species_added, "a+") as f:
+                    f.write("\t".join(['skipped_error', str(s), str(0.0), str(num_accessions)]) + "\n")
+                continue
+
+            os.system('gambit dist -k 11 -p ATGAC -o '+ temp_dir2+'/overlap.csv --no-progress --qs '+temp_dir2+'/final/database.gs --rs '+ temp_dir +'/input_db.gs -c ' + str(options.cpus))
+
+            if not os.path.exists(temp_dir2+'/overlap.csv') or os.stat(temp_dir2+'/overlap.csv').st_size == 0:
+                print("No overlap.csv file so skipping species:"+ str(s))
+                with open(options.species_added, "a+") as f:
+                    f.write("\t".join(['skipped_error', str(s), str(0.0), str(num_accessions)]) + "\n")
+                continue
+
+            # using pandas, read in the output file (overlap) in csv format. The first row contains the sample names and the 1st cell of each row is a sample name, with floats in the rest of the cells. Find the lowest non zero value in the table
+            df = pd.read_csv(temp_dir2+'/overlap.csv')
+            df = df.drop(df.columns[0], axis=1)
+            df = df.drop(df.index[0])
+            df = df.astype(float)
+            df = df.replace(0, np.nan)
+            df = df.dropna(axis=1, how='all')
+            df = df.dropna(axis=0, how='all')
+            df_lowest_value = df.min().min()
+
+            # ideally find out what the diameter is for each species, however as a first pass 
+            # we will just look for anything less than 0.7
+
+            if df_lowest_value < 0.7:
+                print("Species "+ str(s) +" has not been patched because the diameter to the existing database is "+str(df_lowest_value))
+                with open(options.species_added, "a+") as f:
+                    f.write("\t".join(['skipped_overlap', str(s), str(df_lowest_value), str(num_accessions)]) + "\n")
+                continue
+            else:
+                print("Adding species "+ str(s) +" to the database with where nearest diameter is "+ str(df_lowest_value))
+
+            os.system('./scripts/gambit-apply-patch --signatures_main_removed_filename '+temp_dir2+'/ignore.gs --database_main_removed_filename '+temp_dir2+'/ignore.gdb -s '+ temp_dir2+'/patched/patched.gs -d '+ temp_dir2+'/patched/patched.gdb '+ temp_dir+'/input_db.gs '+ temp_dir+ '/input_db.gdb '+temp_dir2+'/final/database.gs ' +temp_dir2+'/final/database.gdb')
+
+            # copy the patched database to the main directory
+            os.system('cp '+temp_dir2+'/patched/patched.gdb '+temp_dir+'/input_db.gdb')
+            os.system('cp '+temp_dir2+'/patched/patched.gs '+temp_dir+'/input_db.gs')
+            print("added species "+ str(s) +" to the database")
+
+            os.system('cp '+temp_dir2+'/patched/patched.gdb input_db.gdb')
+            os.system('cp '+temp_dir2+'/patched/patched.gs input_db.gs')
+
+            #os.system('cp '+temp_dir2+'/patched/patched.gdb input_db_'+str(species_index)+'.gdb')
+            #os.system('cp '+temp_dir2+'/patched/patched.gs input_db_'+str(species_index)+'.gs')
+            
+            # open the file options.species_added and append s to the end. Create the file if it doesnt exist
+            with open(options.species_added, "a+") as f:
+                f.write("\t".join(['added', str(s), str(df_lowest_value), str(num_accessions)]) + "\n")
+                    
+           

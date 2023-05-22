@@ -1,0 +1,4 @@
+species_taxid,name,rank,parent_taxid,ncbi_taxid,gambit_taxid,diameter,ngenomes,report
+1,Yellow black,species,5,10,10,0.9,10,1
+2,Yellow white,species,5,11,11,0.5,3,1
+5,Yellow,genus,,2,2,0.1,0,0

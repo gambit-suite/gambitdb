@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+import sys
+import argparse
+import pkg_resources
+import logging
+sys.path.append('../')
+sys.path.append('./')
+from gambitdb.GtdbSpreadsheetParser import GtdbSpreadsheetParser
+
+version = ''
+try:
+    version = pkg_resources.get_distribution("gambitdb").version
+except pkg_resources.DistributionNotFound:
+    version = 'x.y.z'
+
+parser = argparse.ArgumentParser(
+    description = 'Given a GTDB metadata spreadsheet, output a list of accessions to download, a species taxonid file and a genome metadata file',
+    usage = 'gambitdb-gtdb [options]',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+# Required input files
+parser.add_argument('gtdb_metadata_spreadsheet',  help='GTDB metadata file such as bac120_metadata_r214.tsv', type=str)
+
+# Optional input parameters
+parser.add_argument('--checkm_completeness', '-b',  help='Minimum checkm completeness of the genome [0-100]', type=float, default=97.0)
+parser.add_argument('--checkm_contamination', '-c',  help='Maximum checkm contamination of the genome [0-100]', type=float, default=2.0)
+parser.add_argument('--max_contigs', '-d',  help='Maximum number of contigs. Please note some species systematically assemble poorly with short read data.', type=int, default=100)
+parser.add_argument('--include_derived_samples', '-e',  help='Include mixed samples from metagenomes, environment, single cell', action='store_true', default=False)
+parser.add_argument('--include_novel_species', '-f', help='Include novel species called sp12345. The genus must be known', action='store_true', default=False)
+parser.add_argument('--minimum_genomes_per_species', '-i',  help='Minimum number of genomes in a species, otherwise exclude the species', type=float, default=2)
+parser.add_argument('--species_filter', '-j',  help='Only include species that match this string', type=str, default='')
+
+# Output files
+parser.add_argument('--species_taxon_output_filename', '-s', help='Output filename for with the taxonomy', default = 'species_taxa.csv', type=str)
+parser.add_argument('--genome_assembly_metadata_output_filename', '-g', help='Genome metadata', default = 'assembly_metadata.csv', type=str)
+parser.add_argument('--accessions_output_filename', '-a', help='Genome accessions for download', default = 'accessions_to_download.csv', type=str)
+
+parser.add_argument('--debug', action='store_true', help='Turn on debugging', default = False)
+parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
+
+options = parser.parse_args()
+logging.basicConfig(filename='output_logfile.txt', level=logging.DEBUG)
+
+GtdbSpreadsheetParser(options.gtdb_metadata_spreadsheet, 
+                      options.checkm_completeness,
+                      options.checkm_contamination,
+                      options.max_contigs,
+                      options.include_derived_samples,
+                      options.include_novel_species,
+                      options.minimum_genomes_per_species,
+                      options.species_filter,
+                      options.species_taxon_output_filename, 
+                      options.genome_assembly_metadata_output_filename, 
+                      options.accessions_output_filename, 
+                      options.debug,
+                      options.verbose ).generate_spreadsheets()

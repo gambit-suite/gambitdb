@@ -1,0 +1,12 @@
+uuid,assembly_filename,species_taxid,assembly_accession,species
+1,gambitdb/tests/data/test_dataset/sample1.fa,10,sample1,Yellow black
+2,gambitdb/tests/data/test_dataset/sample1_1.fa,10,sample1_1,Yellow black
+3,gambitdb/tests/data/test_dataset/sample1_2.fa,10,sample1_2,Yellow black
+4,gambitdb/tests/data/test_dataset/sample2.fa,11,sample2,Red white
+5,gambitdb/tests/data/test_dataset/sample3.fa,12,sample3,Orange teal
+6,gambitdb/tests/data/test_dataset/sample3_3.fa,12,sample3_3,Orange teal
+7,gambitdb/tests/data/test_dataset/sample4.fa,13,sample4,Green cyan
+8,gambitdb/tests/data/test_dataset/sample5.fa,14,sample5,Tree blue
+9,gambitdb/tests/data/test_dataset/sample2_2.fa,11,sample2_2,Red white
+10,gambitdb/tests/data/test_dataset/sample4_4.fa,13,sample4_4,Green cyan
+11,gambitdb/tests/data/test_dataset/sample5_5.fa,14,sample5_5,Tree blue

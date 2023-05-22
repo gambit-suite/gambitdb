@@ -1,0 +1,44 @@
+#!/usr/bin/env python3
+import sys
+import argparse
+import pkg_resources
+import logging
+sys.path.append('../')
+sys.path.append('./')
+from gambitdb.GtdbTestset import GtdbTestset
+
+version = ''
+try:
+    version = pkg_resources.get_distribution("gambitdb").version
+except pkg_resources.DistributionNotFound:
+    version = 'x.y.z'
+
+parser = argparse.ArgumentParser(
+    description = 'Check a gambit database built using GTDB against genomes which were not used in the training set. Produces a list of genomes to use and their predicted species (GTDB)',
+    usage = 'gambitdb-gtdb-testset [options]',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+# Required input files
+parser.add_argument('species_taxon_file',  help='Species taxon file produced by gambitdb, e.g. species_taxon.csv', type=str)
+parser.add_argument('assembly_metadata_file',  help='Assembly metadata file produced by gambitdb, e.g. genome_assembly_metadata.csv', type=str)
+parser.add_argument('gtdb_metadata_file',  help='GTDB spreadsheet', type=str)
+
+# optional parameters
+parser.add_argument('--output_assembly_list_filename','-a',  help='Output assemblies for download filename. These can be used with ncbi-genome-downloader', type=str, default='assemblies_for_download.txt')
+parser.add_argument('--output_assembly_to_species_filename','-b',  help='Output assembly to species filename', type=str, default='species_to_assembly.csv')
+parser.add_argument('--max_genomes_per_species','-c',  help='Max genomes per species', type=int, default=5)
+
+parser.add_argument('--debug', action='store_true', help='Turn on debugging', default = False)
+parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
+
+options = parser.parse_args()
+logging.basicConfig(filename='output_logfile.txt', level=logging.DEBUG)
+
+GtdbTestset(options.species_taxon_file,
+            options.assembly_metadata_file,
+            options.gtdb_metadata_file,
+            options.output_assembly_list_filename,
+            options.output_assembly_to_species_filename,
+            options.max_genomes_per_species,
+            options.debug,
+            options.verbose ).generate_test_set()

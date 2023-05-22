@@ -1,0 +1,6 @@
+species_taxid,name,rank,parent_taxid,ncbi_taxid,gambit_taxid
+10,Yellow black,species,1,10,10
+11,Red white,species,1,11,11
+12,Orange teal,species,1,12,12
+13,Green cyan,species,1,13,13
+14,Tree blue,species,1,14,14

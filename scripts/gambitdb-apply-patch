@@ -1,0 +1,348 @@
+#!/usr/bin/env python3
+
+"""
+This file, and only this file, is licensed under the GNU Lesser General Public License v3.0.
+All other files in this repository are licenced under the GNU General Public License v3.0.
+
+                   GNU LESSER GENERAL PUBLIC LICENSE
+                       Version 3, 29 June 2007
+
+ Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>
+ Everyone is permitted to copy and distribute verbatim copies
+ of this license document, but changing it is not allowed.
+
+
+  This version of the GNU Lesser General Public License incorporates
+the terms and conditions of version 3 of the GNU General Public
+License, supplemented by the additional permissions listed below.
+
+  0. Additional Definitions.
+
+  As used herein, "this License" refers to version 3 of the GNU Lesser
+General Public License, and the "GNU GPL" refers to version 3 of the GNU
+General Public License.
+
+  "The Library" refers to a covered work governed by this License,
+other than an Application or a Combined Work as defined below.
+
+  An "Application" is any work that makes use of an interface provided
+by the Library, but which is not otherwise based on the Library.
+Defining a subclass of a class defined by the Library is deemed a mode
+of using an interface provided by the Library.
+
+  A "Combined Work" is a work produced by combining or linking an
+Application with the Library.  The particular version of the Library
+with which the Combined Work was made is also called the "Linked
+Version".
+
+  The "Minimal Corresponding Source" for a Combined Work means the
+Corresponding Source for the Combined Work, excluding any source code
+for portions of the Combined Work that, considered in isolation, are
+based on the Application, and not on the Linked Version.
+
+  The "Corresponding Application Code" for a Combined Work means the
+object code and/or source code for the Application, including any data
+and utility programs needed for reproducing the Combined Work from the
+Application, but excluding the System Libraries of the Combined Work.
+
+  1. Exception to Section 3 of the GNU GPL.
+
+  You may convey a covered work under sections 3 and 4 of this License
+without being bound by section 3 of the GNU GPL.
+
+  2. Conveying Modified Versions.
+
+  If you modify a copy of the Library, and, in your modifications, a
+facility refers to a function or data to be supplied by an Application
+that uses the facility (other than as an argument passed when the
+facility is invoked), then you may convey a copy of the modified
+version:
+
+   a) under this License, provided that you make a good faith effort to
+   ensure that, in the event an Application does not supply the
+   function or data, the facility still operates, and performs
+   whatever part of its purpose remains meaningful, or
+
+   b) under the GNU GPL, with none of the additional permissions of
+   this License applicable to that copy.
+
+  3. Object Code Incorporating Material from Library Header Files.
+
+  The object code form of an Application may incorporate material from
+a header file that is part of the Library.  You may convey such object
+code under terms of your choice, provided that, if the incorporated
+material is not limited to numerical parameters, data structure
+layouts and accessors, or small macros, inline functions and templates
+(ten or fewer lines in length), you do both of the following:
+
+   a) Give prominent notice with each copy of the object code that the
+   Library is used in it and that the Library and its use are
+   covered by this License.
+
+   b) Accompany the object code with a copy of the GNU GPL and this license
+   document.
+
+  4. Combined Works.
+
+  You may convey a Combined Work under terms of your choice that,
+taken together, effectively do not restrict modification of the
+portions of the Library contained in the Combined Work and reverse
+engineering for debugging such modifications, if you also do each of
+the following:
+
+   a) Give prominent notice with each copy of the Combined Work that
+   the Library is used in it and that the Library and its use are
+   covered by this License.
+
+   b) Accompany the Combined Work with a copy of the GNU GPL and this license
+   document.
+
+   c) For a Combined Work that displays copyright notices during
+   execution, include the copyright notice for the Library among
+   these notices, as well as a reference directing the user to the
+   copies of the GNU GPL and this license document.
+
+   d) Do one of the following:
+
+       0) Convey the Minimal Corresponding Source under the terms of this
+       License, and the Corresponding Application Code in a form
+       suitable for, and under terms that permit, the user to
+       recombine or relink the Application with a modified version of
+       the Linked Version to produce a modified Combined Work, in the
+       manner specified by section 6 of the GNU GPL for conveying
+       Corresponding Source.
+
+       1) Use a suitable shared library mechanism for linking with the
+       Library.  A suitable mechanism is one that (a) uses at run time
+       a copy of the Library already present on the user's computer
+       system, and (b) will operate properly with a modified version
+       of the Library that is interface-compatible with the Linked
+       Version.
+
+   e) Provide Installation Information, but only if you would otherwise
+   be required to provide such information under section 6 of the
+   GNU GPL, and only to the extent that such information is
+   necessary to install and execute a modified version of the
+   Combined Work produced by recombining or relinking the
+   Application with a modified version of the Linked Version. (If
+   you use option 4d0, the Installation Information must accompany
+   the Minimal Corresponding Source and Corresponding Application
+   Code. If you use option 4d1, you must provide the Installation
+   Information in the manner specified by section 6 of the GNU GPL
+   for conveying Corresponding Source.)
+
+  5. Combined Libraries.
+
+  You may place library facilities that are a work based on the
+Library side by side in a single library together with other library
+facilities that are not Applications and are not covered by this
+License, and convey such a combined library under terms of your
+choice, if you do both of the following:
+
+   a) Accompany the combined library with a copy of the same work based
+   on the Library, uncombined with any other library facilities,
+   conveyed under the terms of this License.
+
+   b) Give prominent notice with the combined library that part of it
+   is a work based on the Library, and explaining where to find the
+   accompanying uncombined form of the same work.
+
+  6. Revised Versions of the GNU Lesser General Public License.
+
+  The Free Software Foundation may publish revised and/or new versions
+of the GNU Lesser General Public License from time to time. Such new
+versions will be similar in spirit to the present version, but may
+differ in detail to address new problems or concerns.
+
+  Each version is given a distinguishing version number. If the
+Library as you received it specifies that a certain numbered version
+of the GNU Lesser General Public License "or any later version"
+applies to it, you have the option of following the terms and
+conditions either of that published version or of any later version
+published by the Free Software Foundation. If the Library as you
+received it does not specify a version number of the GNU Lesser
+General Public License, you may choose any version of the GNU Lesser
+General Public License ever published by the Free Software Foundation.
+
+  If the Library as you received it specifies that a proxy can decide
+whether future versions of the GNU Lesser General Public License shall
+apply, that proxy's public statement of acceptance of any version is
+permanent authorization for you to choose that version for the
+Library.
+"""
+
+
+
+import argparse
+import numpy as np
+import sqlite3
+import shutil
+import logging
+import os
+from gambit.sigs import  load_signatures, dump_signatures, AnnotatedSignatures, SignatureList
+
+import pkg_resources
+version = ''
+try:
+    version = pkg_resources.get_distribution("gambitdb").version
+except pkg_resources.DistributionNotFound:
+    version = 'x.y.z'
+
+parser = argparse.ArgumentParser(
+    description = 'Given two GAMBIT signatures files, merge them and return a new file.',
+    usage = 'gambitdb-apply-patch [options]',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+# Required input files
+parser.add_argument('signatures_main_filename', help='A signatures .h5 file created by gambit signatures', type=str)
+parser.add_argument('database_main_filename', help='An SQLite database', type=str)
+parser.add_argument('signatures_patch_filename', help='A signatures .h5 file created by gambit signatures', type=str)
+parser.add_argument('database_patch_filename', help='An SQLite database', type=str)
+
+# Output
+parser.add_argument('--signatures_output_filename', '-s', help='Output filename for genome signatures', default = 'patched_database.gs', type=str)
+parser.add_argument('--database_output_filename', '-d', help='Output filename for database', default = 'patched_database.gdb', type=str)
+parser.add_argument('--signatures_main_removed_filename', help='Output filename for genome signatures with patched genomes removed', default = 'main_database_removed.gs', type=str)
+parser.add_argument('--database_main_removed_filename', help='Output filename for database with patched genomes removed', default = 'main_database_removed.gdb', type=str)
+
+parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
+options = parser.parse_args()
+
+# setup logging
+if options.verbose:
+    logging.basicConfig(level=logging.DEBUG)
+else:
+    logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger('PatchDB')
+
+# copy the database so we dont modify the original
+logger.debug("Copy main database to: " + options.database_output_filename)
+shutil.copy(options.database_main_filename, options.database_output_filename)
+
+# Connect to the database
+main_db_connection = sqlite3.connect(options.database_output_filename)
+patch_db_connection = sqlite3.connect(options.database_patch_filename)
+
+# Retrieve patch data
+patch_genomes = [row[0] for row in patch_db_connection.execute("SELECT key FROM genomes")]
+patch_taxa = [row[0] for row in patch_db_connection.execute("SELECT name FROM taxa")]
+# remove taxa with changed names from prior database versions
+patch_taxa_keys = [row[0] for row in patch_db_connection.execute("SELECT key FROM taxa")]
+logger.debug("Patch contains " + str(len(patch_genomes)) + " genomes and " + str(len(patch_taxa)) + " taxa to be added")
+
+# Output the number of rows in main DB
+start_num_genomes = main_db_connection.execute("SELECT count(id) FROM genomes;").fetchone()[0]
+logger.debug("The number of genomes in the main database before deletion is " + str(start_num_genomes))
+start_num_taxa = main_db_connection.execute("SELECT count(id) FROM taxa;").fetchone()[0]
+logger.debug("The number of taxa in the main database before deletion is " + str(start_num_taxa))
+
+# Lookup main database for corresponding taxa and genomes
+# we are going to delete rows so store the ids in a list to help with manipulations (could do a lot of this in join statements)
+main_genome_id = [row[0] for row in main_db_connection.execute("SELECT genome_id FROM genome_annotations WHERE organism IN (" + str(','.join(['?' for _ in patch_taxa]))+ ")", patch_taxa)]
+main_taxon_id = [row[0] for row in main_db_connection.execute("SELECT taxon_id FROM genome_annotations WHERE organism IN (" + str(','.join(['?' for _ in patch_taxa]))+ ")", patch_taxa)]
+logger.debug("Based on the patch taxa, the main database contains " + str(len(main_genome_id)) + " genomes to be removed first")
+
+main_genome_accessions_to_remove = [row[0] for row in main_db_connection.execute("SELECT key FROM genomes WHERE id IN (" + str(','.join(['?' for _ in main_genome_id]))+ ")", main_genome_id)]
+# merge the patch_genomes and main_genome_accessions_to_remove lists and remove duplicates
+genome_accessions_to_remove = list(set(patch_genomes + main_genome_accessions_to_remove))
+
+logger.debug("The total number of genomes to remove (when including the patch genomes) is " + str(len(genome_accessions_to_remove)))
+main_genome_ids_to_remove = [row[0] for row in main_db_connection.execute("SELECT id FROM genomes WHERE key IN (" + str(','.join(['?' for _ in genome_accessions_to_remove]))+ ")", genome_accessions_to_remove)]
+
+# remove genomes and taxa from main database
+logger.debug("Deleting genomes, genome_annotations and taxa from main database")
+cursor = main_db_connection.execute("DELETE FROM genomes WHERE id IN (" + str(','.join(['?' for _ in main_genome_ids_to_remove]))+ ")", main_genome_ids_to_remove)
+logger.debug("Deleted "+ str(cursor.rowcount)+ " rows from the genomes table")
+cursor = main_db_connection.execute("DELETE FROM genome_annotations WHERE genome_id IN (" + str(','.join(['?' for _ in main_genome_ids_to_remove]))+ ")", main_genome_ids_to_remove)
+logger.debug("Deleted "+ str(cursor.rowcount)+ " rows from the genome_annotations table")
+cursor = main_db_connection.execute("DELETE FROM genome_annotations WHERE taxon_id IN (" + str(','.join(['?' for _ in main_taxon_id]))+ ")", main_taxon_id)
+logger.debug("Deleted "+ str(cursor.rowcount)+ " rows from the genome_annotations table")
+cursor = main_db_connection.execute("DELETE FROM taxa WHERE id IN (" + str(','.join(['?' for _ in main_taxon_id]))+ ")", main_taxon_id)
+logger.debug("Deleted "+ str(cursor.rowcount)+ " rows from the taxa table")
+cursor = main_db_connection.execute("DELETE FROM taxa WHERE key IN (" + str(','.join(['?' for _ in patch_taxa_keys]))+ ")", patch_taxa_keys)
+logger.debug("Deleted "+ str(cursor.rowcount)+ " rows from the taxa table where taxa name was changed from prior database versions")
+
+# Output the number of rows after deletion so that you know if it worked in verbose mode.
+post_delete_num_genomes = main_db_connection.execute("SELECT count(id) FROM genomes;").fetchone()[0]
+logger.debug("The number of genomes in the main database after deletion is " + str(post_delete_num_genomes))
+post_delete_num_taxa = main_db_connection.execute("SELECT count(id) FROM taxa;").fetchone()[0]
+logger.debug("The number of taxa in the main database after deletion is " + str(post_delete_num_taxa))
+
+# Commit connection
+main_db_connection.commit()
+# copy the database 
+shutil.copy(options.database_output_filename, options.database_main_removed_filename)
+
+# get the maximum id from the taxa table
+taxa_id_offset = int(main_db_connection.execute("SELECT MAX(id) FROM taxa limit 1;").fetchone()[0])
+genomes_id_offset = int(main_db_connection.execute("SELECT MAX(id) FROM genomes limit 1;").fetchone()[0])
+logger.debug("The maximum ID in the main taxa table is " + str(taxa_id_offset) + " and this will be added to every taxa ID from the patch database")
+logger.debug("The maximum ID in the main genomes table is " + str(genomes_id_offset) + " and this will be added to every genome ID from the patch database")
+
+# select all rows from patch_db_connection taxa table and add taxa_id_offset to the ID
+logger.debug("Add all the patch taxa rows to the main database")
+for row in patch_db_connection.execute("SELECT * FROM taxa"):
+    parent_taxon_id = '' if row[8] == '' or row[8] is None else int(row[8]) + taxa_id_offset
+    main_db_connection.execute("INSERT INTO taxa VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (int(row[0]) + taxa_id_offset, row[1], row[2], row[3], row[4], row[5], row[6], row[7], parent_taxon_id, row[9], ''))
+
+logger.debug("Add all the patch genome rows to the main database")
+# select all rows from patch_db_connection genomes table and add genomes_id_offset to the ID
+for row in patch_db_connection.execute("SELECT * FROM genomes"):
+    # check if a row with the same genbank_acc value already exists in the table
+    existing_row = main_db_connection.execute("SELECT * FROM genomes WHERE genbank_acc=?", (str(row[5]),)).fetchone()
+    
+    if existing_row is not None:
+        # if a row with the same genbank_acc value exists, skip this row
+        #logger.debug("Skipping genome with genbank_acc " + row[5] + " because it already exists in the main database")
+        continue
+    # if a row with the same genbank_acc value does not exist, insert the row
+    main_db_connection.execute("INSERT INTO genomes VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (int(row[0]) + genomes_id_offset, row[1], row[2], row[3], row[4], row[5], row[6], None))
+
+logger.debug("Add all the patch genome_annotations rows to the main database")
+# select all rows from patch_db_connection genome_annotations table and add genomes_id_offset and taxa_id_offset to the ID
+for row in patch_db_connection.execute("SELECT * FROM genome_annotations"):
+    main_db_connection.execute("INSERT INTO genome_annotations VALUES (?, ?, ?, ?)", (int(row[0]) + genomes_id_offset, row[1], int(row[2]) + taxa_id_offset, row[3]))
+
+# Output the number of inserted rows so that you know if it worked in verbose mode.
+final_num_genomes = main_db_connection.execute("SELECT count(id) FROM genomes;").fetchone()[0]
+logger.debug("The final number of genomes in the main database is " + str(final_num_genomes))
+final_num_taxa = main_db_connection.execute("SELECT count(id) FROM taxa;").fetchone()[0]
+logger.debug("The final number of taxa in the main database is " + str(final_num_taxa))
+
+# remove genomes from main signatures file 
+
+# read in the signatures file, filter out the genome accessions we dont need and write a new file.
+temp_main_signatures_filename = 'temp_main_signatures_filename.gs'
+logger.debug("Remove all the patch genomes from the main signatures file (so there are no name clashes later) and save to a temp file "+ str(temp_main_signatures_filename))
+with load_signatures(options.signatures_main_filename) as src:
+    in_gidxs = np.flatnonzero(~np.in1d(src.ids,genome_accessions_to_remove))
+    filtered_src_ids = src.ids[in_gidxs]
+    filtered_src = src[in_gidxs]
+    out_sigs = AnnotatedSignatures(filtered_src, filtered_src_ids, src.meta)
+    dump_signatures(temp_main_signatures_filename, out_sigs)
+
+# merge the two signatures files
+logger.debug("Merge the two signatures files saving to " + options.signatures_output_filename)
+with load_signatures(temp_main_signatures_filename) as main_sig, load_signatures(options.signatures_patch_filename) as patch_sig:
+    # merge the two signatures files
+    merged_src_ids = np.concatenate((main_sig.ids, patch_sig.ids))
+    merged_src = SignatureList(main_sig)
+    merged_src.extend(patch_sig)
+    out_sigs = AnnotatedSignatures(merged_src, merged_src_ids, main_sig.meta)
+    dump_signatures(options.signatures_output_filename, out_sigs)
+
+# copy temp_main_signatures_filename to signatures_main_removed_filename
+shutil.copy(temp_main_signatures_filename, options.signatures_main_removed_filename)
+
+# delete temp_main_signatures_filename
+os.remove(temp_main_signatures_filename)
+
+# Commit connection
+main_db_connection.commit()
+
+# Close the connection
+main_db_connection.close()
+patch_db_connection.close()
+
+logger.debug("Final patched database file: " + options.database_output_filename)
+logger.debug("Final patched signatures file: " + options.signatures_output_filename)
