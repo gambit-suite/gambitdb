@@ -22,7 +22,10 @@ setup(
     test_suite='nose.collector',
     tests_require=['nose >= 1.3'],
     install_requires=[
-           'biopython >= 1.68'
+           'biopython >= 1.68',
+           'pandas',
+           'numpy',
+
        ],
     license='GPLv3',
     classifiers=[

@@ -1,5 +1,4 @@
 # A class which will take in the pairwise distance file, accessions, and species taxon data and calculate diameters and minimums
-import os
 import logging
 import numpy
 import pandas
@@ -29,7 +28,7 @@ class Diameters:
         # Read in the genome assembly filenames with path
         genome_metadata = pandas.read_csv(self.genome_assembly_metadata)
         number_of_genomes = genome_metadata.shape[0]
-        assembly_accessions = genome_metadata['assembly_filenames']
+        assembly_accessions = genome_metadata['assembly_filename']
         genomes_grouped_by_species_taxid = genome_metadata.groupby('species_taxid')
 
         # Read in the species taxon file
@@ -40,7 +39,7 @@ class Diameters:
         pairwise_distances = pandas.read_csv(self.pairwise_distances_filename, index_col=0)
 
         # Create a list of indices for each species in the genome metadata DataFrame
-        species_inds = [genome_metadata.indices[species_taxid] for species_taxid in species.index]
+        species_inds = [genomes_grouped_by_species_taxid.indices[species_taxid] for species_taxid in species.index]
 
         diameters, min_inter = self.calculate_thresholds(number_of_species, species_inds, pairwise_distances)
 
@@ -53,7 +52,6 @@ class Diameters:
         # Take the min-inter values, add to a dataframe and write out to a new file
         mininter_df = pandas.DataFrame(min_inter, index=species.index, columns=species.index)
         mininter_df.to_csv(self.min_inter_output_filename)
-
 
     # Calculate the diameters and minimums
     def calculate_thresholds(self, number_of_species, species_inds, pairwise_distances):

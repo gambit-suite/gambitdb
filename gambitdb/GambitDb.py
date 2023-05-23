@@ -8,7 +8,7 @@ from gambitdb.Diameters import Diameters
 
 class GambitDb:
 
-    def __init__(self, output_directory, assembly_directory, genome_assembly_metadata, species_taxon_filename,  signatures_output_filename, signatures_output_filename, database_output_filename, kmer, kmer_prefix, verbose):
+    def __init__(self, output_directory, assembly_directory, genome_assembly_metadata, species_taxon_filename,  signatures_output_filename, database_output_filename, kmer, kmer_prefix, verbose):
         self.logger = logging.getLogger(__name__)
         self.output_directory = output_directory
         self.assembly_directory = assembly_directory
@@ -44,8 +44,7 @@ class GambitDb:
         self.logger.debug('generate_gambit_db')
         pairwise = self.generate_pairwise_table()
 
-        self.species_taxon_filename = self.check_species_taxonid_file_exists_or_create_one(self.species_taxon_filename,
-                                                                                           self.genome_assembly_metadata)
+        self.species_taxon_filename = self.check_species_taxonid_file_exists_or_create_one(self.species_taxon_filename, self.genome_assembly_metadata)
         diameters = self.generate_diameters(pairwise.distance_table_output_filename, self.species_taxon_filename)
 
     def generate_pairwise_table(self):
@@ -62,13 +61,13 @@ class GambitDb:
 
     def generate_diameters(self, distance_table, species_taxon_filename):
         self.logger.debug('generate_diameters')
-        d = Diameters(genome_assembly_metadata,
+        d = Diameters(self.genome_assembly_metadata,
                       distance_table, 
                       species_taxon_filename,
                       os.path.join(self.output_directory, 'species_taxon_output.csv'),
                       os.path.join(self.output_directory, 'min_inter_output.csv'),
                       self.verbose)
-        d.generate_diameters()
+        d.calculate_diameters()
         return d
 
     
