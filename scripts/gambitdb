@@ -1,0 +1,51 @@
+#!/usr/bin/env python3
+import sys
+import argparse
+import pkg_resources
+sys.path.append('../')
+sys.path.append('./')
+from gambitdb.GambitDb import GambitDb
+
+version = ''
+try:
+    version = pkg_resources.get_distribution("gambitdb").version
+except pkg_resources.DistributionNotFound:
+    version = 'x.y.z'
+
+parser = argparse.ArgumentParser(
+    description = 'Generate a Gambit database',
+    usage = 'gambitdb [options]',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+# Required input files
+parser.add_argument('assembly_directory',  help='A directory containing assemblies in FASTA format', type=str)
+parser.add_argument('genome_assembly_metadata',  help='A CSV containing the assembly file and path, and the species taxon ID', type=str)
+
+# optional input files
+parser.add_argument('--species_taxon_filename', '-t', help='Optional CSV containing species taxonomy, may be generated automatically from assembly metadata if missing', type=str)
+
+# Output options that you probably want to change
+parser.add_argument('--output_directory', '-d', help='Output directory', default = 'output_dir', type=str)
+
+# Optional output file names that you probably want to leave as defaults
+parser.add_argument('--signatures_output_filename', '-s', help='Output filename for genome signatures', default = 'database.gs', type=str)
+parser.add_argument('--database_output_filename', '-g', help='Output filename for core database', default = 'database.gdb', type=str)
+
+# Optional input parameters for gambit
+parser.add_argument('--kmer',	 '-k', help='Length of the k-mer to use', type=int, default = 11)
+parser.add_argument('--kmer_prefix', '-f', help='Kmer prefix', default = 'ATGAC', type=str)
+
+parser.add_argument('--debug', action='store_true', help='Turn on debugging', default = False)
+parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
+
+options = parser.parse_args()
+
+GambitDb(options.output_directory,
+         options.assembly_directory, 
+         options.genome_assembly_metadata,
+         options.species_taxon_filename,
+         options.signatures_output_filename, 
+         options.database_output_filename, 
+         options.kmer, 
+         options.kmer_prefix, 
+         options.verbose).generate_gambit_db()

@@ -21,12 +21,12 @@ parser = argparse.ArgumentParser(
 parser.add_argument('assembly_directory',  help='A directory containing assemblies in FASTA format', type=str)
 
 # Output files
-parser.add_argument('--signatures_output_filename', '-s', help='Output filename for genome signatures', default = 'signatures.h5')
-parser.add_argument('--distance_table_output_filename', '-p', help='Output filename for pairwise distance table', default = 'pw-dists.csv')
+parser.add_argument('--signatures_output_filename', '-s', help='Output filename for genome signatures', default = 'signatures.h5', type=str)
+parser.add_argument('--distance_table_output_filename', '-p', help='Output filename for pairwise distance table', default = 'pw-dists.csv', type=str)
 
 # Optional input parameters for gambit
 parser.add_argument('--kmer',	 '-k', help='Length of the k-mer to use', type=int, default = 11)
-parser.add_argument('--kmer_prefix', '-f', help='Kmer prefix', default = 'ATGAC')
+parser.add_argument('--kmer_prefix', '-f', help='Kmer prefix', default = 'ATGAC', type=str)
 
 parser.add_argument('--debug', action='store_true', help='Turn on debugging', default = False)
 parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
