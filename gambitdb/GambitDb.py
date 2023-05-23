@@ -21,11 +21,18 @@ class GambitDb:
         # This file may not exist at this point
         self.species_taxon_filename = species_taxon_filename 
 
+        self.check_output_directory_exists_or_create_one()
+
         self.verbose = verbose
         if self.verbose:
             self.logger.setLevel(logging.DEBUG)
         else:
             self.logger.setLevel(logging.ERROR)
+
+    # Check if the output_directory exists, if not create it
+    def check_output_directory_exists_or_create_one(self):
+        if not os.path.exists(self.output_directory):
+            os.makedirs(self.output_directory)
 
     def check_species_taxonid_file_exists_or_create_one(self, species_taxon_filename, genome_assembly_metadata):
         # check if the species_taxon_filename exists, if it does return the filename

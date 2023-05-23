@@ -27,12 +27,13 @@ class Diameters:
 
         # Read in the genome assembly filenames with path
         genome_metadata = pandas.read_csv(self.genome_assembly_metadata)
-        number_of_genomes = genome_metadata.shape[0]
-        assembly_accessions = genome_metadata['assembly_filename']
         genomes_grouped_by_species_taxid = genome_metadata.groupby('species_taxid')
 
         # Read in the species taxon file
-        species = pandas.read_csv(self.species_taxon_filename).set_index('species_taxid')
+        species = pandas.read_csv(self.species_taxon_filename)
+        # BUG: This line causes the species name to be set as the index
+        #species = species.set_index('species_taxid')
+
         number_of_species = species.shape[0]
 
         # Read in the pairwise distances file

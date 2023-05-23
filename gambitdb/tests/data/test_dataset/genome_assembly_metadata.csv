@@ -1,0 +1,9 @@
+uuid,assembly_filename,species_taxid,assembly_accession
+1,gambitdb/tests/data/test_dataset/sample1.fa,10,sample1
+2,gambitdb/tests/data/test_dataset/sample1_1.fa,10,sample1_1
+3,gambitdb/tests/data/test_dataset/sample1_2.fa,10,sample1_2
+4,gambitdb/tests/data/test_dataset/sample2.fa,11,sample2
+5,gambitdb/tests/data/test_dataset/sample3.fa,12,sample3
+6,gambitdb/tests/data/test_dataset/sample3_3.fa,12,sample3_3
+7,gambitdb/tests/data/test_dataset/sample4.fa,13,sample4
+8,gambitdb/tests/data/test_dataset/sample5.fa,14,sample5
