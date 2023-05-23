@@ -1,0 +1,4 @@
+assembly_filenames,species_taxid
+/path/to/data/A123.fa,1
+/path/to/data/B456.fa.gz,2
+/path/to/data/C789.fna.gz,3

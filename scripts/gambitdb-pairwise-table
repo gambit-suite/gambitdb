@@ -39,7 +39,14 @@ if options.debug:
     pr = cProfile.Profile()
     pr.enable()
     
-    PairwiseTable(options).generate_sigs_and_pairwise_table()
+    options.verbose = True
+    
+    PairwiseTable(options.assembly_directory, 
+                  options.signatures_output_filename, 
+                  options.distance_table_output_filename, 
+                  options.kmer, 
+                  options.kmer_prefix, 
+                  options.verbose).generate_sigs_and_pairwise_table()
     
     pr.disable()
     s = io.StringIO()
@@ -48,4 +55,9 @@ if options.debug:
     ps.print_stats()
     print(s.getvalue())
 else:
-    PairwiseTable(options).generate_sigs_and_pairwise_table()
+    PairwiseTable(options.assembly_directory, 
+                  options.signatures_output_filename, 
+                  options.distance_table_output_filename, 
+                  options.kmer, 
+                  options.kmer_prefix, 
+                  options.verbose).generate_sigs_and_pairwise_table()

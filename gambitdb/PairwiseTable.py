@@ -6,18 +6,18 @@ import subprocess
 import tempfile
 
 class PairwiseTable:
-    def __init__(self, options):
+    def __init__(self, assembly_directory, signatures_output_filename,distance_table_output_filename, kmer, kmer_prefix, verbose):
         self.logger = logging.getLogger(__name__)
-        self.assembly_directory = options.assembly_directory
-        self.signatures_output_filename = options.signatures_output_filename
-        self.distance_table_output_filename = options.distance_table_output_filename
-        self.kmer = options.kmer
-        self.kmer_prefix = options.kmer_prefix
+        self.assembly_directory = assembly_directory
+        self.signatures_output_filename = signatures_output_filename
+        self.distance_table_output_filename = distance_table_output_filename
+        self.kmer = kmer
+        self.kmer_prefix = kmer_prefix
 
         # FASTA extensions to filter on for assemblies in the assembly directory
         self.valid_extensions = ['.fa', '.fasta', '.fna', '.fa.gz', '.fasta.gz', '.fna.gz']
 
-        self.verbose = options.verbose
+        self.verbose = verbose
         if self.verbose:
             self.logger.setLevel(logging.DEBUG)
         else:
