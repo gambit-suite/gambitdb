@@ -1,0 +1,5 @@
+assembly_filename,species_taxid,assembly_accession
+gambitdb/tests/data/pairwise_table/assemblies/sample1.fa,1,sample1
+gambitdb/tests/data/pairwise_table/assemblies/s2_overlap_s1.fa,2,s2_overlap_s1
+gambitdb/tests/data/pairwise_table/assemblies/s3_partial_overlap_s1.fa,3,s3_partial_overlap_s1
+gambitdb/tests/data/pairwise_table/assemblies/s4_no_overlap.fa,4,s4_no_overlap

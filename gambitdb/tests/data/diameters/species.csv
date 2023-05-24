@@ -1,4 +1,4 @@
-species_taxid
-1
-2
-3
+species_taxid,name,rank,parent_taxid,ncbi_taxid,gambit_taxid
+1,Yellow black,species,2,10,10
+2,Red white,species,2,11,11
+3,Orange teal,species,3,12,12

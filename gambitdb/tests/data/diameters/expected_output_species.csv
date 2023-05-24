@@ -1,0 +1,4 @@
+species_taxid,name,rank,parent_taxid,ncbi_taxid,gambit_taxid,diameter,ngenomes
+1,Yellow black,species,2,10,10,0.0,1
+2,Red white,species,2,11,11,0.0,1
+3,Orange teal,species,3,12,12,0.0,1
