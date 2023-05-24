@@ -45,12 +45,38 @@ class Diameters:
         # Extend the species taxon table and add in the diameters and number of genomes
         species['diameter'] = diameters
         species['ngenomes'] = genome_metadata.groupby('species_taxid').size()
-        # Write out the species taxon table to a new file
-        species.to_csv(self.species_taxon_output_filename)
 
         # Take the min-inter values, add to a dataframe and write out to a new file
         mininter_df = pandas.DataFrame(min_inter, index=species.index, columns=species.index)
         mininter_df.to_csv(self.min_inter_output_filename)
+
+        # The parent TaxonIDs (the genus) need to exist for the species
+        species = self.create_mock_genus_rows(species)
+        # Write out the species taxon table to a new file
+        species.to_csv(self.species_taxon_output_filename)
+
+    def create_mock_genus_rows(self, species):
+        self.logger.debug('add_parent_ids')
+
+        # Get all unique parent_taxids
+        parent_taxids = species['parent_taxid'].unique()
+
+        genus_list = []
+        # loop over the parent_taxids and add them to the parent_ids dataframe
+        for parent_taxid in parent_taxids:
+            genus_list.append([parent_taxid, 'G'+str(parent_taxid), 'genus', '', parent_taxid, parent_taxid, 0, 0])
+            
+        df_extended = pandas.DataFrame(genus_list, columns=['species_taxid', 
+                                                            'name', 
+                                                            'rank', 
+                                                            'parent_taxid', 
+                                                            'ncbi_taxid', 
+                                                            'gambit_taxid', 
+                                                            'diameter', 
+                                                            'ngenomes']).set_index('species_taxid')
+        species = pandas.concat([species, df_extended])
+
+        return species
 
     # Calculate the diameters and minimums
     def calculate_thresholds(self, number_of_species, species_inds, pairwise_distances):

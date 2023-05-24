@@ -7,3 +7,6 @@ uuid,assembly_filename,species_taxid,assembly_accession
 6,gambitdb/tests/data/test_dataset/sample3_3.fa,12,sample3_3
 7,gambitdb/tests/data/test_dataset/sample4.fa,13,sample4
 8,gambitdb/tests/data/test_dataset/sample5.fa,14,sample5
+9,gambitdb/tests/data/test_dataset/sample2_2.fa,11,sample2_2
+10,gambitdb/tests/data/test_dataset/sample4_4.fa,13,sample4_4
+11,gambitdb/tests/data/test_dataset/sample5_5.fa,14,sample5_5
