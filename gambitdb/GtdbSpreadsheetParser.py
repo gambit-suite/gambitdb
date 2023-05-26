@@ -52,7 +52,14 @@ class GtdbSpreadsheetParser:
         species_taxon_spreadsheet_df['species_taxid'] = species_taxon_ids.values()
         species_taxon_spreadsheet_df['name'] = species_taxon_ids.keys()
         species_taxon_spreadsheet_df['rank'] = 'species'
-        species_taxon_spreadsheet_df['parent_taxid'] = species_taxon_spreadsheet_df['species_taxid'] 
+
+        # Create mock parent_ids based on the genus from the first word of the species name
+        species_taxon_spreadsheet_df['genus'] = species_taxon_spreadsheet_df['name'].str.split(' ').str[0]
+        genus_taxon_ids = self.create_mock_taxon_ids_for_genus(species_taxon_spreadsheet_df['genus'], len(species_taxon_ids) + 1)
+        species_taxon_spreadsheet_df['parent_taxid'] = species_taxon_spreadsheet_df['genus'].map(genus_taxon_ids)
+        # delete the genus column
+        del species_taxon_spreadsheet_df['genus']
+
         species_taxon_spreadsheet_df['ncbi_taxid'] = species_taxon_spreadsheet_df['species_taxid']
         species_taxon_spreadsheet_df['gambit_taxid'] = species_taxon_spreadsheet_df['species_taxid']
 
@@ -76,6 +83,23 @@ class GtdbSpreadsheetParser:
         # create a dictionary with each species name as the key and an incremented integer, starting at 1, as the value
         species_taxon_ids = {species: i for i, species in enumerate(unique_species_names, 1)}
         return species_taxon_ids
+    
+    def create_mock_taxon_ids_for_genus(self, genus_list, offset):
+        unique_genus_names = self.get_unique_genus(genus_list) 
+        # create a dictionary with each genus name as the key and an incremented integer, starting at 1, as the value
+        genus_taxon_ids = {genus: i + offset for i, genus in enumerate(unique_genus_names, 1)}
+        return genus_taxon_ids
+    
+    def get_unique_genus(self, genus_list):
+        self.logger.debug("get_unique_genus")
+
+        # remove any empty values from the list
+        genus_list = [x for x in genus_list if str(x) != 'nan']
+
+        # remove any duplicate values from the list
+        genus_list = list(dict.fromkeys(genus_list))
+
+        return genus_list
 
     # Given a list of species names in a dataframe column, return a list of unique species names
     def get_unique_species(self, species_list):

@@ -1,4 +1,4 @@
-species_taxid
-1
-2
-3
+species_taxid,parent_taxid
+1,4
+2,4
+3,5
