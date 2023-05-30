@@ -20,6 +20,10 @@ parser = argparse.ArgumentParser(
 # Required input files
 parser.add_argument('assembly_directory',  help='A directory containing assemblies in FASTA format', type=str)
 
+# optional input files
+parser.add_argument('--accessions_to_remove', '-a', help='Optional file containing a list of accession numbers to remove/ignore if found in assembly directory (1 per line)', type=str)
+
+
 # Output files
 parser.add_argument('--signatures_output_filename', '-s', help='Output filename for genome signatures', default = 'signatures.h5', type=str)
 parser.add_argument('--distance_table_output_filename', '-p', help='Output filename for pairwise distance table', default = 'pw-dists.csv', type=str)
@@ -46,6 +50,7 @@ if options.debug:
                   options.distance_table_output_filename, 
                   options.kmer, 
                   options.kmer_prefix, 
+                  options.accessions_to_remove,
                   options.verbose).generate_sigs_and_pairwise_table()
     
     pr.disable()
@@ -60,4 +65,5 @@ else:
                   options.distance_table_output_filename, 
                   options.kmer, 
                   options.kmer_prefix, 
+                  options.accessions_to_remove,
                   options.verbose).generate_sigs_and_pairwise_table()

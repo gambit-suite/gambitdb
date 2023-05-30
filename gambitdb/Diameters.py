@@ -40,15 +40,17 @@ class Diameters:
         # Create a list of indices for each species in the genome metadata DataFrame
         species_inds = [genomes_grouped_by_species_taxid.indices[species_taxid] for species_taxid in species.index]
 
+
         diameters, min_inter = self.calculate_thresholds(number_of_species, species_inds, pairwise_distances)
 
         # Extend the species taxon table and add in the diameters and number of genomes
         species['diameter'] = diameters
         species['ngenomes'] = genome_metadata.groupby('species_taxid').size()
 
+        if number_of_species >0:
         # Take the min-inter values, add to a dataframe and write out to a new file
-        mininter_df = pandas.DataFrame(min_inter, index=species.index, columns=species.index)
-        mininter_df.to_csv(self.min_inter_output_filename)
+            mininter_df = pandas.DataFrame(min_inter, index=species.index, columns=species.index)
+            mininter_df.to_csv(self.min_inter_output_filename)
 
         # The parent TaxonIDs (the genus) need to exist for the species
         species = self.create_mock_genus_rows(species)

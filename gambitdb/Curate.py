@@ -8,6 +8,7 @@
 
 import pandas
 import logging
+import os
 
 class Curate:
     def __init__(self, species_taxon_filename, genome_assembly_metadata, species_to_remove, accessions_to_remove, species_taxon_output_filename, genome_assembly_metadata_output_filename, accession_removed_output_filename, species_removed_output_filename, minimum_ngenomes, debug, verbose):
@@ -34,7 +35,7 @@ class Curate:
 
     def remove_species_using_input_file(self, species):
         self.logger.debug('remove_species')
-        if self.species_to_remove:
+        if self.species_to_remove and os.path.isfile(self.species_to_remove):
             # species to remove contains the names of species. need to translate to species_taxonids
             species_names_to_remove = pandas.read_csv(self.species_to_remove, header=None)
             species_names_to_remove = species_names_to_remove[0].tolist()
@@ -49,7 +50,7 @@ class Curate:
 
     def remove_accessions_using_input_file(self, genome_metadata):
         self.logger.debug('remove_accessions')
-        if self.accessions_to_remove:
+        if self.accessions_to_remove and os.path.isfile(self.accessions_to_remove):
             accessions_to_remove = pandas.read_csv(self.accessions_to_remove, header=None)
             accessions_to_remove = accessions_to_remove[0].tolist()
             genome_metadata = genome_metadata[~genome_metadata.index.isin(accessions_to_remove)]

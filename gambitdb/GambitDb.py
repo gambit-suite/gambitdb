@@ -56,20 +56,28 @@ class GambitDb:
             os.system('exit')   
             return 1
 
+    def intermediate_species_taxon_filename(self):
+        return os.path.join(self.output_directory, 'species_taxon_output.csv')
+
+    def curated_species_taxon_filename(self):
+        return os.path.join(self.output_directory, 'species_taxon_output_curated.csv')
+    
     # generate the pairwise tables, then curate the input genomes and species, and do a second pass to generatethe pairwise tables and signatures database
     def generate_gambit_db(self):
         self.logger.debug('generate_gambit_db')
         pairwise = self.generate_pairwise_table(None)
 
         self.species_taxon_filename = self.check_species_taxonid_file_exists_or_create_one(self.species_taxon_filename, self.genome_assembly_metadata)
-        diameters = self.generate_diameters(pairwise.distance_table_output_filename, self.species_taxon_filename)
+        diameters = self.generate_diameters(pairwise.distance_table_output_filename, 
+                                            self.species_taxon_filename,  
+                                            self.intermediate_species_taxon_filename())
 
         # Curate the outputs
-        Curate( self.species_taxon_filename, 
+        Curate( self.intermediate_species_taxon_filename(), 
                 self.genome_assembly_metadata,
                 self.species_to_remove,
                 self.accessions_to_remove,
-                os.path.join(self.output_directory,self.species_taxon_output_filename),
+                self.curated_species_taxon_filename(),
                 os.path.join(self.output_directory,self.genome_assembly_metadata_output_filename),
                 os.path.join(self.output_directory,self.accession_removed_output_filename),
                 os.path.join(self.output_directory,self.species_removed_output_filename),
@@ -80,8 +88,10 @@ class GambitDb:
         # Generate the pairwise table and signatures database again
         # need to actually filter the genomes passed in so that ignored genomes arent used.
         pairwise = self.generate_pairwise_table(os.path.join(self.output_directory,self.accession_removed_output_filename))
-        diameters = self.generate_diameters(pairwise.distance_table_output_filename, self.species_taxon_filename)
-# not implemented yet
+        diameters = self.generate_diameters(pairwise.distance_table_output_filename, 
+                                            self.curated_species_taxon_filename(),
+                                            os.path.join(self.output_directory, self.species_taxon_output_filename))
+
 
     def generate_pairwise_table(self, accessions_to_ignore_file):
         self.logger.debug('generate_pairwise_table')
@@ -96,12 +106,12 @@ class GambitDb:
         pw.generate_sigs_and_pairwise_table()
         return pw
 
-    def generate_diameters(self, distance_table, species_taxon_filename):
+    def generate_diameters(self, distance_table, species_taxon_filename, species_taxon_output):
         self.logger.debug('generate_diameters')
         d = Diameters(self.genome_assembly_metadata,
                       distance_table, 
                       species_taxon_filename,
-                      os.path.join(self.output_directory, 'species_taxon_output.csv'),
+                      species_taxon_output,
                       os.path.join(self.output_directory, 'min_inter_output.csv'),
                       self.verbose)
         d.calculate_diameters()

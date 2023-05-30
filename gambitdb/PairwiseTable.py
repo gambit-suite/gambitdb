@@ -45,7 +45,7 @@ class PairwiseTable:
     def read_accessions_to_ignore(self):
         self.logger.debug('read_accessions_to_ignore')
         accessions_to_ignore = []
-        if self.accessions_to_ignore_file is not None:
+        if self.accessions_to_ignore_file is not None and os.path.isfile(self.accessions_to_ignore_file):
             with open(self.accessions_to_ignore_file) as f:
                 accessions_to_ignore = f.read().splitlines()
         return accessions_to_ignore
