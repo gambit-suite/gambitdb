@@ -45,4 +45,3 @@ class TestDiameters(unittest.TestCase):
         for f in ['output_species.csv', 'output_min_inter.csv']:
             if os.path.exists(os.path.join(data_dir, f)):
                 os.remove(os.path.join(data_dir, f))
-

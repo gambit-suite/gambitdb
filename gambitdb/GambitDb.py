@@ -5,18 +5,27 @@ import logging
 
 from gambitdb.PairwiseTable import PairwiseTable
 from gambitdb.Diameters import Diameters
+from gambitdb.Curate import Curate
 
 class GambitDb:
 
-    def __init__(self, output_directory, assembly_directory, genome_assembly_metadata, species_taxon_filename,  signatures_output_filename, database_output_filename, kmer, kmer_prefix, verbose):
+    def __init__(self, output_directory, assembly_directory, genome_assembly_metadata, species_taxon_filename,species_to_remove, accessions_to_remove, accession_removed_output_filename, species_removed_output_filename , signatures_output_filename, database_output_filename, species_taxon_output_filename, genome_assembly_metadata_output_filename, kmer, kmer_prefix, minimum_ngenomes, verbose):
         self.logger = logging.getLogger(__name__)
         self.output_directory = output_directory
         self.assembly_directory = assembly_directory
         self.genome_assembly_metadata = genome_assembly_metadata
+        self.species_taxon_filename = species_taxon_filename
+        self.species_to_remove = species_to_remove
+        self.accessions_to_remove = accessions_to_remove
+        self.accession_removed_output_filename = accession_removed_output_filename
+        self.species_removed_output_filename = species_removed_output_filename
         self.signatures_output_filename = signatures_output_filename
         self.database_output_filename = database_output_filename
+        self.species_taxon_output_filename = species_taxon_output_filename
+        self.genome_assembly_metadata_output_filename = genome_assembly_metadata_output_filename
         self.kmer = kmer
         self.kmer_prefix = kmer_prefix
+        self.minimum_ngenomes = minimum_ngenomes
 
         # This file may not exist at this point
         self.species_taxon_filename = species_taxon_filename 
@@ -47,14 +56,34 @@ class GambitDb:
             os.system('exit')   
             return 1
 
+    # generate the pairwise tables, then curate the input genomes and species, and do a second pass to generatethe pairwise tables and signatures database
     def generate_gambit_db(self):
         self.logger.debug('generate_gambit_db')
-        pairwise = self.generate_pairwise_table()
+        pairwise = self.generate_pairwise_table(None)
 
         self.species_taxon_filename = self.check_species_taxonid_file_exists_or_create_one(self.species_taxon_filename, self.genome_assembly_metadata)
         diameters = self.generate_diameters(pairwise.distance_table_output_filename, self.species_taxon_filename)
 
-    def generate_pairwise_table(self):
+        # Curate the outputs
+        Curate( self.species_taxon_filename, 
+                self.genome_assembly_metadata,
+                self.species_to_remove,
+                self.accessions_to_remove,
+                os.path.join(self.output_directory,self.species_taxon_output_filename),
+                os.path.join(self.output_directory,self.genome_assembly_metadata_output_filename),
+                os.path.join(self.output_directory,self.accession_removed_output_filename),
+                os.path.join(self.output_directory,self.species_removed_output_filename),
+                self.minimum_ngenomes,
+                self.verbose,
+                self.verbose).filter_spreadsheets_and_output_new_files()
+        
+        # Generate the pairwise table and signatures database again
+        # need to actually filter the genomes passed in so that ignored genomes arent used.
+        pairwise = self.generate_pairwise_table(os.path.join(self.output_directory,self.accession_removed_output_filename))
+        diameters = self.generate_diameters(pairwise.distance_table_output_filename, self.species_taxon_filename)
+# not implemented yet
+
+    def generate_pairwise_table(self, accessions_to_ignore_file):
         self.logger.debug('generate_pairwise_table')
     
         pw = PairwiseTable(self.assembly_directory, 
@@ -62,6 +91,7 @@ class GambitDb:
                            os.path.join(self.output_directory, 'pw-dists.csv'), 
                            self.kmer, 
                            self.kmer_prefix, 
+                           accessions_to_ignore_file,
                            self.verbose)
         pw.generate_sigs_and_pairwise_table()
         return pw

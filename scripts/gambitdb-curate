@@ -1,0 +1,52 @@
+#!/usr/bin/env python3
+import sys
+import argparse
+import pkg_resources
+sys.path.append('../')
+sys.path.append('./')
+from gambitdb.Curate import Curate
+
+version = ''
+try:
+    version = pkg_resources.get_distribution("gambitdb").version
+except pkg_resources.DistributionNotFound:
+    version = 'x.y.z'
+
+parser = argparse.ArgumentParser(
+    description = 'Given a species taxon file, and a genome file with metadata, curate the data and produce new files',
+    usage = 'gambitdb-curate [options]',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+# Required input files
+parser.add_argument('species_taxon_filename', help='CSV containing species taxonomy and diameters, ngenomes - output from gambitdb-diameters', type=str)
+parser.add_argument('genome_assembly_metadata',  help='A CSV containing the assembly file and path, and the species taxon ID - output from gambitdb-gtdb', type=str)
+
+# optional input files
+parser.add_argument('--species_to_remove', '-s', help='Optional file containing a list of species to remove (1 per line)', type=str)
+parser.add_argument('--accessions_to_remove', '-a', help='Optional file containing a list of accession numbers to remove (1 per line)', type=str)
+
+# Optional output file names that you probably want to leave as defaults
+parser.add_argument('--species_taxon_output_filename', '-b', help='Output filename for genome signatures', default = 'species_taxon_curated.csv', type=str)
+parser.add_argument('--genome_assembly_metadata_output_filename', '-g', help='Output filename for core database', default = 'genome_assembly_metadata_curated.csv', type=str)
+parser.add_argument('--accession_removed_output_filename', '-c', help='Output filename for a list of accessions removed', default = 'accessions_removed.csv', type=str)
+parser.add_argument('--species_removed_output_filename', '-d', help='Output filename for a list of species removed', default = 'species_removed.csv', type=str)
+
+# varying how curation works
+parser.add_argument('--minimum_ngenomes', '-n', help='Minimum number of genomes for a species to be included', default = 2, type=int)
+
+parser.add_argument('--debug', action='store_true', help='Turn on debugging', default = False)
+parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
+
+options = parser.parse_args()
+
+Curate( options.species_taxon_filename, 
+        options.genome_assembly_metadata, 
+        options.species_to_remove, 
+        options.accessions_to_remove, 
+        options.species_taxon_output_filename,
+        options.genome_assembly_metadata_output_filename,
+        options.accession_removed_output_filename,
+        options.species_removed_output_filename,
+        options.minimum_ngenomes,
+        options.debug,
+        options.verbose).filter_spreadsheets_and_output_new_files()

@@ -1,10 +1,10 @@
-uuid,species_taxid,speciesassembly_accession,assembly_accession,species
-GCA_002946735.1,1,,GCA_002946735.1,Escherichia coli
-GCA_000614665.1,2,,GCA_000614665.1,Klebsiella pneumoniae
-GCA_000826585.2,2,,GCA_000826585.2,Klebsiella pneumoniae
-GCA_000827775.2,2,,GCA_000827775.2,Klebsiella pneumoniae
-GCA_012934735.1,1,,GCA_012934735.1,Escherichia coli
-GCA_012934815.1,1,,GCA_012934815.1,Escherichia coli
-GCA_013394495.1,1,,GCA_013394495.1,Escherichia coli
-GCA_013394515.1,1,,GCA_013394515.1,Escherichia coli
-GCA_000613265.1,1,,GCA_000613265.1,Escherichia coli
+uuid,species_taxid,assembly_accession,species
+GCA_002946735.1,1,GCA_002946735.1,Escherichia coli
+GCA_000614665.1,2,GCA_000614665.1,Klebsiella pneumoniae
+GCA_000826585.2,2,GCA_000826585.2,Klebsiella pneumoniae
+GCA_000827775.2,2,GCA_000827775.2,Klebsiella pneumoniae
+GCA_012934735.1,1,GCA_012934735.1,Escherichia coli
+GCA_012934815.1,1,GCA_012934815.1,Escherichia coli
+GCA_013394495.1,1,GCA_013394495.1,Escherichia coli
+GCA_013394515.1,1,GCA_013394515.1,Escherichia coli
+GCA_000613265.1,1,GCA_000613265.1,Escherichia coli

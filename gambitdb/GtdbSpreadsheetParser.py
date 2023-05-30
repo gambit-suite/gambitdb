@@ -118,7 +118,7 @@ class GtdbSpreadsheetParser:
         self.logger.debug("generate_accessions_df")
 
         # Create a new pandas dataframe with the following columns: uuid,species_taxid,assembly_accession
-        accessions_spreadsheet = pandas.DataFrame(columns=['uuid', 'species_taxid', 'species' 'assembly_accession'])
+        accessions_spreadsheet = pandas.DataFrame(columns=['uuid', 'species_taxid', 'assembly_accession','species'])
         return accessions_spreadsheet
 
     # This will read in a TSV file and return the contents as a pandas DataFrame
@@ -132,8 +132,9 @@ class GtdbSpreadsheetParser:
         spreadsheet = spreadsheet.replace('NaN', '')
         spreadsheet = spreadsheet.replace('nan', '')
 
-        # update all values in the accession column to remove the prefix 'GB_'
+        # update all values in the accession column to remove the database prefixes
         spreadsheet['accession'] = spreadsheet['accession'].str.replace('GB_', '')
+        spreadsheet['accession'] = spreadsheet['accession'].str.replace('RS_', '')
 
         # create a new column called species which will be formed from the gtdb_taxonomy column where the text after s__ is the species
         spreadsheet['species'] = spreadsheet['gtdb_taxonomy'].str.extract(r's__([a-zA-Z0-9_\s]+)', expand=False)

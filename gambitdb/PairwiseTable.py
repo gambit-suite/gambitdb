@@ -6,13 +6,14 @@ import subprocess
 import tempfile
 
 class PairwiseTable:
-    def __init__(self, assembly_directory, signatures_output_filename,distance_table_output_filename, kmer, kmer_prefix, verbose):
+    def __init__(self, assembly_directory, signatures_output_filename,distance_table_output_filename, kmer, kmer_prefix, accessions_to_ignore_file, verbose):
         self.logger = logging.getLogger(__name__)
         self.assembly_directory = assembly_directory
         self.signatures_output_filename = signatures_output_filename
         self.distance_table_output_filename = distance_table_output_filename
         self.kmer = kmer
         self.kmer_prefix = kmer_prefix
+        self.accessions_to_ignore_file = accessions_to_ignore_file
 
         # FASTA extensions to filter on for assemblies in the assembly directory
         self.valid_extensions = ['.fa', '.fasta', '.fna', '.fa.gz', '.fasta.gz', '.fna.gz']
@@ -40,13 +41,29 @@ class PairwiseTable:
         # gambit signatures create -k 11 -p ATGAC -o signatures.h5 -l assemblies.fofn
         return 'gambit signatures create -k %s -p %s -o %s -l %s' % (self.kmer, self.kmer_prefix, self.signatures_output_filename, assembly_list_filename)
     
+    # read in the accessions_file_to_ignore into a list, checking if it is None first
+    def read_accessions_to_ignore(self):
+        self.logger.debug('read_accessions_to_ignore')
+        accessions_to_ignore = []
+        if self.accessions_to_ignore_file is not None:
+            with open(self.accessions_to_ignore_file) as f:
+                accessions_to_ignore = f.read().splitlines()
+        return accessions_to_ignore
+
     # Given a directory of assemblies in FASTA format, create a tempory file with the full path of each assembly, one per line and return the tempory filename  
     def create_assembly_list(self):
         self.logger.debug('create_assembly_list')
+        accessions_to_ignore = self.read_accessions_to_ignore()
         assembly_list = tempfile.NamedTemporaryFile(mode='w', delete=False)
         for assembly in os.listdir(self.assembly_directory):
             # limit filenames to a list of prefixes for FASTA files and can include gz files
             if any(assembly.endswith(ext) for ext in self.valid_extensions):
+
+                # if the assembly string matches the start of any of the accessions to ignore, skip it
+                if any(assembly.startswith(accession) for accession in accessions_to_ignore):
+                    self.logger.debug('Skipping assembly %s as it is in the accessions to ignore list' % assembly)
+                    continue
+
                 assembly_list.write('%s/%s\n' % (self.assembly_directory, assembly))
         assembly_list.close()
         return assembly_list.name
