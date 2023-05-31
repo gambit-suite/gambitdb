@@ -5,8 +5,9 @@ import logging
 import sys
 
 class GtdbSpreadsheetParser:
-    def __init__(self, gtdb_metadata_spreadsheet, species_taxon_output_filename, genome_assembly_metadata_output_filename, accessions_output_filename, debug, verbose):
+    def __init__(self, gtdb_metadata_spreadsheet, checkm_completeness, species_taxon_output_filename, genome_assembly_metadata_output_filename, accessions_output_filename, debug, verbose):
         self.gtdb_metadata_spreadsheet = gtdb_metadata_spreadsheet
+        self.checkm_completeness = checkm_completeness
         self.species_taxon_output_filename = species_taxon_output_filename
         self.genome_assembly_metadata_output_filename = genome_assembly_metadata_output_filename
         self.accessions_output_filename = accessions_output_filename
@@ -30,10 +31,18 @@ class GtdbSpreadsheetParser:
         self.logger.debug("verbose: " + str(self.verbose))
         self.logger.debug("logger: " + str(self.logger))
 
+    def filter_input_spreadsheet(self, input_spreadsheet_df):
+        # filter spreadsheet to only include genomes with a checkm completeness of 95% or greater
+        input_spreadsheet_df = input_spreadsheet_df[input_spreadsheet_df['checkm_completeness'] >= self.checkm_completeness]
+        return input_spreadsheet_df
+
     def generate_spreadsheets(self):
         # This is a massive spreadsheet with all the GTDB metadata
         input_spreadsheet_df = self.read_in_gtdb_spreadsheet()
         accessions_spreadsheet_df = self.generate_accessions_df()
+
+        # filter spreadsheet to only include genomes with a checkm completeness of 95% or greater
+        input_spreadsheet_df = self.filter_input_spreadsheet(input_spreadsheet_df)
 
         # copy the accession column from the input spreadsheet to the accessions spreadsheet
         accessions_spreadsheet_df['assembly_accession'] = input_spreadsheet_df['accession']

@@ -27,6 +27,8 @@ class Diameters:
 
         # Read in the genome assembly filenames with path
         genome_metadata = pandas.read_csv(self.genome_assembly_metadata)
+        # sort the genome_metadata dataframe by assembly_accession
+        genome_metadata = genome_metadata.sort_values(by='assembly_accession')
         genomes_grouped_by_species_taxid = genome_metadata.groupby('species_taxid')
 
         # Read in the species taxon file
@@ -36,10 +38,13 @@ class Diameters:
 
         # Read in the pairwise distances file
         pairwise_distances = pandas.read_csv(self.pairwise_distances_filename, index_col=0)
+        # sort the pairwise_distances dataframe by the index column
+        pairwise_distances = pairwise_distances.sort_index()
+
+        # There is an assumption here that the genome metadata and the pairwise distances are in the same order
 
         # Create a list of indices for each species in the genome metadata DataFrame
         species_inds = [genomes_grouped_by_species_taxid.indices[species_taxid] for species_taxid in species.index]
-
 
         diameters, min_inter = self.calculate_thresholds(number_of_species, species_inds, pairwise_distances)
 
@@ -90,6 +95,7 @@ class Diameters:
         for i, inds1 in enumerate(species_inds):
             # Find the maximum diameters for each species. Basically look at the pairwise distances
             # and find the maximum distance between any two genomes in the species
+
             diameters[i] = pairwise_distances.values[numpy.ix_(inds1, inds1)].max()
     
             for j, inds2 in enumerate(species_inds[:i]):

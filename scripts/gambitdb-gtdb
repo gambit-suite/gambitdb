@@ -20,6 +20,10 @@ parser = argparse.ArgumentParser(
 # Required input files
 parser.add_argument('gtdb_metadata_spreadsheet',  help='GTDB metadata file such as bac120_metadata_r214.tsv', type=str)
 
+# Optional input parameters
+parser.add_argument('--checkm_completeness', '-c',  help='Minimum checkm completeness of the genome [0-100]', type=float, default=95.0)
+
+
 # Output files
 parser.add_argument('--species_taxon_output_filename', '-s', help='Output filename for with the taxonomy', default = 'species_taxa.csv', type=str)
 parser.add_argument('--genome_assembly_metadata_output_filename', '-g', help='Genome metadata', default = 'assembly_metadata.csv', type=str)
@@ -31,6 +35,7 @@ parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbos
 options = parser.parse_args()
 
 GtdbSpreadsheetParser(options.gtdb_metadata_spreadsheet, 
+                      options.checkm_completeness,
                       options.species_taxon_output_filename, 
                       options.genome_assembly_metadata_output_filename, 
                       options.accessions_output_filename, 

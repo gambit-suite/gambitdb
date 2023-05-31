@@ -112,8 +112,17 @@ class Curate:
 
     def write_output_files(self, species, genome_metadata):
         self.logger.debug('write_output_files')
+        # set the species_taxonids to integers in the species dataframe
+        species.index = species.index.astype(int)
+        species['parent_taxid'] = species['parent_taxid'].astype(int)
+        species['ncbi_taxid'] = species['ncbi_taxid'].astype(int)
+        species['gambit_taxid'] = species['gambit_taxid'].astype(int)
+
         # Write out the species taxon table to a new file
         species.to_csv(self.species_taxon_output_filename)
+
+        # set the species_taxonids to integers in the genome_metadata dataframe
+        genome_metadata['species_taxid'] = genome_metadata['species_taxid'].astype(int)
         # Write out the genome assembly metadata table to a new file
         genome_metadata.to_csv(self.genome_assembly_metadata_output_filename)
         # Write out the accessions removed to a new file
