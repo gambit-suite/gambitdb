@@ -2,6 +2,7 @@
 import sys
 import argparse
 import pkg_resources
+import logging
 sys.path.append('../')
 sys.path.append('./')
 from gambitdb.Diameters import Diameters
@@ -30,6 +31,7 @@ parser.add_argument('--debug', action='store_true', help='Turn on debugging', de
 parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
 
 options = parser.parse_args()
+logging.basicConfig(filename='output_logfile.txt', level=logging.DEBUG)
 
 # extra debugging with a proper stack trace and profiling
 if options.debug:

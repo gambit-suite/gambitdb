@@ -2,6 +2,7 @@
 import argparse
 import random
 import pkg_resources
+import logging
 
 version = ''
 try:
@@ -21,6 +22,7 @@ parser.add_argument('--kmer',	 '-k', help='Length of the k-mer to use', type=int
 parser.add_argument('--kmer_prefix', '-f', help='Kmer prefix', default = 'ATGAC', type=str)
 
 options = parser.parse_args()
+logging.basicConfig(filename='output_logfile.txt', level=logging.DEBUG)
 
 with open(options.output_filename, 'w') as file:
     file.write(f'>sequence1\n')

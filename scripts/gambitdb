@@ -2,6 +2,7 @@
 import sys
 import argparse
 import pkg_resources
+import logging
 sys.path.append('../')
 sys.path.append('./')
 from gambitdb.GambitDb import GambitDb
@@ -40,13 +41,16 @@ parser.add_argument('--genome_assembly_metadata_output_filename', '-m', help='Ou
 # Optional input parameters for gambit
 parser.add_argument('--kmer',	 '-k', help='Length of the k-mer to use', type=int, default = 11)
 parser.add_argument('--kmer_prefix', '-f', help='Kmer prefix', default = 'ATGAC', type=str)
-parser.add_argument('--minimum_ngenomes', '-n', help='Minimum number of genomes for a species to be included', default = 3, type=int)
+parser.add_argument('--minimum_ngenomes', '-n', help='Minimum number of genomes for a species to be included', default = 1, type=int)
 
 
 parser.add_argument('--debug', action='store_true', help='Turn on debugging', default = False)
 parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
 
 options = parser.parse_args()
+
+logging.basicConfig(filename='output_logfile.txt', level=logging.DEBUG)
+
 
 GambitDb(options.output_directory,
          options.assembly_directory, 

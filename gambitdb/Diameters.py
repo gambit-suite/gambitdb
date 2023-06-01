@@ -29,17 +29,21 @@ class Diameters:
         genome_metadata = pandas.read_csv(self.genome_assembly_metadata)
         # sort the genome_metadata dataframe by assembly_accession
         genome_metadata = genome_metadata.sort_values(by='assembly_accession')
+        self.logger.debug('calculate_diameters: genome_metadata size: %s' % genome_metadata.shape[0])
         genomes_grouped_by_species_taxid = genome_metadata.groupby('species_taxid')
+        self.logger.debug('calculate_diameters: genomes_grouped_by_species_taxid size: %s' % genomes_grouped_by_species_taxid.size())
 
         # Read in the species taxon file
         species = pandas.read_csv(self.species_taxon_filename, index_col=False)
         species = species.set_index('species_taxid')
         number_of_species = species.shape[0]
+        self.logger.debug('calculate_diameters: species size: %s' % species.shape[0])
 
         # Read in the pairwise distances file
         pairwise_distances = pandas.read_csv(self.pairwise_distances_filename, index_col=0)
         # sort the pairwise_distances dataframe by the index column
         pairwise_distances = pairwise_distances.sort_index()
+        self.logger.debug('calculate_diameters: pairwise_distances size: %s' % pairwise_distances.shape[0])
 
         # a dictionary of species_taxid: [assembly_accessions]
         species_genomes = {}
@@ -106,5 +110,7 @@ class Diameters:
                 mi = pairwise_distances.values[numpy.ix_(inds1, inds2)].min()
                 min_inter[i, j] = min_inter[j, i] = mi
 
+        self.logger.debug('calculate_thresholds: diameters: %s' % diameters.shape[0])
+        self.logger.debug('calculate_thresholds: min_inter: %s' % min_inter.shape[0])
         # return the diameters and minimums
         return diameters, min_inter

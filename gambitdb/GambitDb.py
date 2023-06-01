@@ -75,6 +75,7 @@ class GambitDb:
         # Curate the outputs
         Curate( self.intermediate_species_taxon_filename(), 
                 self.genome_assembly_metadata,
+                self.assembly_directory,
                 self.species_to_remove,
                 self.accessions_to_remove,
                 self.curated_species_taxon_filename(),
@@ -87,11 +88,10 @@ class GambitDb:
         
         # Generate the pairwise table and signatures database again
         # need to actually filter the genomes passed in so that ignored genomes arent used.
-        pairwise = self.generate_pairwise_table(os.path.join(self.output_directory,self.accession_removed_output_filename))
+        pairwise = self.generate_pairwise_table(os.path.join(self.output_directory, self.accession_removed_output_filename))
         diameters = self.generate_diameters(pairwise.distance_table_output_filename, 
                                             self.curated_species_taxon_filename(),
                                             os.path.join(self.output_directory, self.species_taxon_output_filename))
-
 
     def generate_pairwise_table(self, accessions_to_ignore_file):
         self.logger.debug('generate_pairwise_table')

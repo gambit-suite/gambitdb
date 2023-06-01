@@ -2,6 +2,7 @@
 import sys
 import argparse
 import pkg_resources
+import logging
 sys.path.append('../')
 sys.path.append('./')
 from gambitdb.Curate import Curate
@@ -20,6 +21,7 @@ parser = argparse.ArgumentParser(
 # Required input files
 parser.add_argument('species_taxon_filename', help='CSV containing species taxonomy and diameters, ngenomes - output from gambitdb-diameters', type=str)
 parser.add_argument('genome_assembly_metadata',  help='A CSV containing the assembly file and path, and the species taxon ID - output from gambitdb-gtdb', type=str)
+parser.add_argument('assembly_directory',  help='A directory containing assemblies in FASTA format', type=str)
 
 # optional input files
 parser.add_argument('--species_to_remove', '-s', help='Optional file containing a list of species to remove (1 per line)', type=str)
@@ -38,9 +40,11 @@ parser.add_argument('--debug', action='store_true', help='Turn on debugging', de
 parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
 
 options = parser.parse_args()
+logging.basicConfig(filename='output_logfile.txt', level=logging.DEBUG)
 
 Curate( options.species_taxon_filename, 
         options.genome_assembly_metadata, 
+        options.assembly_directory,
         options.species_to_remove, 
         options.accessions_to_remove, 
         options.species_taxon_output_filename,

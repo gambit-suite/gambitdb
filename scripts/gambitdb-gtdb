@@ -2,6 +2,7 @@
 import sys
 import argparse
 import pkg_resources
+import logging
 sys.path.append('../')
 sys.path.append('./')
 from gambitdb.GtdbSpreadsheetParser import GtdbSpreadsheetParser
@@ -33,6 +34,7 @@ parser.add_argument('--debug', action='store_true', help='Turn on debugging', de
 parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
 
 options = parser.parse_args()
+logging.basicConfig(filename='output_logfile.txt', level=logging.DEBUG)
 
 GtdbSpreadsheetParser(options.gtdb_metadata_spreadsheet, 
                       options.checkm_completeness,

@@ -33,6 +33,9 @@ class PairwiseTable:
     def generate_genome_signatures(self):
         self.logger.debug('generate_genome_signatures')
         self.assembly_list_filename = self.create_assembly_list()
+        # if the self.signatures_output_filename file exists, delete it
+        if os.path.isfile(self.signatures_output_filename):
+            os.remove(self.signatures_output_filename)
 
         self.logger.debug(self.signatures_command(self.assembly_list_filename))
         subprocess.check_call(self.signatures_command(self.assembly_list_filename), shell=True)
@@ -48,6 +51,7 @@ class PairwiseTable:
         if self.accessions_to_ignore_file is not None and os.path.isfile(self.accessions_to_ignore_file):
             with open(self.accessions_to_ignore_file) as f:
                 accessions_to_ignore = f.read().splitlines()
+        self.logger.debug('read_accessions_to_ignore: %s accessions to ignore' % len(accessions_to_ignore))
         return accessions_to_ignore
 
     # Given a directory of assemblies in FASTA format, create a tempory file with the full path of each assembly, one per line and return the tempory filename  
@@ -55,23 +59,29 @@ class PairwiseTable:
         self.logger.debug('create_assembly_list')
         accessions_to_ignore = self.read_accessions_to_ignore()
         assembly_list = tempfile.NamedTemporaryFile(mode='w', delete=False)
+        file_counter = 0
         # iterate over all files in the assembly directory and sort by filename
         for assembly in sorted(os.listdir(self.assembly_directory)):
             # limit filenames to a list of prefixes for FASTA files and can include gz files
             if any(assembly.endswith(ext) for ext in self.valid_extensions):
 
-                # if the assembly string contains any of the accessions to ignore, skip it
-                if any(accession in assembly for accession in accessions_to_ignore):
-                    self.logger.debug('Skipping assembly %s as it is in the accessions to ignore list' % assembly)
-                    continue
+                for accession in accessions_to_ignore:
+                    if accession in assembly:
+                        self.logger.debug('Skipping assembly %s as it is in the accessions to ignore list' % assembly)
+                        continue
 
+                file_counter += 1
                 assembly_list.write('%s/%s\n' % (self.assembly_directory, assembly))
         assembly_list.close()
+        self.logger.debug('create_assembly_list: %s assemblies from files' % file_counter)
         return assembly_list.name
 
     def generate_pairwise_table(self):
         self.logger.debug('generate_pairwise_table')
         self.logger.debug(self.pairwise_table_command())
+        # if the pairwise distance table file already exists, delete it
+        if os.path.isfile(self.distance_table_output_filename):
+            os.remove(self.distance_table_output_filename)
 
         subprocess.check_call(self.pairwise_table_command(), shell=True)
 
