@@ -55,12 +55,13 @@ class PairwiseTable:
         self.logger.debug('create_assembly_list')
         accessions_to_ignore = self.read_accessions_to_ignore()
         assembly_list = tempfile.NamedTemporaryFile(mode='w', delete=False)
-        for assembly in os.listdir(self.assembly_directory):
+        # iterate over all files in the assembly directory and sort by filename
+        for assembly in sorted(os.listdir(self.assembly_directory)):
             # limit filenames to a list of prefixes for FASTA files and can include gz files
             if any(assembly.endswith(ext) for ext in self.valid_extensions):
 
-                # if the assembly string matches the start of any of the accessions to ignore, skip it
-                if any(assembly.startswith(accession) for accession in accessions_to_ignore):
+                # if the assembly string contains any of the accessions to ignore, skip it
+                if any(accession in assembly for accession in accessions_to_ignore):
                     self.logger.debug('Skipping assembly %s as it is in the accessions to ignore list' % assembly)
                     continue
 

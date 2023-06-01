@@ -41,12 +41,14 @@ class Diameters:
         # sort the pairwise_distances dataframe by the index column
         pairwise_distances = pairwise_distances.sort_index()
 
-        # There is an assumption here that the genome metadata and the pairwise distances are in the same order
+        # a dictionary of species_taxid: [assembly_accessions]
+        species_genomes = {}
+        # Loop over each species
+        for species_taxid in species.index:
+            # get a list of the assembly_accessions for the species and add to the species_genomes dictionary
+            species_genomes[species_taxid] = genomes_grouped_by_species_taxid.get_group(species_taxid)['assembly_accession'].values
 
-        # Create a list of indices for each species in the genome metadata DataFrame
-        species_inds = [genomes_grouped_by_species_taxid.indices[species_taxid] for species_taxid in species.index]
-
-        diameters, min_inter = self.calculate_thresholds(number_of_species, species_inds, pairwise_distances)
+        diameters, min_inter = self.calculate_thresholds(number_of_species, species_genomes, pairwise_distances)
 
         # Extend the species taxon table and add in the diameters and number of genomes
         species['diameter'] = diameters
@@ -86,19 +88,21 @@ class Diameters:
         return species
 
     # Calculate the diameters and minimums
-    def calculate_thresholds(self, number_of_species, species_inds, pairwise_distances):
+    def calculate_thresholds(self, number_of_species, species_genomes, pairwise_distances):
         self.logger.debug('calculate_thresholds')   
         # initalise the diameters and minimums, these get returned at the end
         diameters = numpy.zeros(number_of_species)
         min_inter = numpy.zeros((number_of_species, number_of_species))
 
-        for i, inds1 in enumerate(species_inds):
+        # loop over the species_genomes dictionary, looking up the index of the genome in the pairwise_distances dataframe
+        for i, (species_taxid, assembly_accessions) in enumerate(species_genomes.items()):
+            inds1 = pairwise_distances.index.get_indexer(assembly_accessions)
             # Find the maximum diameters for each species. Basically look at the pairwise distances
             # and find the maximum distance between any two genomes in the species
-
             diameters[i] = pairwise_distances.values[numpy.ix_(inds1, inds1)].max()
     
-            for j, inds2 in enumerate(species_inds[:i]):
+            for j, (species_taxid2, assembly_accessions2) in enumerate(species_genomes.items()):
+                inds2 = pairwise_distances.index.get_indexer(assembly_accessions2)
                 mi = pairwise_distances.values[numpy.ix_(inds1, inds2)].min()
                 min_inter[i, j] = min_inter[j, i] = mi
 
