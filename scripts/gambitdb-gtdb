@@ -23,8 +23,9 @@ parser.add_argument('gtdb_metadata_spreadsheet',  help='GTDB metadata file such 
 
 # Optional input parameters
 parser.add_argument('--checkm_completeness', '-c',  help='Minimum checkm completeness of the genome [0-100]', type=float, default=95.0)
-parser.add_argument('--max_contigs', '-m',  help='Maximum number of contigs', type=int, default=400)
-
+parser.add_argument('--checkm_contamination', '-t',  help='Maximum checkm contamination of the genome [0-100]', type=float, default=5.0)
+parser.add_argument('--max_contigs', '-m',  help='Maximum number of contigs. Please note some species systematically assemble poorly with short read data.', type=int, default=400)
+parser.add_argument('--include_derived_samples', '-i',  help='Include mixed samples from metagenomes, environment, single cell', action='store_true', default=False)
 
 # Output files
 parser.add_argument('--species_taxon_output_filename', '-s', help='Output filename for with the taxonomy', default = 'species_taxa.csv', type=str)
@@ -39,7 +40,9 @@ logging.basicConfig(filename='output_logfile.txt', level=logging.DEBUG)
 
 GtdbSpreadsheetParser(options.gtdb_metadata_spreadsheet, 
                       options.checkm_completeness,
+                      options.checkm_contamination,
                       options.max_contigs,
+                      options.include_derived_samples,
                       options.species_taxon_output_filename, 
                       options.genome_assembly_metadata_output_filename, 
                       options.accessions_output_filename, 

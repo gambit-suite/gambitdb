@@ -5,10 +5,12 @@ import logging
 import sys
 
 class GtdbSpreadsheetParser:
-    def __init__(self, gtdb_metadata_spreadsheet, checkm_completeness, max_contigs, species_taxon_output_filename, genome_assembly_metadata_output_filename, accessions_output_filename, debug, verbose):
+    def __init__(self, gtdb_metadata_spreadsheet, checkm_completeness, checkm_contamination, max_contigs, include_derived_samples, species_taxon_output_filename, genome_assembly_metadata_output_filename, accessions_output_filename, debug, verbose):
         self.gtdb_metadata_spreadsheet = gtdb_metadata_spreadsheet
         self.checkm_completeness = checkm_completeness
+        self.checkm_contamination = checkm_contamination
         self.max_contigs = max_contigs
+        self.include_derived_samples = include_derived_samples
         self.species_taxon_output_filename = species_taxon_output_filename
         self.genome_assembly_metadata_output_filename = genome_assembly_metadata_output_filename
         self.accessions_output_filename = accessions_output_filename
@@ -33,13 +35,20 @@ class GtdbSpreadsheetParser:
         self.logger.debug("logger: " + str(self.logger))
 
     def filter_input_spreadsheet(self, input_spreadsheet_df):
-        # filter spreadsheet to only include genomes with a checkm completeness of 95% or greater
+        # filter spreadsheet to only include genomes with a checkm completeness of x% or greater
         input_spreadsheet_df = input_spreadsheet_df[input_spreadsheet_df['checkm_completeness'] >= self.checkm_completeness]
+        # filter spreadsheet to only include genomes with a checkm contamination of x% or less
+        input_spreadsheet_df = input_spreadsheet_df[input_spreadsheet_df['checkm_contamination'] <= self.checkm_contamination]
+
         # filter spreadsheet to only include genomes below the maximum number of contigs on the contig_count column
         input_spreadsheet_df = input_spreadsheet_df[input_spreadsheet_df['contig_count'] <= self.max_contigs]
         # filter spreadsheet so that if the gtdb_taxonomy column ends with ' sp' followed by digits, then remove the row
         # These are novel species that GTDB has made up that dont exist in NCBI.
         input_spreadsheet_df = input_spreadsheet_df[~input_spreadsheet_df['gtdb_taxonomy'].str.contains(' sp\d+$')]
+
+        # if include_derived_samples is False then only include rows with 'none' from ncbi_genome_category
+        if not self.include_derived_samples:
+            input_spreadsheet_df = input_spreadsheet_df[input_spreadsheet_df['ncbi_genome_category'] == 'none']
         return input_spreadsheet_df
 
     def generate_spreadsheets(self):
