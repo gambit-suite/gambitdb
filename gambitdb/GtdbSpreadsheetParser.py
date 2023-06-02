@@ -25,7 +25,6 @@ class GtdbSpreadsheetParser:
             self.logger.setLevel(logging.INFO)
 
         self.logger.debug("Debugging mode enabled")
-        self.logger.info("Verbose mode enabled")
         self.logger.debug("gtdb_metadata_spreadsheet: " + self.gtdb_metadata_spreadsheet)
         self.logger.debug("species_taxon_output_filename: " + self.species_taxon_output_filename)
         self.logger.debug("genome_assembly_metadata_output_filename: " + self.genome_assembly_metadata_output_filename)
