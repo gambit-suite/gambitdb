@@ -25,6 +25,7 @@ class TestGtdbSpreadsheetParser(unittest.TestCase):
         self.cleanup()
         g = GtdbSpreadsheetParser(os.path.join(data_dir, 'bac120_metadata_r214'),
                                     95,
+                                    400,
                                     os.path.join(data_dir, 'output_species.csv'),
                                     os.path.join(data_dir, 'output_genome_metadata.csv'),
                                     os.path.join(data_dir, 'output_accessions_to_download.csv'),

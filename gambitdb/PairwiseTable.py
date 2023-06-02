@@ -42,7 +42,7 @@ class PairwiseTable:
 
     def signatures_command(self, assembly_list_filename):
         # gambit signatures create -k 11 -p ATGAC -o signatures.h5 -l assemblies.fofn
-        return 'gambit signatures create -k %s -p %s -o %s -l %s' % (self.kmer, self.kmer_prefix, self.signatures_output_filename, assembly_list_filename)
+        return 'gambit signatures create -k %s -p %s -o %s -l %s -c %s ' % (self.kmer, self.kmer_prefix, self.signatures_output_filename, assembly_list_filename, self.cpus)
     
     # read in the accessions_file_to_ignore into a list, checking if it is None first
     def read_accessions_to_ignore(self):
