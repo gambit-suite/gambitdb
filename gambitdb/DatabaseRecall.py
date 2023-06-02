@@ -20,9 +20,10 @@ import pandas as pd
 import logging
 
 class DatabaseRecall:
-    def __init__(self, assembly_metadata_spreadsheet, gambit_results_file, debug, verbose):
+    def __init__(self, assembly_metadata_spreadsheet, gambit_results_file, output_filename, debug, verbose):
         self.assembly_metadata_spreadsheet = assembly_metadata_spreadsheet
         self.gambit_results_file = gambit_results_file
+        self.output_filename = output_filename
         self.debug = debug
         self.verbose = verbose
 
@@ -60,7 +61,7 @@ class DatabaseRecall:
         print('Percentage correct: ' + str(percentage_correct) + '%')
 
         # Print the number of correct and incorrect predictions to a file
-        with open('correct_incorrect_predictions.txt', 'w') as f:
+        with open(self.output_filename, 'w') as f:
             f.write('Correct predictions: ' + str(correct) + '\n')
             f.write('Incorrect predictions: ' + str(incorrect) + '\n')
             f.write('Percentage correct: ' + str(percentage_correct) + '%\n')

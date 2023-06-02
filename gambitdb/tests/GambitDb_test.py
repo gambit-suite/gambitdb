@@ -25,6 +25,7 @@ class TestGambitDb(unittest.TestCase):
                         11, 
                         'ATGAC', 
                         1,
+                        1,
                         False)
         gdb.generate_gambit_db()
         self.assertTrue(os.path.exists(os.path.join(data_dir, 'signatures.h5')))

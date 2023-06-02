@@ -22,6 +22,8 @@ parser = argparse.ArgumentParser(
 parser.add_argument('assembly_metadata_spreadsheet',  help='Assembly metadata file such as assembly_metadata.csv from the gambit-gtdb script', type=str)
 parser.add_argument('gambit_results_file',  help='Gambit results file where the accessions match the GTDB file', type=str)
 
+parser.add_argument('--output_filename','-o',  help='Output filename', type=str, default='correct_incorrect_predictions.txt')
+
 parser.add_argument('--debug', action='store_true', help='Turn on debugging', default = False)
 parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
 
@@ -30,5 +32,6 @@ logging.basicConfig(filename='output_logfile.txt', level=logging.DEBUG)
 
 DatabaseRecall(options.assembly_metadata_spreadsheet, 
                options.gambit_results_file, 
+               options.output_filename,
                options.debug,
                options.verbose ).compare_results()

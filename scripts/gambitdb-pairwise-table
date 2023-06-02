@@ -32,6 +32,7 @@ parser.add_argument('--distance_table_output_filename', '-p', help='Output filen
 # Optional input parameters for gambit
 parser.add_argument('--kmer',	 '-k', help='Length of the k-mer to use', type=int, default = 11)
 parser.add_argument('--kmer_prefix', '-f', help='Kmer prefix', default = 'ATGAC', type=str)
+parser.add_argument('--cpus',	 '-c', help='Number of cpus to use', type=int, default = 1)
 
 parser.add_argument('--debug', action='store_true', help='Turn on debugging', default = False)
 parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
@@ -53,6 +54,7 @@ if options.debug:
                   options.kmer, 
                   options.kmer_prefix, 
                   options.accessions_to_remove,
+                  options.cpus,
                   options.verbose).generate_sigs_and_pairwise_table()
     
     pr.disable()
@@ -68,4 +70,5 @@ else:
                   options.kmer, 
                   options.kmer_prefix, 
                   options.accessions_to_remove,
+                  options.cpus,
                   options.verbose).generate_sigs_and_pairwise_table()

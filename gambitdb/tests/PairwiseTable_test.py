@@ -9,7 +9,7 @@ class TestPairwiseTable(unittest.TestCase):
     
     def test_generating_signatures(self):
         self.cleanup()
-        pw = PairwiseTable(os.path.join(data_dir, 'assemblies'), os.path.join(data_dir, 'signatures.h5'), os.path.join(data_dir, 'pw-dists.csv'), 11, 'ATGAC', None, False)
+        pw = PairwiseTable(os.path.join(data_dir, 'assemblies'), os.path.join(data_dir, 'signatures.h5'), os.path.join(data_dir, 'pw-dists.csv'), 11, 'ATGAC',  None, 1, False)
         pw.generate_sigs_and_pairwise_table()
 
         self.assertTrue(os.path.exists(os.path.join(data_dir, 'signatures.h5')))

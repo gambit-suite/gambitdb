@@ -9,7 +9,7 @@ from gambitdb.Curate import Curate
 
 class GambitDb:
 
-    def __init__(self, output_directory, assembly_directory, genome_assembly_metadata, species_taxon_filename,species_to_remove, accessions_to_remove, accession_removed_output_filename, species_removed_output_filename , signatures_output_filename, database_output_filename, species_taxon_output_filename, genome_assembly_metadata_output_filename, kmer, kmer_prefix, minimum_ngenomes, verbose):
+    def __init__(self, output_directory, assembly_directory, genome_assembly_metadata, species_taxon_filename,species_to_remove, accessions_to_remove, accession_removed_output_filename, species_removed_output_filename , signatures_output_filename, database_output_filename, species_taxon_output_filename, genome_assembly_metadata_output_filename, kmer, kmer_prefix, minimum_ngenomes, cpus, verbose):
         self.logger = logging.getLogger(__name__)
         self.output_directory = output_directory
         self.assembly_directory = assembly_directory
@@ -31,7 +31,7 @@ class GambitDb:
         self.species_taxon_filename = species_taxon_filename 
 
         self.check_output_directory_exists_or_create_one()
-
+        self.cpus = cpus
         self.verbose = verbose
         if self.verbose:
             self.logger.setLevel(logging.DEBUG)
@@ -102,6 +102,7 @@ class GambitDb:
                            self.kmer, 
                            self.kmer_prefix, 
                            accessions_to_ignore_file,
+                           self.cpus,
                            self.verbose)
         pw.generate_sigs_and_pairwise_table()
         return pw
