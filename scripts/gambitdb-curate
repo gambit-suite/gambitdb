@@ -35,6 +35,8 @@ parser.add_argument('--species_removed_output_filename', '-d', help='Output file
 
 # varying how curation works
 parser.add_argument('--minimum_ngenomes', '-n', help='Minimum number of genomes for a species to be included', default = 2, type=int)
+parser.add_argument('--small_cluster_ngenomes', help='Minimum number of genomes for a species to be included in a small cluster, along with --small_cluster_diameter', default = 4, type=int)
+parser.add_argument('--small_cluster_diameter', help='Maximum diameter of a species to be included in a small cluster along with --small_cluster_ngenomes', default = 0.7, type=float)
 
 parser.add_argument('--debug', action='store_true', help='Turn on debugging', default = False)
 parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
@@ -52,5 +54,7 @@ Curate( options.species_taxon_filename,
         options.accession_removed_output_filename,
         options.species_removed_output_filename,
         options.minimum_ngenomes,
+        options.small_cluster_ngenomes,
+        options.small_cluster_diameter,
         options.debug,
         options.verbose).filter_spreadsheets_and_output_new_files()

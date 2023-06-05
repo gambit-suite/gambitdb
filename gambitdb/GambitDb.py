@@ -9,7 +9,12 @@ from gambitdb.Curate import Curate
 
 class GambitDb:
 
-    def __init__(self, output_directory, assembly_directory, genome_assembly_metadata, species_taxon_filename,species_to_remove, accessions_to_remove, accession_removed_output_filename, species_removed_output_filename , signatures_output_filename, database_output_filename, species_taxon_output_filename, genome_assembly_metadata_output_filename, kmer, kmer_prefix, minimum_ngenomes, cpus, verbose):
+    def __init__(self, output_directory, assembly_directory, genome_assembly_metadata, 
+                 species_taxon_filename,species_to_remove, accessions_to_remove, 
+                 accession_removed_output_filename, species_removed_output_filename , 
+                 signatures_output_filename, database_output_filename, species_taxon_output_filename, 
+                 genome_assembly_metadata_output_filename, kmer, kmer_prefix, minimum_ngenomes, cpus, 
+                 small_cluster_ngenomes, small_cluster_diameter, verbose):
         self.logger = logging.getLogger(__name__)
         self.output_directory = output_directory
         self.assembly_directory = assembly_directory
@@ -32,6 +37,8 @@ class GambitDb:
 
         self.check_output_directory_exists_or_create_one()
         self.cpus = cpus
+        self.small_cluster_ngenomes = small_cluster_ngenomes
+        self.small_cluster_diameter = small_cluster_diameter
         self.verbose = verbose
         if self.verbose:
             self.logger.setLevel(logging.DEBUG)
@@ -83,6 +90,8 @@ class GambitDb:
                 os.path.join(self.output_directory,self.accession_removed_output_filename),
                 os.path.join(self.output_directory,self.species_removed_output_filename),
                 self.minimum_ngenomes,
+                self.small_cluster_ngenomes,
+                self.small_cluster_diameter,
                 self.verbose,
                 self.verbose).filter_spreadsheets_and_output_new_files()
         
@@ -117,5 +126,3 @@ class GambitDb:
                       self.verbose)
         d.calculate_diameters()
         return d
-
-    

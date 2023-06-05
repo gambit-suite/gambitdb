@@ -75,6 +75,7 @@ class GtdbSpreadsheetParser:
         species_taxon_spreadsheet_df['species_taxid'] = species_taxon_ids.values()
         species_taxon_spreadsheet_df['name'] = species_taxon_ids.keys()
         species_taxon_spreadsheet_df['rank'] = 'species'
+        species_taxon_spreadsheet_df['report'] = 1
 
         # Create mock parent_ids based on the genus from the first word of the species name
         species_taxon_spreadsheet_df['genus'] = species_taxon_spreadsheet_df['name'].str.split(' ').str[0]

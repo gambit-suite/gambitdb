@@ -89,7 +89,7 @@ for row in taxa_df.itertuples():
         description='',
         distance_threshold=row.diameter,
         # if 1, GAMBIT will assign samples to this taxa, set subspecies to 0
-        report=(0 if row.rank == "" else 1), 
+        report=(0 if row.report == "" or row.report == 0 else 1), 
         genome_set=gset,
         # Compare the values in the 'gambit_taxid' column of the DataFrame to the 'parent_taxid' value of the current row. If there is a match, return the index of the row in the DataFrame. If there is no match, return an empty string.
         parent_id=("" if row.parent_taxid == "" else taxa_df.index[taxa_df['gambit_taxid'] == row.parent_taxid].tolist()[0] + 1), 

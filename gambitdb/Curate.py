@@ -11,7 +11,11 @@ import logging
 import os
 
 class Curate:
-    def __init__(self, species_taxon_filename, genome_assembly_metadata, assembly_directory, species_to_remove, accessions_to_remove, species_taxon_output_filename, genome_assembly_metadata_output_filename, accession_removed_output_filename, species_removed_output_filename, minimum_ngenomes, debug, verbose):
+    def __init__(self, species_taxon_filename, genome_assembly_metadata, assembly_directory, 
+                 species_to_remove, accessions_to_remove, species_taxon_output_filename, 
+                 genome_assembly_metadata_output_filename, accession_removed_output_filename, 
+                 species_removed_output_filename, minimum_ngenomes,small_cluster_ngenomes,
+                 small_cluster_diameter, debug, verbose):
         self.logger = logging.getLogger(__name__)
         self.species_taxon_filename = species_taxon_filename
         self.genome_assembly_metadata = genome_assembly_metadata
@@ -23,6 +27,8 @@ class Curate:
         self.accession_removed_output_filename = accession_removed_output_filename
         self.species_removed_output_filename = species_removed_output_filename
         self.minimum_ngenomes = minimum_ngenomes
+        self.small_cluster_ngenomes = small_cluster_ngenomes
+        self.small_cluster_diameter = small_cluster_diameter
         self.debug = debug
         self.verbose = verbose
 
@@ -126,6 +132,20 @@ class Curate:
         self.logger.debug('remove_species_with_zero_diameter: species_taxonids_removed: %s' % len(self.species_taxonids_removed))
         self.logger.debug('remove_species_with_zero_diameter: species: %s' %  species.shape[0])
         return species
+
+    def remove_species_where_cluster_is_small_and_diameter_is_large(self, species):
+        self.logger.debug('remove_species_where_cluster_is_small_and_diameter_is_large')
+        species_taxonids_to_remove = species[(species['ngenomes'] < self.small_cluster_ngenomes) & (species['diameter'] > self.small_cluster_diameter)].index.tolist()
+        species_to_remove = species[(species['ngenomes'] < self.small_cluster_ngenomes) & (species['diameter'] > self.small_cluster_diameter)]['name'].tolist()
+
+        species = species[~((species['ngenomes'] < self.small_cluster_ngenomes) & (species['diameter'] > self.small_cluster_diameter))]
+        self.species_removed = self.species_removed + species_to_remove
+        self.species_taxonids_removed = self.species_taxonids_removed + species_taxonids_to_remove
+
+        self.logger.debug('remove_species_where_cluster_is_small_and_diameter_is_large: species_removed: %s' % len(self.species_removed))
+        self.logger.debug('remove_species_where_cluster_is_small_and_diameter_is_large: species_taxonids_removed: %s' % len(self.species_taxonids_removed))
+        self.logger.debug('remove_species_where_cluster_is_small_and_diameter_is_large: species: %s' % species.shape[0])
+        return species
     
     def remove_genomes_where_the_species_has_been_removed(self, genome_metadata):
         self.logger.debug('remove_genomes_where_the_species_has_been_removed')
@@ -148,6 +168,7 @@ class Curate:
         species = self.remove_species_using_input_file(species)
         species = self.remove_species_with_fewer_than_n_genomes(species)
         species = self.remove_species_with_zero_diameter(species)
+        species = self.remove_species_where_cluster_is_small_and_diameter_is_large(species)
 
         # Read in the genome assembly filenames with path
         genome_metadata = pandas.read_csv(self.genome_assembly_metadata)

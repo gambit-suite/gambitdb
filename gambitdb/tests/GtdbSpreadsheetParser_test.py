@@ -39,9 +39,9 @@ class TestGtdbSpreadsheetParser(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join(data_dir, 'output_species.csv')))
         self.assertTrue(os.path.exists(os.path.join(data_dir, 'output_accessions_to_download.csv')))
 
-        self.comp_files(os.path.join(data_dir, 'output_genome_metadata.csv'), os.path.join(data_dir, 'expected_genome_assembly_metadata.csv'))
-        self.comp_files(os.path.join(data_dir, 'output_species.csv'), os.path.join(data_dir, 'expected_species_taxon.csv'))
-        self.comp_files(os.path.join(data_dir, 'output_accessions_to_download.csv'), os.path.join(data_dir, 'expected_accession'))  
+        self.assertTrue(self.comp_files(os.path.join(data_dir, 'output_genome_metadata.csv'), os.path.join(data_dir, 'expected_genome_assembly_metadata.csv')))
+        self.assertTrue(self.comp_files(os.path.join(data_dir, 'output_species.csv'), os.path.join(data_dir, 'expected_species_taxon.csv')))
+        self.assertTrue(self.comp_files(os.path.join(data_dir, 'output_accessions_to_download.csv'), os.path.join(data_dir, 'expected_accession')))
 
         self.cleanup()
 

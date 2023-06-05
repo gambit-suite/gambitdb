@@ -43,7 +43,8 @@ parser.add_argument('--kmer',	 '-k', help='Length of the k-mer to use', type=int
 parser.add_argument('--kmer_prefix', '-f', help='Kmer prefix', default = 'ATGAC', type=str)
 parser.add_argument('--minimum_ngenomes', '-n', help='Minimum number of genomes for a species to be included', default = 1, type=int)
 parser.add_argument('--cpus',	 '-p', help='Number of cpus to use', type=int, default = 1)
-
+parser.add_argument('--small_cluster_ngenomes', help='Minimum number of genomes for a species to be included in a small cluster, along with --small_cluster_diameter', default = 4, type=int)
+parser.add_argument('--small_cluster_diameter', help='Maximum diameter of a species to be included in a small cluster along with --small_cluster_ngenomes', default = 0.7, type=float)
 
 parser.add_argument('--debug', action='store_true', help='Turn on debugging', default = False)
 parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
@@ -69,4 +70,6 @@ GambitDb(options.output_directory,
          options.kmer_prefix, 
          options.minimum_ngenomes,
          options.cpus,
+         options.small_cluster_ngenomes,
+         options.small_cluster_diameter,
          options.verbose).generate_gambit_db()
