@@ -16,8 +16,8 @@ rm -rf $BASEDIR/final
 mkdir $BASEDIR/final
 
 # This software looks up different databases so we have to try for refseq and genbank
-ncbi-genome-download -A accessions_to_download.csv -F fasta  -o fasta --flat-output -s genbank -p $CORES bacteria 
-ncbi-genome-download -A accessions_to_download.csv -F fasta  -o fasta --flat-output -s refseq -p $CORES bacteria 
+ncbi-genome-download -r 3 -A accessions_to_download.csv -F fasta  -o fasta --flat-output -s genbank -p $CORES bacteria 
+ncbi-genome-download -r 3 -A accessions_to_download.csv -F fasta  -o fasta --flat-output -s refseq -p $CORES bacteria 
 
 # These files have a strain ID embedded so we need to remove them
 cd fasta

@@ -77,7 +77,7 @@ class Diameters:
         genus_list = []
         # loop over the parent_taxids and add them to the parent_ids dataframe
         for parent_taxid in parent_taxids:
-            genus_list.append([parent_taxid, 'G'+str(parent_taxid), 'genus', '', parent_taxid, parent_taxid, 0, 0])
+            genus_list.append([parent_taxid, 'G'+str(parent_taxid), 'genus', '', parent_taxid, parent_taxid, 0, 0,0])
             
         df_extended = pandas.DataFrame(genus_list, columns=['species_taxid', 
                                                             'name', 
@@ -86,7 +86,7 @@ class Diameters:
                                                             'ncbi_taxid', 
                                                             'gambit_taxid', 
                                                             'diameter', 
-                                                            'ngenomes']).set_index('species_taxid')
+                                                            'ngenomes', 'report']).set_index('species_taxid')
         species = pandas.concat([species, df_extended])
 
         return species

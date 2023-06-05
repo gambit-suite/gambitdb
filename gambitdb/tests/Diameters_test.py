@@ -35,7 +35,6 @@ class TestDiameters(unittest.TestCase):
         d.calculate_diameters()
         self.assertTrue(os.path.exists(os.path.join(data_dir, 'output_species.csv')))
         self.assertTrue(os.path.exists(os.path.join(data_dir, 'output_min_inter.csv')))
-
         self.assertTrue(self.comp_files(os.path.join(data_dir, 'output_species.csv'), os.path.join(data_dir, 'expected_output_species.csv')))
         self.assertTrue(self.comp_files(os.path.join(data_dir, 'output_min_inter.csv'), os.path.join(data_dir, 'expected_output_min_inter.csv')))
         

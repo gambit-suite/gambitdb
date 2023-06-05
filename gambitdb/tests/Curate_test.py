@@ -1,4 +1,4 @@
-# tests for the Diameters class
+# tests for the Curate class
 import unittest
 import os
 import pandas
