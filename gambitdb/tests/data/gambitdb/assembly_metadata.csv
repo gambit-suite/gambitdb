@@ -1,4 +1,4 @@
-assembly_filename,species_taxid,assembly_accession
-/path/to/data/A123.fa,1,A123
-/path/to/data/B456.fa.gz,2,B456
-/path/to/data/C789.fna.gz,3,C789
+assembly_filename,species_taxid,assembly_accession,species
+/path/to/data/A123.fa,1,A123,Yellow black
+/path/to/data/B456.fa.gz,2,B456,Yellow whjte
+/path/to/data/C789.fna.gz,3,C789,Red orange

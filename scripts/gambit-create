@@ -95,14 +95,14 @@ for row in taxa_df.itertuples():
         parent_id=("" if row.parent_taxid == "" else taxa_df.index[taxa_df['gambit_taxid'] == row.parent_taxid].tolist()[0] + 1), 
         ncbi_id=row.ncbi_taxid,
     )
-    taxa[row.species_taxid] = taxon
+    taxa[row.name] = taxon
     session.add(taxon)
     
 session.commit()
 
 # ### Genomes
 for row in genomes_df.itertuples():
-    taxon = taxa[row.species_taxid]
+    taxon = taxa[row.species]
     
     genome = Genome(
         key=row.assembly_accession,
