@@ -28,6 +28,8 @@ class TestGambitDb(unittest.TestCase):
                         1,
                         1,
                         0.99,
+                        0.7,
+                        1,
                         False)
         gdb.generate_gambit_db()
         self.assertTrue(os.path.exists(os.path.join(data_dir, 'signatures.h5')))

@@ -14,7 +14,7 @@ class GambitDb:
                  accession_removed_output_filename, species_removed_output_filename , 
                  signatures_output_filename, database_output_filename, species_taxon_output_filename, 
                  genome_assembly_metadata_output_filename, kmer, kmer_prefix, minimum_ngenomes, cpus, 
-                 small_cluster_ngenomes, small_cluster_diameter, verbose):
+                 small_cluster_ngenomes, small_cluster_diameter, maximum_diameter, minimum_cluster_size, verbose):
         self.logger = logging.getLogger(__name__)
         self.output_directory = output_directory
         self.assembly_directory = assembly_directory
@@ -39,6 +39,8 @@ class GambitDb:
         self.cpus = cpus
         self.small_cluster_ngenomes = small_cluster_ngenomes
         self.small_cluster_diameter = small_cluster_diameter
+        self.maximum_diameter = maximum_diameter
+        self.minimum_cluster_size = minimum_cluster_size
         self.verbose = verbose
         if self.verbose:
             self.logger.setLevel(logging.DEBUG)
@@ -83,6 +85,7 @@ class GambitDb:
         Curate( self.intermediate_species_taxon_filename(), 
                 self.genome_assembly_metadata,
                 self.assembly_directory,
+                pairwise.distance_table_output_filename,
                 self.species_to_remove,
                 self.accessions_to_remove,
                 self.curated_species_taxon_filename(),
@@ -92,6 +95,8 @@ class GambitDb:
                 self.minimum_ngenomes,
                 self.small_cluster_ngenomes,
                 self.small_cluster_diameter,
+                self.maximum_diameter,
+                self.minimum_cluster_size,
                 self.verbose,
                 self.verbose).filter_spreadsheets_and_output_new_files()
         

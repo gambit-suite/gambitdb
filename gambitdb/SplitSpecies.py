@@ -11,11 +11,12 @@ from scipy.spatial.distance import squareform
 import numpy as np
 
 class SplitSpecies:
-    def __init__(self, species_taxon_filename, genome_assembly_metadata_filename, pairwise_distances_filename, maximum_diameter, minimum_cluster_size, verbose):
+    def __init__(self, species, genome_assembly_metadata, pairwise_distances_filename, accessions_removed, maximum_diameter, minimum_cluster_size, verbose):
         self.logger = logging.getLogger(__name__)
-        self.species_taxon_filename = species_taxon_filename
-        self.genome_assembly_metadata_filename = genome_assembly_metadata_filename
+        self.species = species
+        self.genome_assembly_metadata = genome_assembly_metadata
         self.pairwise_distances_filename = pairwise_distances_filename
+        self.accessions_removed = accessions_removed
         self.maximum_diameter = maximum_diameter
         self.minimum_cluster_size = minimum_cluster_size
 
@@ -25,17 +26,22 @@ class SplitSpecies:
         else:
             self.logger.setLevel(logging.ERROR)
 
+    # Main method for this class which drives everything else.
     def split_high_diameter_species(self):
         species, genome_metadata, pairwise_distances = self.read_input_files()
         high_diameter_species = self.filter_high_diameter_species(species)
 
         for single_species in high_diameter_species.iterrows():
-            genomes_no_outliers = self.split_single_high_diameter_species_into_subspecies(single_species, genome_metadata, pairwise_distances)
-
+            subspecies, genome_metadata, single_species = self.split_single_high_diameter_species_into_subspecies(single_species, genome_metadata, pairwise_distances)
+            # the single species gets updated within the method as does the genome_metadata
+            # concat subspecies to the species dataframe
+            species = pd.concat([species, subspecies], ignore_index=True)
+        return species, genome_metadata, self.accessions_removed
+    
     def filter_high_diameter_species(self, species):
         # identify all species with a diameter of > 0.7
         high_diameter_species = species[species['diameter'] > self.maximum_diameter]
-        self.logger.debug('split_high_diameter_species: high_diameter_species size: %s' % high_diameter_species.shape[0])
+        self.logger.debug('filter_high_diameter_species: high_diameter_species size: %s' % high_diameter_species.shape[0])
         return high_diameter_species
     
     # take a single species, get corresponding genome assembly metadata and a pairwise distance matrix of that species.
@@ -55,11 +61,64 @@ class SplitSpecies:
         clusters = self.get_clusters(cluster_identity, pairwise_distances_single)
 
         # remove clusters with <2 genomes per cluster
-        clusters = self.remove_clusters_with_too_few_genomes(clusters)
-        # add genomes to no outliers file only if curation didn't reduce number of genomes to 1 or 0
-        if len(clusters) > 1:
-            genomes_no_outliers = pd.concat([genomes_no_outliers,clusters])
-        return genomes_no_outliers
+        small_clusters, clusters = self.remove_clusters_with_too_few_genomes(clusters)
+
+        self.save_small_clusters_accessions_removed(small_clusters, single_species)
+        subspecies, genome_metadata, single_species = self.create_subspecies_from_clusters(clusters, single_species,genome_metadata)
+
+        # update the diameters for each subspecies
+        subspecies = self.calculate_diameters_subspecies(subspecies, genome_metadata, pairwise_distances)
+        return subspecies, genome_metadata, single_species 
+
+    def calculate_diameters_subspecies(self, subspecies, genome_metadata, pairwise_distances):
+        self.logger.debug('calculate_diameters_subspecies')   
+        diameters = np.zeros(subspecies.shape[0])
+
+        for cluster in genome_metadata.groupby('species'):
+            assembly_accessions = cluster[1].index.tolist()
+            species_name = cluster[0]
+            inds1 = pairwise_distances.index.get_indexer(assembly_accessions)
+            diameter = pairwise_distances.values[np.ix_(inds1, inds1)].max()
+            # update the diameter for the subspecies with the matching species_name
+            subspecies.loc[subspecies['name'] == species_name,'diameter'] = diameter
+
+        return subspecies
+
+    # Take in the clusters and create subpecies from them, copying the single_species and adding 'subspecies X' where X is an integer and setting report to 0
+    def create_subspecies_from_clusters(self, clusters, single_species, genome_metadata):
+        # get the attribute names from the single_species dataframe row and use these to create a new dataframe with the columns populated
+        new_subspecies_list = []
+        
+        for index, cluster in enumerate(clusters.groupby('cluster_identity')):
+            # create the name of the subspecies
+            subspecies_name = str(single_species[1]['name']) + ' subspecies ' + str(index + 1)
+
+            # get all the assembly_accession in the cluster and update the genome_metadata to change the species it subspecies_name
+            # this is a very inefficient way to link for the database lookup later
+            genome_metadata.loc[cluster[1]['assembly_accession'], 'species'] = subspecies_name
+
+            new_subspecies_list.append([single_species[0], subspecies_name, 'species', single_species[0], single_species[0], single_species[0], 0, len(cluster[1]), 0])
+
+        #  the single species should be reported by with a diameter of zero
+        single_species[1]['report'] = 1
+        single_species[1]['diameter'] = 0
+        
+        subspecies = pd.DataFrame(new_subspecies_list, columns=['species_taxid'] + single_species[1].index.tolist())
+        subspecies = subspecies.set_index('species_taxid')
+        return subspecies, genome_metadata, single_species
+    
+    def save_small_clusters_accessions_removed(self, small_clusters, single_species):
+        # save the accessions of the small clusters to a file
+        small_clusters_accessions = small_clusters['assembly_accession'].tolist()
+        self.accessions_removed = self.accessions_removed + small_clusters_accessions
+
+        self.logger.debug('Remove small clusters: '  + str(single_species[0]) + '\t' + str(small_clusters_accessions))
+
+    def remove_clusters_with_too_few_genomes(self, clusters):
+        # remove clusters with <=X genomes per cluster
+        clusters = clusters.groupby('cluster_identity').filter(lambda x: len(x) > self.minimum_cluster_size)
+        small_clusters = clusters.groupby('cluster_identity').filter(lambda x: len(x) <= self.minimum_cluster_size)
+        return small_clusters, clusters
 
     def calculate_linkage_matrix(self, pairwise_distances):
         # reindex pw-distance matrix
@@ -81,15 +140,6 @@ class SplitSpecies:
         return clusters
 
     def read_input_files(self):
-        species = pd.read_csv(self.species_taxon_filename, index_col=False)
-        species = species.set_index('species_taxid')
-        self.logger.debug('read_input_files: species size: %s' % species.shape[0])
-
-        # Read in the genome assembly filenames with path
-        genome_metadata = pd.read_csv(self.genome_assembly_metadata_filename)
-        genome_metadata = genome_metadata.set_index('assembly_accession')
-        self.logger.debug('read_input_files: genome_metadata size: %s' % genome_metadata.shape[0])
-
         # Read in the pairwise distances file
         pairwise_distances = pd.read_csv(self.pairwise_distances_filename, index_col=0)
         # Make sure the columns and rows are sorted
@@ -98,4 +148,4 @@ class SplitSpecies:
         # sort the pairwise_distances dataframe by the index column
         self.logger.debug('read_input_files: pairwise_distances size: %s' % pairwise_distances.shape[0])
 
-        return species, genome_metadata, pairwise_distances
+        return self.species, self.genome_assembly_metadata, pairwise_distances

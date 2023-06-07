@@ -9,17 +9,20 @@
 import pandas
 import logging
 import os
+from gambitdb.SplitSpecies import SplitSpecies
+
 
 class Curate:
-    def __init__(self, species_taxon_filename, genome_assembly_metadata, assembly_directory, 
+    def __init__(self, species_taxon_filename, genome_assembly_metadata, assembly_directory, pairwise_distances_filename, 
                  species_to_remove, accessions_to_remove, species_taxon_output_filename, 
                  genome_assembly_metadata_output_filename, accession_removed_output_filename, 
                  species_removed_output_filename, minimum_ngenomes,small_cluster_ngenomes,
-                 small_cluster_diameter, debug, verbose):
+                 small_cluster_diameter, maximum_diameter, minimum_cluster_size,  debug, verbose):
         self.logger = logging.getLogger(__name__)
         self.species_taxon_filename = species_taxon_filename
         self.genome_assembly_metadata = genome_assembly_metadata
         self.assembly_directory = assembly_directory
+        self.pairwise_distances_filename = pairwise_distances_filename
         self.species_to_remove = species_to_remove
         self.accessions_to_remove = accessions_to_remove
         self.species_taxon_output_filename = species_taxon_output_filename
@@ -29,6 +32,9 @@ class Curate:
         self.minimum_ngenomes = minimum_ngenomes
         self.small_cluster_ngenomes = small_cluster_ngenomes
         self.small_cluster_diameter = small_cluster_diameter
+        self.maximum_diameter = maximum_diameter
+        self.minimum_cluster_size = minimum_cluster_size
+        
         self.debug = debug
         self.verbose = verbose
 
@@ -178,6 +184,15 @@ class Curate:
         genome_metadata = self.remove_accessions_using_input_file(genome_metadata)
         genome_metadata = self.remove_genomes_where_the_species_has_been_removed(genome_metadata)
         genome_metadata = self.remove_accessions_not_in_assembly_directory(genome_metadata)
+
+        # Split species into subspecies
+        split_species_obj = SplitSpecies(species, 
+                                         genome_metadata, 
+                                         self.pairwise_distances_filename,
+                                         self.accessions_removed, 
+                                         self.maximum_diameter, self.minimum_cluster_size, self.verbose)
+        
+        species, genome_metadata, self.accessions_removed = split_species_obj.split_high_diameter_species()
 
         self.write_output_files(species, genome_metadata)
 

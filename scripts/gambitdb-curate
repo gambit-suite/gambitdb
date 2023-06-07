@@ -22,6 +22,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument('species_taxon_filename', help='CSV containing species taxonomy and diameters, ngenomes - output from gambitdb-diameters', type=str)
 parser.add_argument('genome_assembly_metadata',  help='A CSV containing the assembly file and path, and the species taxon ID - output from gambitdb-gtdb', type=str)
 parser.add_argument('assembly_directory',  help='A directory containing assemblies in FASTA format', type=str)
+parser.add_argument('pairwise_distances_filename',  help='A pairwise distance file between each assembly', type=str)
 
 # optional input files
 parser.add_argument('--species_to_remove', '-s', help='Optional file containing a list of species to remove (1 per line)', type=str)
@@ -38,6 +39,11 @@ parser.add_argument('--minimum_ngenomes', '-n', help='Minimum number of genomes 
 parser.add_argument('--small_cluster_ngenomes', help='Minimum number of genomes for a species to be included in a small cluster, along with --small_cluster_diameter', default = 4, type=int)
 parser.add_argument('--small_cluster_diameter', help='Maximum diameter of a species to be included in a small cluster along with --small_cluster_ngenomes', default = 0.7, type=float)
 
+# Vary how subspecies splitting operates
+parser.add_argument('--maximum_diameter', help='The maximum diameter to allow before attempting to split a species into subspecies', default = 0.7, type=float)
+parser.add_argument('--minimum_cluster_size', help='After splitting a species into subspecies, this is the minimum number of genomes which must be present, otherwise the genome is removed.', default = 2, type=int)
+
+
 parser.add_argument('--debug', action='store_true', help='Turn on debugging', default = False)
 parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
 
@@ -47,6 +53,7 @@ logging.basicConfig(filename='output_logfile.txt', level=logging.DEBUG)
 Curate( options.species_taxon_filename, 
         options.genome_assembly_metadata, 
         options.assembly_directory,
+        options.pairwise_distances_filename,
         options.species_to_remove, 
         options.accessions_to_remove, 
         options.species_taxon_output_filename,
@@ -56,5 +63,7 @@ Curate( options.species_taxon_filename,
         options.minimum_ngenomes,
         options.small_cluster_ngenomes,
         options.small_cluster_diameter,
+        options.maximum_diameter,
+        options.minimum_cluster_size,
         options.debug,
         options.verbose).filter_spreadsheets_and_output_new_files()

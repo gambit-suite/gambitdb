@@ -7,21 +7,9 @@ from gambitdb.Curate import Curate
 test_modules_dir = os.path.dirname(os.path.realpath(__file__))
 data_dir = os.path.join(test_modules_dir, 'data','curate')
 
-# Curate( options.species_taxon_filename, 
-#         options.genome_assembly_metadata, 
-#         options.species_to_remove, 
-#         options.accessions_to_remove, 
-#         options.species_taxon_output_filename,
-#         options.genome_assembly_metadata_output_filename,
-#         options.accession_removed_output_filename,
-#         options.species_removed_output_filename,
-#         options.minimum_ngenomes,
-#         options.debug,
-#         options.verbose)
-
 class TestCurate(unittest.TestCase):
     def test_remove_species_with_zero_diameter(self):
-        c = Curate( None, None, None, None, None, None, None, None, None, None, 1, 0.99,False, False)
+        c = Curate( None, None, None, None, None, None, None, None, None, None, None, 1, 0.99, 0.7, 1, False, False)
         species = pandas.read_csv(os.path.join(data_dir, 'species.csv'), index_col=False)
         species = species.set_index('species_taxid')
 
@@ -36,7 +24,7 @@ class TestCurate(unittest.TestCase):
 
 
     def test_remove_species_with_fewer_than_n_genomes(self):
-        c = Curate( None, None, None, None, None, None, None, None, None, 1, 1, 0.99, False, False)
+        c = Curate( None, None, None, None, None, None, None, None, None, None, 1, 1, 0.99, 0.7, 1, False, False)
         species = pandas.read_csv(os.path.join(data_dir, 'species.csv'), index_col=False)
         species = species.set_index('species_taxid')
 
@@ -50,7 +38,7 @@ class TestCurate(unittest.TestCase):
         self.assertEqual(c.species_removed,['G2','G3'])
 
     def test_remove_species_using_input_file(self):
-        c = Curate( None, None, None, os.path.join(data_dir, 'species_to_remove'), None, None, None, None, None, None, 1, 0.99, False, False)
+        c = Curate( None, None, None, None, os.path.join(data_dir, 'species_to_remove'), None, None, None, None, None, None, 1, 0.99, 0.7, 1, False, False)
         species = pandas.read_csv(os.path.join(data_dir, 'species.csv'), index_col=False)
         species = species.set_index('species_taxid')
 
@@ -61,7 +49,7 @@ class TestCurate(unittest.TestCase):
         self.assertEqual(c.species_removed,['Orange teal','G2'])
 
     def test_remove_accessions_using_input_file(self):
-        c = Curate( None, None, None, None, os.path.join(data_dir, 'accessions_to_remove'), None, None, None, None, None, 1, 0.99, False, False)
+        c = Curate( None, None, None, None, None, os.path.join(data_dir, 'accessions_to_remove'), None, None, None, None, None, 1, 0.99, 0.7, 1, False, False)
         accessions = pandas.read_csv(os.path.join(data_dir, 'assembly_metadata.csv'), index_col=False)
         accessions = accessions.set_index('assembly_accession')
 
@@ -75,25 +63,26 @@ class TestCurate(unittest.TestCase):
 
     def test_real_dataset(self):
         self.cleanup()
-        c = Curate( os.path.join(data_dir, 'ec_gtdb_species.csv'),
-                    os.path.join(data_dir, 'ec_gtdb_genome_assembly_metadata.csv'),
+        c = Curate( os.path.join(data_dir, 'ec_species'),
+                    os.path.join(data_dir, 'ec_genome_assembly'),
                     None, 
+                    os.path.join(data_dir, 'ec_pairwise'),
                     None,
                     None,                     
                     os.path.join(data_dir, 'species_taxon_output.csv'),
                     os.path.join(data_dir, 'assembly_metadata_output.csv'),
                     os.path.join(data_dir, 'accessions_removed'), 
                     os.path.join(data_dir, 'species_removed'), 
-                    1, 1, 0.99, False, False)
+                    1, 1, 0.99, 0.7, 1, False, False)
         c.filter_spreadsheets_and_output_new_files()
 
         # The input assembly metadata file shouldnt be equal to the output assembly metadata file because we have removed some rows
-        self.assertNotEqual(self.file_len(os.path.join(data_dir, 'ec_gtdb_genome_assembly_metadata.csv')), self.file_len(os.path.join(data_dir, 'assembly_metadata_output.csv')))
-        self.assertEqual(self.file_len(os.path.join(data_dir, 'assembly_metadata_output.csv')), 4293)
+        self.assertNotEqual(self.file_len(os.path.join(data_dir, 'ec_genome_assembly')), self.file_len(os.path.join(data_dir, 'assembly_metadata_output.csv')))
+        self.assertEqual(self.file_len(os.path.join(data_dir, 'assembly_metadata_output.csv')), 87)
 
         # The input species file shouldnt be equal to the output species file because we have removed some rows
-        self.assertNotEqual(self.file_len(os.path.join(data_dir, 'ec_gtdb_species.csv')), self.file_len(os.path.join(data_dir, 'species_taxon_output.csv')))
-        self.assertEqual(self.file_len(os.path.join(data_dir, 'species_taxon_output.csv')), 45)
+        self.assertNotEqual(self.file_len(os.path.join(data_dir, 'ec_species')), self.file_len(os.path.join(data_dir, 'species_taxon_output.csv')))
+        self.assertEqual(self.file_len(os.path.join(data_dir, 'species_taxon_output.csv')), 18)
         self.cleanup()
 
     def test_filter_files(self):
@@ -101,13 +90,14 @@ class TestCurate(unittest.TestCase):
         c = Curate( os.path.join(data_dir, 'species.csv'), 
                     os.path.join(data_dir, 'assembly_metadata.csv'), 
                     None,
+                    os.path.join(data_dir, 'pairwise.csv'),
                     os.path.join(data_dir, 'species_to_remove'), 
                     os.path.join(data_dir, 'accessions_to_remove'), 
                     os.path.join(data_dir, 'species_taxon_output.csv'),
                     os.path.join(data_dir, 'assembly_metadata_output.csv'),
                     os.path.join(data_dir, 'accessions_removed'), 
                     os.path.join(data_dir, 'species_removed'), 
-                    1, 1, 0.99, False, False)
+                    1, 1, 0.99, 0.7, 1, False, False)
         c.filter_spreadsheets_and_output_new_files()
 
         self.assertTrue(os.path.exists(os.path.join(data_dir, 'species_taxon_output.csv')))
@@ -127,4 +117,3 @@ class TestCurate(unittest.TestCase):
         for f in ['species_taxon_output.csv', 'assembly_metadata_output.csv', 'accessions_removed', 'species_removed']:
             if os.path.exists(os.path.join(data_dir, f)):
                 os.remove(os.path.join(data_dir, f))
-        
