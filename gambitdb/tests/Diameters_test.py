@@ -40,6 +40,29 @@ class TestDiameters(unittest.TestCase):
         
         self.cleanup()
 
+
+    def test_calc_thresholds_no_genomes(self):
+        self.cleanup()
+        d = Diameters(os.path.join(data_dir, 'assembly_metadata.csv'), 
+                      os.path.join(data_dir, 'pairwise_dist.csv'), 
+                      os.path.join(data_dir, 'species_no_genomes.csv'), 
+                      os.path.join(data_dir, 'output_species.csv'), 
+                      os.path.join(data_dir, 'output_min_inter.csv'), 
+                      False)
+        
+        genome_metadata, species, pairwise_distances = d.read_files()
+        genomes_grouped_by_species_name = genome_metadata.groupby('species')
+        number_of_species = species.shape[0]
+        species_genomes = {}
+        for species_name in species['name'].tolist():
+            if species_name in genomes_grouped_by_species_name.groups:                
+                species_genomes[species_name] = genomes_grouped_by_species_name.get_group(species_name)['assembly_accession'].values
+            else:
+                species_genomes[species_name] = []
+
+        diameters, min_inter, ngenomes = d.calculate_thresholds(number_of_species, species_genomes, pairwise_distances)
+        self.assertEqual(diameters.shape[0], 4)
+        
     def cleanup(self):
         for f in ['output_species.csv', 'output_min_inter.csv']:
             if os.path.exists(os.path.join(data_dir, f)):
