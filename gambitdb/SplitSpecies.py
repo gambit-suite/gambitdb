@@ -35,7 +35,9 @@ class SplitSpecies:
             subspecies, genome_metadata, single_species = self.split_single_high_diameter_species_into_subspecies(single_species, genome_metadata, pairwise_distances)
             # the single species gets updated within the method as does the genome_metadata
             # concat subspecies to the species dataframe
-            species = pd.concat([species, subspecies], ignore_index=True)
+            species = pd.concat([species, subspecies])
+            species.loc[species['name'] == single_species[1]['name'],'diameter'] = 0
+
         return species, genome_metadata, self.accessions_removed
     
     def filter_high_diameter_species(self, species):
@@ -72,15 +74,16 @@ class SplitSpecies:
 
     def calculate_diameters_subspecies(self, subspecies, genome_metadata, pairwise_distances):
         self.logger.debug('calculate_diameters_subspecies')   
-        diameters = np.zeros(subspecies.shape[0])
 
         for cluster in genome_metadata.groupby('species'):
             assembly_accessions = cluster[1].index.tolist()
             species_name = cluster[0]
             inds1 = pairwise_distances.index.get_indexer(assembly_accessions)
             diameter = pairwise_distances.values[np.ix_(inds1, inds1)].max()
+            ngenomes = len(assembly_accessions)
             # update the diameter for the subspecies with the matching species_name
             subspecies.loc[subspecies['name'] == species_name,'diameter'] = diameter
+            subspecies.loc[subspecies['name'] == species_name,'ngenomes'] = ngenomes
 
         return subspecies
 

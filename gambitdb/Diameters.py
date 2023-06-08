@@ -30,8 +30,8 @@ class Diameters:
         # sort the genome_metadata dataframe by assembly_accession
         genome_metadata = genome_metadata.sort_values(by='assembly_accession')
         self.logger.debug('calculate_diameters: genome_metadata size: %s' % genome_metadata.shape[0])
-        genomes_grouped_by_species_taxid = genome_metadata.groupby('species_taxid')
-        self.logger.debug('calculate_diameters: genomes_grouped_by_species_taxid size: %s' % genomes_grouped_by_species_taxid.size())
+        genomes_grouped_by_species_name = genome_metadata.groupby('species')
+        self.logger.debug('calculate_diameters: genomes_grouped_by_species_name size: %s' % genomes_grouped_by_species_name.size())
 
         # Read in the species taxon file
         species = pandas.read_csv(self.species_taxon_filename, index_col=False)
@@ -48,15 +48,15 @@ class Diameters:
         # a dictionary of species_taxid: [assembly_accessions]
         species_genomes = {}
         # Loop over each species
-        for species_taxid in species.index:
+        for species_name in species['name'].tolist():
             # get a list of the assembly_accessions for the species and add to the species_genomes dictionary
-            species_genomes[species_taxid] = genomes_grouped_by_species_taxid.get_group(species_taxid)['assembly_accession'].values
+            species_genomes[species_name] = genomes_grouped_by_species_name.get_group(species_name)['assembly_accession'].values
 
-        diameters, min_inter = self.calculate_thresholds(number_of_species, species_genomes, pairwise_distances)
-
+        diameters, min_inter, ngenomes = self.calculate_thresholds(number_of_species, species_genomes, pairwise_distances)
         # Extend the species taxon table and add in the diameters and number of genomes
         species['diameter'] = diameters
-        species['ngenomes'] = genome_metadata.groupby('species_taxid').size()
+        species['ngenomes'] = ngenomes
+        species['ngenomes'] = species['ngenomes'].astype(int)
 
         if number_of_species >0:
         # Take the min-inter values, add to a dataframe and write out to a new file
@@ -73,6 +73,8 @@ class Diameters:
 
         # Get all unique parent_taxids
         parent_taxids = species['parent_taxid'].unique()
+        species_taxids = species.index.unique().tolist()
+
         # get all species names and parent_taxid.  Split the species name to return the first word (genus name)
         species_names = species[['name', 'parent_taxid']].assign(genus_name=species['name'].str.split(' ').str[0])
 
@@ -82,6 +84,9 @@ class Diameters:
         genus_list = []
         # loop over the parent_taxids and add them to the parent_ids dataframe
         for parent_taxid in parent_taxids:
+            # A subspecies will have the species as the parent taxid, so skip these
+            if parent_taxid in species_taxids:
+                continue
             genus_name = parent_taxid_genus_name[parent_taxid]
             genus_list.append([parent_taxid, genus_name, 'genus', '', parent_taxid, parent_taxid, 0, 0,0])
             
@@ -102,6 +107,7 @@ class Diameters:
         self.logger.debug('calculate_thresholds')   
         # initalise the diameters and minimums, these get returned at the end
         diameters = numpy.zeros(number_of_species)
+        ngenomes = numpy.zeros(number_of_species)
         min_inter = numpy.zeros((number_of_species, number_of_species))
 
         # loop over the species_genomes dictionary, looking up the index of the genome in the pairwise_distances dataframe
@@ -110,6 +116,7 @@ class Diameters:
             # Find the maximum diameters for each species. Basically look at the pairwise distances
             # and find the maximum distance between any two genomes in the species
             diameters[i] = pairwise_distances.values[numpy.ix_(inds1, inds1)].max()
+            ngenomes[i] = len(assembly_accessions)
     
             for j, (species_taxid2, assembly_accessions2) in enumerate(species_genomes.items()):
                 inds2 = pairwise_distances.index.get_indexer(assembly_accessions2)
@@ -119,4 +126,4 @@ class Diameters:
         self.logger.debug('calculate_thresholds: diameters: %s' % diameters.shape[0])
         self.logger.debug('calculate_thresholds: min_inter: %s' % min_inter.shape[0])
         # return the diameters and minimums
-        return diameters, min_inter
+        return diameters, min_inter, ngenomes

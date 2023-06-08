@@ -79,7 +79,8 @@ class GambitDb:
         self.species_taxon_filename = self.check_species_taxonid_file_exists_or_create_one(self.species_taxon_filename, self.genome_assembly_metadata)
         diameters = self.generate_diameters(pairwise.distance_table_output_filename, 
                                             self.species_taxon_filename,  
-                                            self.intermediate_species_taxon_filename())
+                                            self.intermediate_species_taxon_filename(), 
+                                            self.genome_assembly_metadata)
 
         # Curate the outputs
         Curate( self.intermediate_species_taxon_filename(), 
@@ -105,7 +106,8 @@ class GambitDb:
         pairwise = self.generate_pairwise_table(os.path.join(self.output_directory, self.accession_removed_output_filename))
         diameters = self.generate_diameters(pairwise.distance_table_output_filename, 
                                             self.curated_species_taxon_filename(),
-                                            os.path.join(self.output_directory, self.species_taxon_output_filename))
+                                            os.path.join(self.output_directory, self.species_taxon_output_filename),
+                                            os.path.join(self.output_directory,self.genome_assembly_metadata_output_filename))
 
     def generate_pairwise_table(self, accessions_to_ignore_file):
         self.logger.debug('generate_pairwise_table')
@@ -121,9 +123,9 @@ class GambitDb:
         pw.generate_sigs_and_pairwise_table()
         return pw
 
-    def generate_diameters(self, distance_table, species_taxon_filename, species_taxon_output):
+    def generate_diameters(self, distance_table, species_taxon_filename, species_taxon_output, genome_assembly_metadata):
         self.logger.debug('generate_diameters')
-        d = Diameters(self.genome_assembly_metadata,
+        d = Diameters(genome_assembly_metadata,
                       distance_table, 
                       species_taxon_filename,
                       species_taxon_output,

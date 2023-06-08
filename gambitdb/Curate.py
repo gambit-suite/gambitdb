@@ -184,16 +184,14 @@ class Curate:
         genome_metadata = self.remove_accessions_using_input_file(genome_metadata)
         genome_metadata = self.remove_genomes_where_the_species_has_been_removed(genome_metadata)
         genome_metadata = self.remove_accessions_not_in_assembly_directory(genome_metadata)
-
+        
         # Split species into subspecies
         split_species_obj = SplitSpecies(species, 
                                          genome_metadata, 
                                          self.pairwise_distances_filename,
                                          self.accessions_removed, 
                                          self.maximum_diameter, self.minimum_cluster_size, self.verbose)
-        
         species, genome_metadata, self.accessions_removed = split_species_obj.split_high_diameter_species()
-
         self.write_output_files(species, genome_metadata)
 
     def write_output_files(self, species, genome_metadata):
