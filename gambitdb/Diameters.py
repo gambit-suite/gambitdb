@@ -50,7 +50,11 @@ class Diameters:
         # Loop over each species
         for species_name in species['name'].tolist():
             # get a list of the assembly_accessions for the species and add to the species_genomes dictionary
-            species_genomes[species_name] = genomes_grouped_by_species_name.get_group(species_name)['assembly_accession'].values
+            #check to see if species_name is in genomes_grouped_by_species_name
+            if species_name in genomes_grouped_by_species_name.groups:                
+                species_genomes[species_name] = genomes_grouped_by_species_name.get_group(species_name)['assembly_accession'].values
+            else:
+                species_genomes[species_name] = []
 
         diameters, min_inter, ngenomes = self.calculate_thresholds(number_of_species, species_genomes, pairwise_distances)
         # Extend the species taxon table and add in the diameters and number of genomes
@@ -112,6 +116,10 @@ class Diameters:
 
         # loop over the species_genomes dictionary, looking up the index of the genome in the pairwise_distances dataframe
         for i, (species_taxid, assembly_accessions) in enumerate(species_genomes.items()):
+            # if the accessbly accessions list is empty then continue
+            if len(assembly_accessions) == 0:
+                continue
+
             inds1 = pairwise_distances.index.get_indexer(assembly_accessions)
             # Find the maximum diameters for each species. Basically look at the pairwise distances
             # and find the maximum distance between any two genomes in the species
