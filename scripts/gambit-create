@@ -115,7 +115,7 @@ for row in genomes_df.itertuples():
     
     genome = Genome(
         key=row.assembly_accession,
-        description='',
+        description=f'[{row.assembly_accession}] {row.species}',
         ncbi_db='assembly',
         ncbi_id=row.uuid,
         genbank_acc=row.assembly_accession,

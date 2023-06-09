@@ -30,5 +30,5 @@ cd ~/code/gambitdb/
 ./scripts/gambit-create --database_output_filename $BASEDIR/final/database.gdb --signatures_output_filename $BASEDIR/final/database.gs $BASEDIR/intermediate_files/genome_assembly_metadata.csv $BASEDIR/intermediate_files/species_taxon.csv $BASEDIR/intermediate_files/database.gs
 gambit -d $BASEDIR/final query -o $BASEDIR/results.csv $BASEDIR/fasta/*.gz
 
-./scripts/gambitdb-database-recall -o $BASEDIR/recall_results.txt $BASEDIR/assembly_metadata.csv $BASEDIR/results.csv
+./scripts/gambitdb-database-recall -o $BASEDIR/recall_results.txt $BASEDIR/intermediate_files/genome_assembly_metadata.csv $BASEDIR/results.csv
 
