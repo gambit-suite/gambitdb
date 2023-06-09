@@ -50,10 +50,20 @@ from gambit.db.migrate import init_db
 from gambit.sigs import SignaturesMeta, load_signatures, dump_signatures, AnnotatedSignatures
 
 
-# load data
+# load data and set the types
 genomes_df = pd.read_csv(options.genome_assembly_metadata, dtype=str)
+genomes_df['species_taxid'] = genomes_df['species_taxid'].fillna(0).astype(int)
+genomes_df = genomes_df.fillna('')
 taxa_df = pd.read_csv(options.species_taxon_filename, dtype=str)
+taxa_df['species_taxid'] = taxa_df['species_taxid'].fillna(0).astype(int)
+taxa_df['parent_taxid'] = taxa_df['parent_taxid'].fillna(0).astype(int)
+taxa_df['ncbi_taxid'] = taxa_df['ncbi_taxid'].fillna(0).astype(int)
+taxa_df['gambit_taxid'] = taxa_df['gambit_taxid'].fillna(0).astype(int)
+taxa_df['report'] = taxa_df['report'].fillna(0).astype(int)
+taxa_df['diameter'] = taxa_df['diameter'].fillna(0.0).astype(float)
+taxa_df['ngenomes'] = taxa_df['ngenomes'].fillna(0).astype(int)
 taxa_df = taxa_df.fillna('')
+
 
 # Create databawse
 engine = create_engine('sqlite:///' + options.database_output_filename, echo=options.verbose)
@@ -91,8 +101,7 @@ for row in taxa_df.itertuples():
         # if 1, GAMBIT will assign samples to this taxa, set subspecies to 0
         report=(0 if row.report == "" or row.report == 0 else 1), 
         genome_set=gset,
-        # Compare the values in the 'gambit_taxid' column of the DataFrame to the 'parent_taxid' value of the current row. If there is a match, return the index of the row in the DataFrame. If there is no match, return an empty string.
-        parent_id=("" if row.parent_taxid == "" else taxa_df.index[taxa_df['gambit_taxid'] == row.parent_taxid].tolist()[0] + 1), 
+        parent_id=("" if row.parent_taxid == 0 else row.parent_taxid), 
         ncbi_id=row.ncbi_taxid,
     )
     taxa[row.name] = taxon

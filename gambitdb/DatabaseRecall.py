@@ -36,6 +36,7 @@ class DatabaseRecall:
         assembly_metadata = pd.read_csv(self.assembly_metadata_spreadsheet)
         # Read in the gambit results file
         gambit_results = pd.read_csv(self.gambit_results_file)
+        num_samples = gambit_results.shape[0]
 
         # Join the two spreadsheets on the accession number
         joined = pd.merge(assembly_metadata, gambit_results, left_on='assembly_accession', right_on='query')
@@ -53,15 +54,11 @@ class DatabaseRecall:
             incorrect = joined['correct'].value_counts()[False]
 
         # Print the number of correct and incorrect predictions
-        print('Correct predictions: ' + str(correct))
-        print('Incorrect predictions: ' + str(incorrect))
+        print('Indentical predictions: ' + str(correct))
         # Calculate the percentage of correct predictions
-        percentage_correct = correct/(correct+incorrect)*100
+        percentage_correct = correct/(num_samples)*100
         # Print the percentage of correct predictions
-        print('Percentage correct: ' + str(percentage_correct) + '%')
+        print('Percentage identical: ' + str(percentage_correct) + '%')
 
-        # Print the number of correct and incorrect predictions to a file
-        with open(self.output_filename, 'w') as f:
-            f.write('Correct predictions: ' + str(correct) + '\n')
-            f.write('Incorrect predictions: ' + str(incorrect) + '\n')
-            f.write('Percentage correct: ' + str(percentage_correct) + '%\n')
+        output_df = joined[['species', 'predicted.name', 'assembly_accession']]
+        output_df.to_csv(self.output_filename, index=False)
