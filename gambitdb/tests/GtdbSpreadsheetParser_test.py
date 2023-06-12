@@ -28,6 +28,8 @@ class TestGtdbSpreadsheetParser(unittest.TestCase):
                                     5,
                                     400,
                                     False,
+                                    False,
+                                    1,
                                     os.path.join(data_dir, 'output_species.csv'),
                                     os.path.join(data_dir, 'output_genome_metadata.csv'),
                                     os.path.join(data_dir, 'output_accessions_to_download.csv'),

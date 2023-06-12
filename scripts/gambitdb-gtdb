@@ -22,10 +22,12 @@ parser = argparse.ArgumentParser(
 parser.add_argument('gtdb_metadata_spreadsheet',  help='GTDB metadata file such as bac120_metadata_r214.tsv', type=str)
 
 # Optional input parameters
-parser.add_argument('--checkm_completeness', '-c',  help='Minimum checkm completeness of the genome [0-100]', type=float, default=97.0)
-parser.add_argument('--checkm_contamination', '-t',  help='Maximum checkm contamination of the genome [0-100]', type=float, default=2.0)
-parser.add_argument('--max_contigs', '-m',  help='Maximum number of contigs. Please note some species systematically assemble poorly with short read data.', type=int, default=100)
-parser.add_argument('--include_derived_samples', '-i',  help='Include mixed samples from metagenomes, environment, single cell', action='store_true', default=False)
+parser.add_argument('--checkm_completeness', '-b',  help='Minimum checkm completeness of the genome [0-100]', type=float, default=97.0)
+parser.add_argument('--checkm_contamination', '-c',  help='Maximum checkm contamination of the genome [0-100]', type=float, default=2.0)
+parser.add_argument('--max_contigs', '-d',  help='Maximum number of contigs. Please note some species systematically assemble poorly with short read data.', type=int, default=100)
+parser.add_argument('--include_derived_samples', '-e',  help='Include mixed samples from metagenomes, environment, single cell', action='store_true', default=False)
+parser.add_argument('--include_novel_species', '-f', help='Include novel species called sp12345. The genus must be known', action='store_true', default=False)
+parser.add_argument('--minimum_genomes_per_species', '-i',  help='Minimum number of genomes in a species, otherwise exclude the species', type=float, default=2)
 
 # Output files
 parser.add_argument('--species_taxon_output_filename', '-s', help='Output filename for with the taxonomy', default = 'species_taxa.csv', type=str)
@@ -43,6 +45,8 @@ GtdbSpreadsheetParser(options.gtdb_metadata_spreadsheet,
                       options.checkm_contamination,
                       options.max_contigs,
                       options.include_derived_samples,
+                      options.include_novel_species,
+                      options.minimum_genomes_per_species,
                       options.species_taxon_output_filename, 
                       options.genome_assembly_metadata_output_filename, 
                       options.accessions_output_filename, 
