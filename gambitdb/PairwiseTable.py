@@ -64,13 +64,6 @@ class PairwiseTable:
         for assembly in sorted(os.listdir(self.assembly_directory)):
             # limit filenames to a list of prefixes for FASTA files and can include gz files
             if any(assembly.endswith(ext) for ext in self.valid_extensions):
-                # if a download fails then a file may not be openable.  In this case, skip it
-                # check to see if the file can be opened
-                try:
-                    open('%s/%s' % (self.assembly_directory, assembly))
-                except IOError:
-                    self.logger.debug('Skipping assembly file %s as it cannot be opened' % assembly)
-                    continue
 
                 for accession in accessions_to_ignore:
                     if accession in assembly:
