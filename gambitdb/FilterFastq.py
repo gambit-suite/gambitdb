@@ -8,6 +8,7 @@ import logging
 # import biopython to read in a fastq file
 from Bio import SeqIO
 import gzip
+import os
 
 class FilterFastq:
     def __init__(self, fastq_filename, kmer_prefix, kmer, min_kmer_freq, output_kmer_filename, verbose):
@@ -37,15 +38,25 @@ class FilterFastq:
     def read_fastq(self):
         logging.debug("Reading FASTQ file: %s", self.fastq_filename)
 
-        # if the filename is gzipped, open it with gzip.open
-        if self.fastq_filename.endswith(".gz"):
-            with gzip.open(self.fastq_filename, "rt") as handle:
-                for record in SeqIO.parse(handle, "fastq"):
-                    self.count_kmers(str(record.seq))
-        else:
-            for record in SeqIO.parse(self.fastq_filename, "fastq"):
-                self.count_kmers(str(record.seq))
+        # Get the file extension
+        _, ext = os.path.splitext(self.fastq_filename)
 
+        handle = self.fastq_filename
+        # Open the file using the appropriate parser
+        if ext == ".fa":
+            parser = "fasta"
+        elif ext == ".gz":
+            parser = "fastq"
+            handle = gzip.open(self.fastq_filename, "rt")
+        else:
+            parser = "fastq"
+
+        # Iterate over the records and count k-mers
+        for record in SeqIO.parse(handle, parser):
+            seq = str(record.seq)
+            self.count_kmers(seq)
+            self.count_kmers(str(record.seq.reverse_complement()))
+    
     # Count the kmers in the sequence
     def count_kmers(self, sequence):
         for i in range(len(sequence) - self.kmer + 1):
@@ -69,8 +80,9 @@ class FilterFastq:
     def write_kmers(self):
         logging.debug("Writing kmers to FASTA file: %s", self.output_kmer_filename)
         with open(self.output_kmer_filename, 'w') as output_file:
+            # concat into a single mock sequence
+            output_file.write(">from_file " + self.fastq_filename + "\n")
             for i, kmer in enumerate(self.kmer_hash):
-                output_file.write(">" + str(i+1) + " " + str(self.kmer_hash[kmer])+"\n")
-                output_file.write("AA" + kmer + "AA" + "\n")
+                output_file.write("AAAAAAAAAAA" + kmer + "AAAAAAAAAAA" + "\n")
         logging.debug("Total kmers: %s", self.kmer_count)
         logging.debug("Total kmers with a frequency of %s: %s", self.min_kmer_freq, len(self.kmer_hash))

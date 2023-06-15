@@ -35,8 +35,13 @@ class SplitSpecies:
             subspecies, genome_metadata, single_species = self.split_single_high_diameter_species_into_subspecies(single_species, genome_metadata, pairwise_distances)
             # the single species gets updated within the method as does the genome_metadata
             # concat subspecies to the species dataframe
-            species = pd.concat([species, subspecies])
-            species.loc[species['name'] == single_species[1]['name'],'diameter'] = 0
+            if subspecies is not None:
+                species = pd.concat([species, subspecies])
+                species.loc[species['name'] == single_species[1]['name'],'diameter'] = 0
+            else:
+                # The species gets removed so need to remove the accessions
+                genome_accessions = genome_metadata[genome_metadata['species_taxid'] == single_species[0]]
+                self.accessions_removed.extend(genome_accessions.index.tolist())
 
         return species, genome_metadata, self.accessions_removed
     
@@ -54,6 +59,10 @@ class SplitSpecies:
         pairwise_distances_single = pairwise_distances.loc[genome_accessions.index.tolist(),genome_accessions.index.tolist()]
         pairwise_distances_single = pairwise_distances_single.sort_index()
         pairwise_distances_single = pairwise_distances_single.sort_index(axis=1)
+
+        if len(pairwise_distances_single  <= 1):
+            self.logger.debug('split_single_high_diameter_species_into_subspecies: pairwise_distances_single has 1 or less rows/columns')
+            return None, genome_metadata, single_species    
 
         # get the linkage matrix for this species
         linkage_matrix = self.calculate_linkage_matrix(pairwise_distances_single)
