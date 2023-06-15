@@ -8,7 +8,22 @@ test_modules_dir = os.path.dirname(os.path.realpath(__file__))
 data_dir = os.path.join(test_modules_dir, 'data','split_species')
 
 class TestSplitSpecies(unittest.TestCase):
+    """
+    Test class for SplitSpecies class.
+    """
     def test_read_files(self):
+        """
+    Tests the read_files method of the SplitSpecies class.
+    Args:
+      None
+    Returns:
+      None
+    Side Effects:
+      Asserts that the species, assemblies, and pairwise dataframes have the expected shapes.
+    Examples:
+      >>> test_read_files()
+      None
+    """
         species = pd.read_csv(os.path.join(data_dir, 'species_taxon.csv'), index_col=False).set_index('species_taxid')
         genome_metadata = pd.read_csv(os.path.join(data_dir, 'assembly_metadata.csv')).set_index('assembly_accession')
 
@@ -24,6 +39,18 @@ class TestSplitSpecies(unittest.TestCase):
         self.assertEqual(pairwise.shape[0], 13)
 
     def test_split_high_diameter_species(self):
+        """
+    Tests the filter_high_diameter_species method of the SplitSpecies class.
+    Args:
+      None
+    Returns:
+      None
+    Side Effects:
+      Asserts that the high_diameter_species dataframe has the expected shape.
+    Examples:
+      >>> test_split_high_diameter_species()
+      None
+    """
         species = pd.read_csv(os.path.join(data_dir, 'species_taxon.csv'), index_col=False).set_index('species_taxid')
         genome_metadata = pd.read_csv(os.path.join(data_dir, 'assembly_metadata.csv')).set_index('assembly_accession')
 
@@ -39,6 +66,18 @@ class TestSplitSpecies(unittest.TestCase):
         self.assertEqual(high_diameter_species.shape[0], 1)
 
     def test_split_species(self):
+        """
+    Tests the split_high_diameter_species method of the SplitSpecies class.
+    Args:
+      None
+    Returns:
+      None
+    Side Effects:
+      Asserts that the species, genome_metadata, and accessions_removed dataframes have the expected shapes.
+    Examples:
+      >>> test_split_species()
+      None
+    """
         species = pd.read_csv(os.path.join(data_dir, 'species_taxon.csv'), index_col=False).set_index('species_taxid')
         genome_metadata = pd.read_csv(os.path.join(data_dir, 'assembly_metadata.csv')).set_index('assembly_accession')
 

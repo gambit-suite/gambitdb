@@ -11,7 +11,22 @@ import gzip
 import os
 
 class FilterFastq:
+    """
+    Reads in a FASTQ file using BioPython, identifies all kmers of length 11 beginning with ATGAC, creates a hash of these kmers and their frequencies, filters out all kmers with a frequency of 1, and writes the remaining kmers to a FASTA file.
+    """
     def __init__(self, fastq_filename, kmer_prefix, kmer, min_kmer_freq, output_kmer_filename, verbose):
+        """
+    Initializes the FilterFastq class.
+    Args:
+      fastq_filename (str): The name of the FASTQ file to read.
+      kmer_prefix (str): The prefix of the kmers to identify.
+      kmer (int): The length of the kmers to identify.
+      min_kmer_freq (int): The minimum frequency of kmers to keep.
+      output_kmer_filename (str): The name of the FASTA file to write.
+      verbose (bool): Whether to print debug messages.
+    Side Effects:
+      Initializes the logger, kmer_hash, kmer_count, and kmer_freq attributes.
+    """
         self.logger = logging.getLogger(__name__)
         self.fastq_filename = fastq_filename
         self.kmer_prefix = kmer_prefix
@@ -30,12 +45,22 @@ class FilterFastq:
             self.logger.setLevel(logging.ERROR)
 
     def filter_fastq(self):
+        """
+    Reads in a FASTQ file, filters out kmers with a frequency of 1, and writes the remaining kmers to a FASTA file.
+    """
         self.read_fastq()
         self.filter_kmers()
         self.write_kmers()
 
     # Read in a FASTQ file using BioPython
     def read_fastq(self):
+        """
+    Reads in a FASTQ file using BioPython.
+    Args:
+      self (FilterFastq): The FilterFastq instance.
+    Side Effects:
+      Iterates over the records and counts kmers.
+    """
         logging.debug("Reading FASTQ file: %s", self.fastq_filename)
 
         # Get the file extension
@@ -59,6 +84,14 @@ class FilterFastq:
     
     # Count the kmers in the sequence
     def count_kmers(self, sequence):
+        """
+    Counts the kmers in the sequence.
+    Args:
+      self (FilterFastq): The FilterFastq instance.
+      sequence (str): The sequence to count kmers in.
+    Side Effects:
+      Updates the kmer_count and kmer_hash attributes.
+    """
         for i in range(len(sequence) - self.kmer + 1):
             kmer = sequence[i:i+self.kmer]
             if kmer.startswith(self.kmer_prefix):
@@ -70,6 +103,13 @@ class FilterFastq:
 
     # Filter out kmers with a frequency of 1
     def filter_kmers(self):
+        """
+    Filters out kmers with a frequency of 1.
+    Args:
+      self (FilterFastq): The FilterFastq instance.
+    Side Effects:
+      Removes all values from the kmer_hash with a frequency of < min_kmer_freq.
+    """
         logging.debug("Filtering kmers with a frequency of %s", self.min_kmer_freq)
         # Remove all values from the hash with a frequency of < self.min_kmer_freq
         for kmer in list(self.kmer_hash):
@@ -78,6 +118,13 @@ class FilterFastq:
 
     # Write the kmers to a FASTA file
     def write_kmers(self):
+        """
+    Writes the kmers to a FASTA file.
+    Args:
+      self (FilterFastq): The FilterFastq instance.
+    Side Effects:
+      Writes the kmers to the output_kmer_filename.
+    """
         logging.debug("Writing kmers to FASTA file: %s", self.output_kmer_filename)
         with open(self.output_kmer_filename, 'w') as output_file:
             # concat into a single mock sequence

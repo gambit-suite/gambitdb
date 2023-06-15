@@ -20,7 +20,21 @@ import pandas as pd
 import logging
 
 class DatabaseRecall:
+    """
+    Compares two spreadsheets to work out how good Gambit is at recalling species.
+    """
     def __init__(self, assembly_metadata_spreadsheet, gambit_results_file, output_filename, debug, verbose):
+        """
+    Initializes the DatabaseRecall class.
+    Args:
+      assembly_metadata_spreadsheet (str): The path to the assembly metadata spreadsheet.
+      gambit_results_file (str): The path to the Gambit results file.
+      output_filename (str): The path to the output file.
+      debug (bool): Whether to enable debug logging.
+      verbose (bool): Whether to enable verbose logging.
+    Side Effects:
+      Initializes the logger.
+    """
         self.assembly_metadata_spreadsheet = assembly_metadata_spreadsheet
         self.gambit_results_file = gambit_results_file
         self.output_filename = output_filename
@@ -31,6 +45,20 @@ class DatabaseRecall:
         self.logger.debug('DatabaseRecall.__init__')
 
     def compare_results(self):
+        """
+    Compares the species column from the assembly_metadata_spreadsheet to the predicted.name column in the gambit_results_file.
+    Args:
+      None
+    Returns:
+      None
+    Side Effects:
+      Prints the number of correct and incorrect predictions.
+      Writes the output to the output_filename.
+    Examples:
+      >>> compare_results()
+      Indentical predictions: 3
+      Percentage identical: 75.0%
+    """
         self.logger.debug('DatabaseRecall.compare_results')
         # Read in the assembly metadata spreadsheet
         assembly_metadata = pd.read_csv(self.assembly_metadata_spreadsheet)

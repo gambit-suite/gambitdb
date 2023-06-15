@@ -5,6 +5,9 @@ import logging
 import sys
 
 class GtdbSpreadsheetParser:
+    """
+    Reads in a GTDB spreadsheet, parses each row and outputs a modified spreadsheet.
+    """
     def __init__(self, 
                  gtdb_metadata_spreadsheet, 
                  checkm_completeness, 
@@ -18,6 +21,62 @@ class GtdbSpreadsheetParser:
                  accessions_output_filename, 
                  debug, 
                  verbose):
+        """
+    Initializes the GtdbSpreadsheetParser class.
+    Args:
+      gtdb_metadata_spreadsheet (str): The path to the GTDB metadata spreadsheet.
+      checkm_completeness (float): The minimum CheckM completeness to include a genome.
+      checkm_contamination (float): The maximum CheckM contamination to include a genome.
+      max_contigs (int): The maximum number of contigs to include a genome.
+      include_derived_samples (bool): Whether to include derived samples.
+      include_novel_species (bool): Whether to include novel species.
+      minimum_genomes_per_species (int): The minimum number of genomes per species to include a species.
+      species_taxon_output_filename (str): The path to the output file for species taxon information.
+      genome_assembly_metadata_output_filename (str): The path to the output file for genome assembly metadata.
+      accessions_output_filename (str): The path to the output file for accessions.
+      debug (bool): Whether to enable debugging mode.
+      verbose (bool): Whether to enable verbose mode.
+    Side Effects:
+      Sets the following attributes:
+        gtdb_metadata_spreadsheet
+        checkm_completeness
+        checkm_contamination
+        max_contigs
+        include_derived_samples
+        include_novel_species
+        minimum_genomes_per_species
+        species_taxon_output_filename
+        genome_assembly_metadata_output_filename
+        accessions_output_filename
+        debug
+        verbose
+        logger
+        stats_starting_assemblies
+        stats_checkm_completeness
+        stats_checkm_contamination
+        stats_contig_count
+        stats_include_novel_species
+        stats_include_derived_samples
+        stats_minimum_genomes_per_species
+        stats_genus
+        stats_starting_species
+        stats_species
+    Examples:
+      >>> parser = GtdbSpreadsheetParser(
+          gtdb_metadata_spreadsheet="metadata.tsv",
+          checkm_completeness=0.5,
+          checkm_contamination=0.1,
+          max_contigs=1000,
+          include_derived_samples=True,
+          include_novel_species=True,
+          minimum_genomes_per_species=2,
+          species_taxon_output_filename="species_taxon.tsv",
+          genome_assembly_metadata_output_filename="genome_assembly_metadata.tsv",
+          accessions_output_filename="accessions.tsv",
+          debug=False,
+          verbose=True
+      )
+    """
         self.gtdb_metadata_spreadsheet = gtdb_metadata_spreadsheet
         self.checkm_completeness = checkm_completeness
         self.checkm_contamination = checkm_contamination
@@ -59,6 +118,16 @@ class GtdbSpreadsheetParser:
         self.stats_species = 0
 
     def filter_input_spreadsheet(self, input_spreadsheet_df):
+        """
+    Filters a given spreadsheet to only include genomes with a checkm completeness of x% or greater, a checkm contamination of x% or less, and below the maximum number of contigs.
+    Args:
+      input_spreadsheet_df (DataFrame): The input spreadsheet to filter.
+    Returns:
+      DataFrame: The filtered spreadsheet.
+    Examples:
+      >>> filter_input_spreadsheet(input_spreadsheet_df)
+      Filtered spreadsheet
+    """
         initial_samples = len(input_spreadsheet_df.index)
         # filter spreadsheet to only include genomes with a checkm completeness of x% or greater
         input_spreadsheet_df = input_spreadsheet_df[input_spreadsheet_df['checkm_completeness'] >= self.checkm_completeness]
@@ -84,6 +153,16 @@ class GtdbSpreadsheetParser:
         return input_spreadsheet_df
 
     def generate_spreadsheets(self):
+        """
+    Generates spreadsheets for storing the species taxons and accessions.
+    Args:
+      None
+    Returns:
+      None
+    Examples:
+      >>> generate_spreadsheets()
+      Generates spreadsheets
+    """
         # This is a massive spreadsheet with all the GTDB metadata
         input_spreadsheet_df = self.read_in_gtdb_spreadsheet()
         accessions_spreadsheet_df = self.generate_accessions_df()
@@ -141,6 +220,16 @@ class GtdbSpreadsheetParser:
 
     # create a dataframe for storing the species taxons with the following columns: species_taxid,name,rank,parent_taxid,ncbi_taxid,gambit_taxid
     def generate_species_taxon_df(self):
+        """
+    Creates a dataframe for storing the species taxons with the following columns: species_taxid,name,rank,parent_taxid,ncbi_taxid,gambit_taxid.
+    Args:
+      None
+    Returns:
+      DataFrame: A dataframe for storing the species taxons.
+    Examples:
+      >>> generate_species_taxon_df()
+      Species taxon dataframe
+    """
         self.logger.debug("generate_species_taxon_df")
 
         # Create a new pandas dataframe with the following columns: species_taxid,name,rank,parent_taxid,ncbi_taxid,gambit_taxid
@@ -148,18 +237,49 @@ class GtdbSpreadsheetParser:
         return species_taxon_spreadsheet
 
     def create_mock_taxon_ids_for_species(self, species_list):
+        """
+    Creates a dictionary with each species name as the key and an incremented integer, starting at 1, as the value.
+    Args:
+      species_list (list): A list of species names.
+    Returns:
+      dict: A dictionary with each species name as the key and an incremented integer, starting at 1, as the value.
+    Examples:
+      >>> create_mock_taxon_ids_for_species(species_list)
+      {'species1': 1, 'species2': 2, ...}
+    """
         unique_species_names = self.get_unique_species(species_list) 
         # create a dictionary with each species name as the key and an incremented integer, starting at 1, as the value
         species_taxon_ids = {species: i for i, species in enumerate(unique_species_names, 1)}
         return species_taxon_ids
     
     def create_mock_taxon_ids_for_genus(self, genus_list, offset):
+        """
+    Creates a dictionary with each genus name as the key and an incremented integer, starting at 1, as the value.
+    Args:
+      genus_list (list): A list of genus names.
+      offset (int): The offset to start the incremented integer from.
+    Returns:
+      dict: A dictionary with each genus name as the key and an incremented integer, starting at the given offset, as the value.
+    Examples:
+      >>> create_mock_taxon_ids_for_genus(genus_list, 10)
+      {'genus1': 10, 'genus2': 11, ...}
+    """
         unique_genus_names = self.get_unique_genus(genus_list) 
         # create a dictionary with each genus name as the key and an incremented integer, starting at 1, as the value
         genus_taxon_ids = {genus: i + offset for i, genus in enumerate(unique_genus_names, 1)}
         return genus_taxon_ids
     
     def get_unique_genus(self, genus_list):
+        """
+    Given a list of genus names in a dataframe column, return a list of unique genus names.
+    Args:
+      genus_list (list): A list of genus names.
+    Returns:
+      list: A list of unique genus names.
+    Examples:
+      >>> get_unique_genus(genus_list)
+      ['genus1', 'genus2', ...]
+    """
         self.logger.debug("get_unique_genus")
 
         # remove any empty values from the list
@@ -172,6 +292,16 @@ class GtdbSpreadsheetParser:
 
     # Given a list of species names in a dataframe column, return a list of unique species names
     def get_unique_species(self, species_list):
+        """
+    Given a list of species names in a dataframe column, return a list of unique species names.
+    Args:
+      species_list (list): A list of species names.
+    Returns:
+      list: A list of unique species names.
+    Examples:
+      >>> get_unique_species(species_list)
+      ['species1', 'species2', ...]
+    """
         self.logger.debug("get_unique_species")
 
         # remove any empty values from the list
@@ -184,6 +314,16 @@ class GtdbSpreadsheetParser:
 
     # create a new spreadsheet with the following columns: uuid,species_taxid,assembly_accession
     def generate_accessions_df(self):
+        """
+    Creates a new spreadsheet with the following columns: uuid,species_taxid,assembly_accession.
+    Args:
+      None
+    Returns:
+      DataFrame: A new spreadsheet with the given columns.
+    Examples:
+      >>> generate_accessions_df()
+      Accessions dataframe
+    """
         self.logger.debug("generate_accessions_df")
 
         # Create a new pandas dataframe with the following columns: uuid,species_taxid,assembly_accession
@@ -192,6 +332,19 @@ class GtdbSpreadsheetParser:
 
     # This will read in a TSV file and return the contents as a pandas DataFrame
     def read_in_gtdb_spreadsheet(self):
+        """
+    Reads in a TSV file and returns the contents as a pandas DataFrame.
+    Args:
+      self (GtdbSpreadsheetParser): The GtdbSpreadsheetParser object.
+    Returns:
+      pandas.DataFrame: The contents of the TSV file.
+    Side Effects:
+      Updates the 'accession' column to remove the database prefixes.
+      Creates a new column called 'species' which is formed from the 'gtdb_taxonomy' column.
+    Examples:
+      >>> parser = GtdbSpreadsheetParser()
+      >>> spreadsheet = parser.read_in_gtdb_spreadsheet()
+    """
         self.logger.debug("read_in_gtdb_spreadsheet")
 
         # Read in the GTDB spreadsheet
@@ -213,6 +366,26 @@ class GtdbSpreadsheetParser:
 
     # move this functionality to a separate class
     def print_summary_statistics(self):
+        """
+    Prints summary statistics.
+    Args:
+      self (GtdbSpreadsheetParser): The GtdbSpreadsheetParser object.
+    Side Effects:
+      Prints summary statistics to the console.
+    Examples:
+      >>> parser = GtdbSpreadsheetParser()
+      >>> parser.print_summary_statistics()
+      Starting Assemblies:    <number>
+      After checkm_completeness:    <number>
+      After checkm_contamination:    <number>
+      After contig_count:    <number>
+      After include_novel_species:    <number>
+      After include_derived_samples:    <number>
+      After removing species with low numbers of genomes:    <number>
+      No. Genus:    <number>
+      Starting species:    <number>
+      Final Species:    <number>
+    """
         print("Starting Assemblies:\t" + str(self.starting_assemblies))
         print("After checkm_completeness:\t" + str(self.stats_checkm_completeness))
         print("After checkm_contamination:\t" + str(self.stats_checkm_contamination))

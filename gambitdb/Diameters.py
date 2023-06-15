@@ -4,7 +4,22 @@ import numpy
 import pandas
 
 class Diameters:
+    """
+    A class which will take in the pairwise distance file, accessions, and species taxon data and calculate diameters and minimums.
+    """
     def __init__(self, genome_assembly_metadata, pairwise_distances_filename, species_taxon_filename, species_taxon_output_filename, min_inter_output_filename, verbose):
+        """
+    Initializes the Diameters class.
+    Args:
+      genome_assembly_metadata (str): The path to the genome assembly metadata file.
+      pairwise_distances_filename (str): The path to the pairwise distances file.
+      species_taxon_filename (str): The path to the species taxon file.
+      species_taxon_output_filename (str): The path to the species taxon output file.
+      min_inter_output_filename (str): The path to the min inter output file.
+      verbose (bool): Whether to print debug messages.
+    Side Effects:
+      Sets the logger level to DEBUG if verbose is True, otherwise sets it to ERROR.
+    """
         self.logger = logging.getLogger(__name__)
 
         # input files
@@ -23,6 +38,11 @@ class Diameters:
             self.logger.setLevel(logging.ERROR)
 
     def read_files(self):
+        """
+    Reads in the genome assembly filenames with path, species taxon file, and pairwise distances file.
+    Returns:
+      tuple: A tuple containing the genome metadata, species, and pairwise distances dataframes.
+    """
         # Read in the genome assembly filenames with path
         genome_metadata = pandas.read_csv(self.genome_assembly_metadata)
         # sort the genome_metadata dataframe by assembly_accession
@@ -42,6 +62,11 @@ class Diameters:
         return genome_metadata, species, pairwise_distances
 
     def calculate_diameters(self):
+        """
+    Calculates the diameters and minimums.
+    Side Effects:
+      Writes out the species taxon table and min inter output files.
+    """
         self.logger.debug('calculate_diameters')
         genome_metadata, species, pairwise_distances = self.read_files()
 
@@ -79,6 +104,13 @@ class Diameters:
         species.to_csv(self.species_taxon_output_filename)
 
     def create_mock_genus_rows(self, species):
+        """
+    Creates mock genus rows for the species taxon table.
+    Args:
+      species (pandas.DataFrame): The species taxon dataframe.
+    Returns:
+      pandas.DataFrame: The species taxon dataframe with mock genus rows.
+    """
         self.logger.debug('add_parent_ids')
 
         # Get all unique parent_taxids
@@ -114,6 +146,25 @@ class Diameters:
 
     # Calculate the diameters and minimums
     def calculate_thresholds(self, number_of_species, species_genomes, pairwise_distances):
+        """
+    Calculates the diameters and minimums for a given set of species.
+    Args:
+      number_of_species (int): The number of species in the dataset.
+      species_genomes (dict): A dictionary of species taxon and assembly accessions.
+      pairwise_distances (pandas.DataFrame): A dataframe of pairwise distances.
+    Returns:
+      tuple: A tuple containing the diameters, minimums, and number of genomes for each species.
+    Examples:
+      >>> diameters, min_inter, ngenomes = Diameters.calculate_thresholds(number_of_species, species_genomes, pairwise_distances)
+      >>> diameters
+      array([0.1, 0.2, 0.3])
+      >>> min_inter
+      array([[0.1, 0.2, 0.3],
+             [0.2, 0.1, 0.4],
+             [0.3, 0.4, 0.1]])
+      >>> ngenomes
+      array([2, 3, 4])
+    """
         self.logger.debug('calculate_thresholds')   
         # initalise the diameters and minimums, these get returned at the end
         diameters = numpy.zeros(number_of_species)

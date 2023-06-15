@@ -8,10 +8,27 @@ test_modules_dir = os.path.dirname(os.path.realpath(__file__))
 data_dir = os.path.join(test_modules_dir, 'data','diameters')
 
 class TestDiameters(unittest.TestCase):
+    """
+    Test class for the Diameters class.
+    """
     
     # Theres a standard method to do this but cant remember the name
     # Compare the contents of two files, if different, print the diff
     def comp_files(self, file1, file2):
+        """
+    Compares the contents of two files, if different, prints the diff.
+    Args:
+      file1 (str): Path to the first file.
+      file2 (str): Path to the second file.
+    Returns:
+      bool: True if the files are the same, False if they are different.
+    Side Effects:
+      Prints the diff of the two files if they are different.
+    Examples:
+      >>> TestDiameters.comp_files('file1.txt', 'file2.txt')
+      The files are different. The following lines are different:
+      <diff lines>
+    """
         result = filecmp.cmp(file1, file2)
 
         if result:
@@ -25,6 +42,18 @@ class TestDiameters(unittest.TestCase):
             return False
 
     def test_generating_diameters(self):
+        """
+    Tests the Diameters class's calculate_diameters method.
+    Args:
+      None
+    Returns:
+      None
+    Side Effects:
+      Creates output files in the data/diameters directory.
+    Examples:
+      >>> TestDiameters.test_generating_diameters()
+      None
+    """
         self.cleanup()
         d = Diameters(os.path.join(data_dir, 'assembly_metadata.csv'), 
                       os.path.join(data_dir, 'pairwise_dist.csv'), 
@@ -42,6 +71,16 @@ class TestDiameters(unittest.TestCase):
 
 
     def test_calc_thresholds_no_genomes(self):
+        """
+    Tests the Diameters class's calculate_thresholds method when there are no genomes.
+    Args:
+      None
+    Returns:
+      None
+    Examples:
+      >>> TestDiameters.test_calc_thresholds_no_genomes()
+      None
+    """
         self.cleanup()
         d = Diameters(os.path.join(data_dir, 'assembly_metadata.csv'), 
                       os.path.join(data_dir, 'pairwise_dist.csv'), 
@@ -64,6 +103,18 @@ class TestDiameters(unittest.TestCase):
         self.assertEqual(diameters.shape[0], 4)
         
     def cleanup(self):
+        """
+    Removes output files from the data/diameters directory.
+    Args:
+      None
+    Returns:
+      None
+    Side Effects:
+      Removes output files from the data/diameters directory.
+    Examples:
+      >>> TestDiameters.cleanup()
+      None
+    """
         for f in ['output_species.csv', 'output_min_inter.csv']:
             if os.path.exists(os.path.join(data_dir, f)):
                 os.remove(os.path.join(data_dir, f))

@@ -8,7 +8,22 @@ test_modules_dir = os.path.dirname(os.path.realpath(__file__))
 data_dir = os.path.join(test_modules_dir, 'data','curate')
 
 class TestCurate(unittest.TestCase):
+    """
+    Tests for the Curate class.
+    """
     def test_remove_species_with_zero_diameter(self):
+        """
+    Tests the remove_species_with_zero_diameter method of the Curate class.
+    Args:
+      None
+    Returns:
+      None
+    Side Effects:
+      Sets c.species_taxonids_removed and c.species_removed.
+    Examples:
+      >>> test_remove_species_with_zero_diameter()
+      None
+    """
         c = Curate( None, None, None, None, None, None, None, None, None, None, None, 1, 0.99, 0.7, 1, False, False)
         species = pandas.read_csv(os.path.join(data_dir, 'species.csv'), index_col=False)
         species = species.set_index('species_taxid')
@@ -24,6 +39,18 @@ class TestCurate(unittest.TestCase):
 
 
     def test_remove_species_with_fewer_than_n_genomes(self):
+        """
+    Tests the remove_species_with_fewer_than_n_genomes method of the Curate class.
+    Args:
+      None
+    Returns:
+      None
+    Side Effects:
+      Sets c.species_taxonids_removed and c.species_removed.
+    Examples:
+      >>> test_remove_species_with_fewer_than_n_genomes()
+      None
+    """
         c = Curate( None, None, None, None, None, None, None, None, None, None, 1, 1, 0.99, 0.7, 1, False, False)
         species = pandas.read_csv(os.path.join(data_dir, 'species.csv'), index_col=False)
         species = species.set_index('species_taxid')
@@ -38,6 +65,18 @@ class TestCurate(unittest.TestCase):
         self.assertEqual(c.species_removed,['G2','G3'])
 
     def test_remove_species_using_input_file(self):
+        """
+    Tests the remove_species_using_input_file method of the Curate class.
+    Args:
+      None
+    Returns:
+      None
+    Side Effects:
+      Sets c.species_taxonids_removed and c.species_removed.
+    Examples:
+      >>> test_remove_species_using_input_file()
+      None
+    """
         c = Curate( None, None, None, None, os.path.join(data_dir, 'species_to_remove'), None, None, None, None, None, None, 1, 0.99, 0.7, 1, False, False)
         species = pandas.read_csv(os.path.join(data_dir, 'species.csv'), index_col=False)
         species = species.set_index('species_taxid')
@@ -49,6 +88,18 @@ class TestCurate(unittest.TestCase):
         self.assertEqual(c.species_removed,['Orange teal','G2'])
 
     def test_remove_accessions_using_input_file(self):
+        """
+    Tests the remove_accessions_using_input_file method of the Curate class.
+    Args:
+      None
+    Returns:
+      None
+    Side Effects:
+      Sets c.accessions_removed.
+    Examples:
+      >>> test_remove_accessions_using_input_file()
+      None
+    """
         c = Curate( None, None, None, None, None, os.path.join(data_dir, 'accessions_to_remove'), None, None, None, None, None, 1, 0.99, 0.7, 1, False, False)
         accessions = pandas.read_csv(os.path.join(data_dir, 'assembly_metadata.csv'), index_col=False)
         accessions = accessions.set_index('assembly_accession')
@@ -62,6 +113,17 @@ class TestCurate(unittest.TestCase):
         self.assertEqual(c.accessions_removed, ['C789'])
 
     def test_real_dataset(self):
+        """
+    Tests the Curate class with a real dataset.
+    Args:
+      None
+    Returns:
+      None
+    Side Effects:
+      Creates and removes files in the data_dir.
+    Examples:
+      >>> test_real_dataset()
+    """
         self.cleanup()
         c = Curate( os.path.join(data_dir, 'ec_species'),
                     os.path.join(data_dir, 'ec_genome_assembly'),
@@ -86,6 +148,17 @@ class TestCurate(unittest.TestCase):
         self.cleanup()
 
     def test_filter_files(self):
+        """
+    Tests the Curate class with a filter files.
+    Args:
+      None
+    Returns:
+      None
+    Side Effects:
+      Creates and removes files in the data_dir.
+    Examples:
+      >>> test_filter_files()
+    """
         self.cleanup()
         c = Curate( os.path.join(data_dir, 'species.csv'), 
                     os.path.join(data_dir, 'assembly_metadata.csv'), 
@@ -108,12 +181,33 @@ class TestCurate(unittest.TestCase):
 
     # method to return the number of lines in a file
     def file_len(self, fname):
+        """
+    Returns the number of lines in a file.
+    Args:
+      fname (str): The path to the file.
+    Returns:
+      int: The number of lines in the file.
+    Examples:
+      >>> file_len('data/curate/species.csv')
+      18
+    """
         with open(fname) as f:
             for i, l in enumerate(f):
                 pass
         return i + 1
 
     def cleanup(self):
+        """
+    Removes files in the data_dir.
+    Args:
+      None
+    Returns:
+      None
+    Side Effects:
+      Removes files in the data_dir.
+    Examples:
+      >>> cleanup()
+    """
         for f in ['species_taxon_output.csv', 'assembly_metadata_output.csv', 'accessions_removed', 'species_removed']:
             if os.path.exists(os.path.join(data_dir, f)):
                 os.remove(os.path.join(data_dir, f))

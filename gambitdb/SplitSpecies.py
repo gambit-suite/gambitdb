@@ -11,7 +11,29 @@ from scipy.spatial.distance import squareform
 import numpy as np
 
 class SplitSpecies:
+    """
+    A class which will take in a species with a high diameter and split clusters into sub clusters.
+    Args:
+      species (DataFrame): The species table.
+      genome_assembly_metadata (DataFrame): The genome assemblies metadata.
+      pairwise_distances_filename (str): The pairwise table.
+      accessions_removed (list): List of accessions removed.
+      maximum_diameter (float): Maximum diameter of a species.
+      minimum_cluster_size (int): Minimum size of a cluster.
+      verbose (bool): Verbosity of the logger.
+    """
     def __init__(self, species, genome_assembly_metadata, pairwise_distances_filename, accessions_removed, maximum_diameter, minimum_cluster_size, verbose):
+        """
+    Initializes the SplitSpecies class.
+    Args:
+      species (DataFrame): The species table.
+      genome_assembly_metadata (DataFrame): The genome assemblies metadata.
+      pairwise_distances_filename (str): The pairwise table.
+      accessions_removed (list): List of accessions removed.
+      maximum_diameter (float): Maximum diameter of a species.
+      minimum_cluster_size (int): Minimum size of a cluster.
+      verbose (bool): Verbosity of the logger.
+    """
         self.logger = logging.getLogger(__name__)
         self.species = species
         self.genome_assembly_metadata = genome_assembly_metadata
@@ -28,6 +50,13 @@ class SplitSpecies:
 
     # Main method for this class which drives everything else.
     def split_high_diameter_species(self):
+        """
+    Main method for this class which drives everything else.
+    Returns:
+      species (DataFrame): The species table.
+      genome_metadata (DataFrame): The genome assemblies metadata.
+      accessions_removed (list): List of accessions removed.
+    """
         species, genome_metadata, pairwise_distances = self.read_input_files()
         high_diameter_species = self.filter_high_diameter_species(species)
 
@@ -46,6 +75,13 @@ class SplitSpecies:
         return species, genome_metadata, self.accessions_removed
     
     def filter_high_diameter_species(self, species):
+        """
+    Identifies all species with a diameter of > 0.7.
+    Args:
+      species (DataFrame): The species table.
+    Returns:
+      DataFrame: High diameter species.
+    """
         # identify all species with a diameter of > 0.7
         high_diameter_species = species[species['diameter'] > self.maximum_diameter]
         self.logger.debug('filter_high_diameter_species: high_diameter_species size: %s' % high_diameter_species.shape[0])
@@ -53,6 +89,17 @@ class SplitSpecies:
     
     # take a single species, get corresponding genome assembly metadata and a pairwise distance matrix of that species.
     def split_single_high_diameter_species_into_subspecies(self, single_species, genome_metadata, pairwise_distances):
+        """
+    Takes a single species, gets corresponding genome assembly metadata and a pairwise distance matrix of that species.
+    Args:
+      single_species (tuple): Single species.
+      genome_metadata (DataFrame): The genome assemblies metadata.
+      pairwise_distances (DataFrame): The pairwise table.
+    Returns:
+      subspecies (DataFrame): Subspecies.
+      genome_metadata (DataFrame): The genome assemblies metadata.
+      single_species (tuple): Single species.
+    """
         # get the genome assembly accessions for this species
         genome_accessions = genome_metadata[genome_metadata['species_taxid'] == single_species[0]]
         # get the pairwise distance matrix for this species and make sure the rows and columns are sorted the same
@@ -82,6 +129,17 @@ class SplitSpecies:
         return subspecies, genome_metadata, single_species 
 
     def calculate_diameters_subspecies(self, subspecies, genome_metadata, pairwise_distances):
+        """
+    Calculates the diameters of subspecies.
+    Args:
+      subspecies (DataFrame): A DataFrame containing the subspecies.
+      genome_metadata (DataFrame): A DataFrame containing the genome metadata.
+      pairwise_distances (DataFrame): A DataFrame containing the pairwise distances.
+    Returns:
+      DataFrame: The updated subspecies DataFrame with diameters and number of genomes calculated.
+    Examples:
+      >>> calculate_diameters_subspecies(subspecies, genome_metadata, pairwise_distances)
+    """
         self.logger.debug('calculate_diameters_subspecies')   
 
         for cluster in genome_metadata.groupby('species'):
@@ -98,6 +156,17 @@ class SplitSpecies:
 
     # Take in the clusters and create subpecies from them, copying the single_species and adding 'subspecies X' where X is an integer and setting report to 0
     def create_subspecies_from_clusters(self, clusters, single_species, genome_metadata):
+        """
+    Creates subspecies from clusters.
+    Args:
+      clusters (DataFrame): A DataFrame containing the clusters.
+      single_species (DataFrame): A DataFrame containing the single species.
+      genome_metadata (DataFrame): A DataFrame containing the genome metadata.
+    Returns:
+      (DataFrame, DataFrame, DataFrame): A tuple containing the subspecies DataFrame, the updated genome_metadata DataFrame, and the updated single_species DataFrame.
+    Examples:
+      >>> create_subspecies_from_clusters(clusters, single_species, genome_metadata)
+    """
         # get the attribute names from the single_species dataframe row and use these to create a new dataframe with the columns populated
         new_subspecies_list = []
         
@@ -120,6 +189,18 @@ class SplitSpecies:
         return subspecies, genome_metadata, single_species
     
     def save_small_clusters_accessions_removed(self, small_clusters, single_species):
+        """
+    Saves the accessions of small clusters to a file.
+    Args:
+      small_clusters (DataFrame): A DataFrame containing the small clusters.
+      single_species (DataFrame): A DataFrame containing the single species.
+    Returns:
+      None
+    Side Effects:
+      Updates the accessions_removed attribute.
+    Examples:
+      >>> save_small_clusters_accessions_removed(small_clusters, single_species)
+    """
         # save the accessions of the small clusters to a file
         small_clusters_accessions = small_clusters['assembly_accession'].tolist()
         self.accessions_removed = self.accessions_removed + small_clusters_accessions
@@ -127,12 +208,30 @@ class SplitSpecies:
         self.logger.debug('Remove small clusters: '  + str(single_species[0]) + '\t' + str(small_clusters_accessions))
 
     def remove_clusters_with_too_few_genomes(self, clusters):
+        """
+    Removes clusters with too few genomes.
+    Args:
+      clusters (DataFrame): A DataFrame containing the clusters.
+    Returns:
+      (DataFrame, DataFrame): A tuple containing the small_clusters DataFrame and the updated clusters DataFrame.
+    Examples:
+      >>> remove_clusters_with_too_few_genomes(clusters)
+    """
         # remove clusters with <=X genomes per cluster
         clusters = clusters.groupby('cluster_identity').filter(lambda x: len(x) > self.minimum_cluster_size)
         small_clusters = clusters.groupby('cluster_identity').filter(lambda x: len(x) <= self.minimum_cluster_size)
         return small_clusters, clusters
 
     def calculate_linkage_matrix(self, pairwise_distances):
+        """
+    Calculates the linkage matrix.
+    Args:
+      pairwise_distances (DataFrame): A DataFrame containing the pairwise distances.
+    Returns:
+      ndarray: The linkage matrix.
+    Examples:
+      >>> calculate_linkage_matrix(pairwise_distances)
+    """
         # reindex pw-distance matrix
         data_mat = pairwise_distances.to_numpy()
         dists = squareform(data_mat)
@@ -140,11 +239,30 @@ class SplitSpecies:
         return linkage_matrix
 
     def get_cluster_identity(self, linkage_matrix):
+        """
+    Gets the cluster identity.
+    Args:
+      linkage_matrix (ndarray): The linkage matrix.
+    Returns:
+      ndarray: The cluster identity.
+    Examples:
+      >>> get_cluster_identity(linkage_matrix)
+    """
         # get cluster list based on threshold
         cluster_identity = fcluster(linkage_matrix,t=0.45,criterion='distance')
         return cluster_identity
     
     def get_clusters(self, cluster_identity, pairwise_distances_single):
+        """
+    Gets the clusters.
+    Args:
+      cluster_identity (ndarray): The cluster identity.
+      pairwise_distances_single (DataFrame): A DataFrame containing the pairwise distances for a single species.
+    Returns:
+      DataFrame: The clusters DataFrame.
+    Examples:
+      >>> get_clusters(cluster_identity, pairwise_distances_single)
+    """
         # get the clusters
         clusters = pd.DataFrame(np.array(cluster_identity),columns=['cluster_identity'])
         # add in the accession numbers so that you can link the clusters to genomes
@@ -152,6 +270,17 @@ class SplitSpecies:
         return clusters
 
     def read_input_files(self):
+        """
+    Reads in the input files.
+    Args:
+      None
+    Returns:
+      (DataFrame, DataFrame, DataFrame): A tuple containing the species DataFrame, the genome_assembly_metadata DataFrame, and the pairwise_distances DataFrame.
+    Side Effects:
+      Updates the logger attribute.
+    Examples:
+      >>> read_input_files()
+    """
         # Read in the pairwise distances file
         pairwise_distances = pd.read_csv(self.pairwise_distances_filename, index_col=0)
         # Make sure the columns and rows are sorted

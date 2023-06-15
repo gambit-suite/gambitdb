@@ -7,8 +7,25 @@ test_modules_dir = os.path.dirname(os.path.realpath(__file__))
 data_dir = os.path.join(test_modules_dir, 'data','gtdb_spreadsheet_parser')
 
 class TestGtdbSpreadsheetParser(unittest.TestCase):
+    """
+    Test class for GtdbSpreadsheetParser.
+    """
 
     def comp_files(self, file1, file2):
+        """
+    Compares two files and prints out the differences.
+    Args:
+      file1 (str): Path to the first file.
+      file2 (str): Path to the second file.
+    Returns:
+      bool: True if the files are the same, False otherwise.
+    Side Effects:
+      Prints out the differences between the two files.
+    Examples:
+      >>> comp_files('file1.txt', 'file2.txt')
+      The files are different. The following lines are different:
+      <differences>
+    """
         result = filecmp.cmp(file1, file2)
 
         if result:
@@ -22,6 +39,18 @@ class TestGtdbSpreadsheetParser(unittest.TestCase):
             return False    
     
     def test_generating_signatures(self):
+        """
+    Tests the generation of spreadsheets from a GTDB metadata file.
+    Args:
+      None
+    Returns:
+      None
+    Side Effects:
+      Generates 3 spreadsheets in the data directory.
+    Examples:
+      >>> test_generating_signatures()
+      <No output>
+    """
         self.cleanup()
         g = GtdbSpreadsheetParser(os.path.join(data_dir, 'bac120_metadata_r214'),
                                     95,
@@ -48,6 +77,18 @@ class TestGtdbSpreadsheetParser(unittest.TestCase):
         self.cleanup()
 
     def cleanup(self):
+        """
+    Removes the generated spreadsheets from the data directory.
+    Args:
+      None
+    Returns:
+      None
+    Side Effects:
+      Removes 3 spreadsheets from the data directory.
+    Examples:
+      >>> cleanup()
+      <No output>
+    """
         for f in ['output_genome_metadata.csv', 'output_species.csv', 'output_accessions_to_download.csv']:
             if os.path.exists(os.path.join(data_dir, f)):
                 os.remove(os.path.join(data_dir, f))

@@ -3,6 +3,16 @@ import glob
 from setuptools import setup, find_packages
 
 def read(fname):
+    """
+    Reads a file.
+    Args:
+      fname (str): The name of the file to read.
+    Returns:
+      str: The contents of the file.
+    Examples:
+      >>> read('README.md')
+      'This is the contents of the README.md file.'
+    """
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 version = 'x.y.z'
