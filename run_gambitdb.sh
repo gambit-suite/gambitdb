@@ -29,7 +29,7 @@ cd ~/code/gambitdb/
 ./scripts/gambitdb -v --cpus $CORES -d $BASEDIR/intermediate_files $BASEDIR/fasta $BASEDIR/assembly_metadata.csv $BASEDIR/species_taxa.csv
 ./scripts/gambit-create --database_output_filename $BASEDIR/final/database.gdb --signatures_output_filename $BASEDIR/final/database.gs $BASEDIR/intermediate_files/genome_assembly_metadata.csv $BASEDIR/intermediate_files/species_taxon.csv $BASEDIR/intermediate_files/database.gs
 ls $BASEDIR/fasta > $BASEDIR/intermediate_files/assembly_filenames.txt
-gambit -d $BASEDIR/final query -c $CORES  -l $BASEDIR/intermediate_files/assembly_filenames.txt -ldir $BASEDIR/intermediate_files  -o $BASEDIR/results.csv
+gambit -d $BASEDIR/final query -c $CORES  -l $BASEDIR/intermediate_files/assembly_filenames.txt --ldir $BASEDIR/fasta  -o $BASEDIR/results.csv
 
 ./scripts/gambitdb-database-recall -o $BASEDIR/recall_results.txt $BASEDIR/intermediate_files/genome_assembly_metadata.csv $BASEDIR/results.csv
 
