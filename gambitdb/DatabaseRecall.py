@@ -82,7 +82,7 @@ class DatabaseRecall:
             incorrect = joined['correct'].value_counts()[False]
 
         # Print the number of correct and incorrect predictions
-        print('Indentical predictions: ' + str(correct))
+        print('Identical predictions: ' + str(correct))
         # Calculate the percentage of correct predictions
         percentage_correct = correct/(num_samples)*100
         # Print the percentage of correct predictions
@@ -90,3 +90,10 @@ class DatabaseRecall:
 
         output_df = joined[['species', 'predicted.name', 'assembly_accession']]
         output_df.to_csv(self.output_filename, index=False)
+
+        # select rows where correct is True
+        incorrect_df = joined[joined['correct'] == False]
+        incorrect_df = incorrect_df[['species', 'predicted.name', 'assembly_accession']]
+        # sort by species
+        incorrect_df = incorrect_df.sort_values(by=['species'])
+        incorrect_df.to_csv(self.output_filename + '.differences.csv', index=False)

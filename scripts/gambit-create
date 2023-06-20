@@ -88,10 +88,21 @@ gset = ReferenceGenomeSet(
 session.add(gset)
 session.commit()
 
+# At this point the taxon 'id' hasnt been set, but we will assume they are inserted in order (+1)
+taxon_ids = taxa_df[taxa_df['species_taxid'] != taxa_df['parent_taxid'] ]['species_taxid'].tolist()
+taxon_index = dict()
+for i in range(len(taxon_ids)):
+    # add 1 because the sql rows start from 1 not 0
+    taxon_index[taxon_ids[i]] = i + 1
+
 #### Taxa
 taxa = dict()
 
 for row in taxa_df.itertuples():
+    parent_taxa_db_id = ""
+    if row.parent_taxid != 1 and row.parent_taxid in taxon_index:
+        parent_taxa_db_id = taxon_index[row.parent_taxid]
+
     taxon = Taxon(
         key=str(uuid.uuid4()),
         name=row.name,
@@ -101,13 +112,16 @@ for row in taxa_df.itertuples():
         # if 1, GAMBIT will assign samples to this taxa, set subspecies to 0
         report=(0 if row.report == "" or row.report == 0 else 1), 
         genome_set=gset,
-        parent_id=("" if row.parent_taxid == 0 else row.parent_taxid), 
+        parent_id=parent_taxa_db_id, 
         ncbi_id=row.ncbi_taxid,
     )
     taxa[row.name] = taxon
     session.add(taxon)
     
 session.commit()
+
+
+
 
 # ### Genomes
 for row in genomes_df.itertuples():
