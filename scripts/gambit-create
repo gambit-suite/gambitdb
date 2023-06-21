@@ -99,7 +99,7 @@ for i in range(len(taxon_ids)):
 taxa = dict()
 
 for row in taxa_df.itertuples():
-    parent_taxa_db_id = ""
+    parent_taxa_db_id = None
     if row.parent_taxid != 1 and row.parent_taxid in taxon_index:
         parent_taxa_db_id = taxon_index[row.parent_taxid]
 

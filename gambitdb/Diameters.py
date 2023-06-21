@@ -123,6 +123,11 @@ class Diameters:
         # create a dictionary of parent_taxid: genus_name
         parent_taxid_genus_name = dict(zip(species_names.parent_taxid, species_names.genus_name))
 
+        # Group the species by parent_taxid and get the maximum diameter for each parent_taxid
+        parent_taxid_diameters = species.groupby('parent_taxid')['diameter'].max()
+        # create a dictionary where the key is the parent_taxid and the value is the diameter
+        parent_taxid_diameters_dict = parent_taxid_diameters.to_dict()
+        
         genus_list = []
         # loop over the parent_taxids and add them to the parent_ids dataframe
         for parent_taxid in parent_taxids:
@@ -130,7 +135,7 @@ class Diameters:
             if parent_taxid in species_taxids:
                 continue
             genus_name = parent_taxid_genus_name[parent_taxid]
-            genus_list.append([parent_taxid, genus_name, 'genus', '', parent_taxid, parent_taxid, 0, 0,0])
+            genus_list.append([parent_taxid, genus_name, 'genus', '', parent_taxid, parent_taxid, parent_taxid_diameters_dict[parent_taxid], 0,1])
             
         df_extended = pandas.DataFrame(genus_list, columns=['species_taxid', 
                                                             'name', 
