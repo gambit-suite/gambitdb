@@ -65,11 +65,17 @@ class DatabaseRecall:
         # Read in the gambit results file
         gambit_results = pd.read_csv(self.gambit_results_file)
         num_samples = gambit_results.shape[0]
+        
 
         # Join the two spreadsheets on the accession number
         joined = pd.merge(assembly_metadata, gambit_results, left_on='assembly_accession', right_on='query')
         # Compare the species column from the assembly_metadata spreadsheet to the predicted.name column in the gambit_results file
         joined['correct'] = joined['species'] == joined['predicted.name']
+
+        # count the number of unique species names
+        num_species = joined['species'].nunique()
+        print('Number of species: ' + str(num_species))
+        print('Number of samples: ' + str(num_samples))
 
         correct = 0
         incorrect = 0
@@ -82,11 +88,10 @@ class DatabaseRecall:
             incorrect = joined['correct'].value_counts()[False]
 
         # Print the number of correct and incorrect predictions
-        print('Identical predictions: ' + str(correct))
+
         # Calculate the percentage of correct predictions
         percentage_correct = correct/(num_samples)*100
-        # Print the percentage of correct predictions
-        print('Percentage identical: ' + str(percentage_correct) + '%')
+        print('Correct species calls: ' + str(correct) + '\t('+str((correct/num_samples)*100) + '%)')
 
         output_df = joined[['species', 'predicted.name', 'assembly_accession']]
         output_df.to_csv(self.output_filename, index=False)
@@ -97,3 +102,30 @@ class DatabaseRecall:
         # sort by species
         incorrect_df = incorrect_df.sort_values(by=['species'])
         incorrect_df.to_csv(self.output_filename + '.differences.csv', index=False)
+
+        # figure out why these calls werent made.
+        # count the number of rows in incorrect_df where the predicted.name was empty
+        no_call = incorrect_df[incorrect_df['predicted.name'].isnull()]
+        print('Number of no calls: ' + str(no_call.shape[0]) + '\t('+str((no_call.shape[0]/num_samples)*100) + '%)')
+
+        # count the number of predicted.name rows that did not contain a space and the string is a substring of the species name
+        # e.g. predicted.name = 'Legionella' and species = 'Legionella pneumophila'
+        # count the number of rows in incorrect_df where the predicted.name was empty
+        partial_call = incorrect_df[incorrect_df['predicted.name'].str.contains(' ') == False]
+        genus_only_calls = partial_call.shape[0]
+        # get the first word of the species name and add it to partial_call as a new column called actual_genus
+        partial_call['actual_genus'] = partial_call['species'].str.split(' ').str[0]
+        # count the number of rows where the predicted.name is the same as the actual_genus
+        partial_call = partial_call[partial_call['predicted.name'] == partial_call['actual_genus']]
+        
+        print('Number of genus only calls: ' + str(partial_call.shape[0]) + '\t('+str((partial_call.shape[0]/num_samples)*100) + '%)')
+        incorrect_genus = genus_only_calls - partial_call.shape[0]
+        print('Number of incorrect genus calls: ' + str(incorrect_genus) + '\t('+str((incorrect_genus/num_samples)*100) + '%)')
+
+        # count the number of incorrect species calls
+        partial_call = incorrect_df[incorrect_df['predicted.name'].str.contains(' ') == True]
+        incorrect_species = partial_call.shape[0]
+        print('Number of incorrect species calls: ' + str(incorrect_species) + '\t('+str((incorrect_species/num_samples)*100) + '%)')
+        print(partial_call)
+        
+

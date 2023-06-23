@@ -95,6 +95,7 @@ class GtdbTestset:
 
         self.assembly_to_species_df = self.assembly_to_species_df.groupby('species').head(self.max_genomes_per_species)
 
+      
         self.create_output_files()
 
     def create_output_files(self):
