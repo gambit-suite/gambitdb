@@ -84,8 +84,8 @@ class DatabaseRecall:
         if joined['correct'].any():
             correct = joined['correct'].value_counts()[True]
         
-        if not joined['correct'].any():
-            incorrect = joined['correct'].value_counts()[False]
+        #if not joined['correct'].any():
+        #    incorrect = joined['correct'].value_counts()[False]
 
         # Print the number of correct and incorrect predictions
 
@@ -98,7 +98,7 @@ class DatabaseRecall:
 
         # select rows where correct is True
         incorrect_df = joined[joined['correct'] == False]
-        incorrect_df = incorrect_df[['species', 'predicted.name', 'assembly_accession']]
+        incorrect_df = incorrect_df[['species', 'predicted.name', 'assembly_accession','next.name']]
         # sort by species
         incorrect_df = incorrect_df.sort_values(by=['species'])
         incorrect_df.to_csv(self.output_filename + '.differences.csv', index=False)
@@ -107,6 +107,15 @@ class DatabaseRecall:
         # count the number of rows in incorrect_df where the predicted.name was empty
         no_call = incorrect_df[incorrect_df['predicted.name'].isnull()]
         print('Number of no calls: ' + str(no_call.shape[0]) + '\t('+str((no_call.shape[0]/num_samples)*100) + '%)')
+        num_no_call = no_call.shape[0]
+
+        # get the first word of the species name and add it to partial_call as a new column called actual_genus
+        no_call['actual_genus'] = no_call['species'].str.split(' ').str[0]
+        # count the number of rows where the predicted.name is the same as the actual_genus
+        no_call = no_call[no_call['next.name'] == no_call['actual_genus']]
+        print('Number of no calls where genus matches in next: ' + str(no_call.shape[0]) + '\t('+str((no_call.shape[0]/num_samples)*100) + '%)')
+        incorrect_genus = num_no_call - no_call.shape[0]
+        print('Number of incorrect genus calls: ' + str(incorrect_genus) + '\t('+str((incorrect_genus/num_samples)*100) + '%)')
 
         # count the number of predicted.name rows that did not contain a space and the string is a substring of the species name
         # e.g. predicted.name = 'Legionella' and species = 'Legionella pneumophila'
