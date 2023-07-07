@@ -1,0 +1,30 @@
+#!/usr/bin/env python3
+import argparse
+import numpy as np
+
+parser = argparse.ArgumentParser(
+    description = 'Given two Gambit signatures files, merge them and return a new file.',
+    usage = 'gambit-merge-signatures [options]',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+# Required input files
+parser.add_argument('signatures_main_filename', help='A signatures .h5 file created by gambit signatures', type=str)
+parser.add_argument('signatures_patch_filename', help='A patch signatures .h5 file created by gambit signatures', type=str)
+
+# Output
+parser.add_argument('--signatures_output_filename', '-s', help='Output filename for genome signatures', default = 'merged_database.gs', type=str)
+parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
+options = parser.parse_args()
+
+
+from gambit.sigs import  load_signatures, dump_signatures, AnnotatedSignatures, SignatureList
+
+# read in the signatures files. Caution, this may take a lot of memory.
+with load_signatures(options.signatures_main_filename) as main_sig, load_signatures(options.signatures_patch_filename) as patch_sig:
+    # merge the two signatures files
+    merged_src_ids = np.concatenate((main_sig.ids, patch_sig.ids))
+    merged_src = SignatureList(main_sig)
+    merged_src.extend(patch_sig)
+    out_sigs = AnnotatedSignatures(merged_src, merged_src_ids, main_sig.meta)
+
+    dump_signatures(options.signatures_output_filename, out_sigs)

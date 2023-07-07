@@ -1,0 +1,36 @@
+#!/usr/bin/env python3
+import argparse
+import numpy as np
+
+parser = argparse.ArgumentParser(
+    description = 'Given a Gambit signatures file, remove a list of genomes from it and return a new file.',
+    usage = 'gambitdb_create [options]',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+# Required input files
+parser.add_argument('signatures_filename', help='A signatures .h5 file created by gambit signatures', type=str)
+parser.add_argument('genomes_to_remove_filename', help='One accession per line in a file', type=str)
+
+# Output
+parser.add_argument('--signatures_output_filename', '-s', help='Output filename for genome signatures', default = 'filtered_database.gs', type=str)
+parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
+options = parser.parse_args()
+
+
+# read the options.genomes_to_remove_filename file into a list
+genomes_to_remove = []
+with open(options.genomes_to_remove_filename, 'r') as f:
+    for line in f:
+        genomes_to_remove.append(line.strip())
+
+from gambit.sigs import  load_signatures, dump_signatures, AnnotatedSignatures
+
+
+# read in the signatures file, filter out the genome accessions we dont need and write a new file.
+with load_signatures(options.signatures_filename) as src:
+    in_gidxs = np.flatnonzero(~np.in1d(src.ids,genomes_to_remove))
+    filtered_src_ids = src.ids[in_gidxs]
+    filtered_src = src[in_gidxs]
+    out_sigs = AnnotatedSignatures(filtered_src, filtered_src_ids, src.meta)
+
+    dump_signatures(options.signatures_output_filename, out_sigs)

@@ -1,0 +1,44 @@
+#!/usr/bin/env python3
+
+import argparse
+import uuid
+
+parser = argparse.ArgumentParser(
+    description = 'Generate a Gambit database. Requires preprocessed input files',
+    usage = 'gambitdb_create [options]',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument('signatures_filename', help='A signatures .h5 file created by gambit signatures', type=str)
+
+# optional input values
+parser.add_argument('--db_key',  help='Unique key for database, no spaces', default = 'organisation/database', type=str)
+parser.add_argument('--db_version',  help='Unique version, x.y.z', default = '1.0.0', type=str)
+parser.add_argument('--db_author',  help='Name of person who created the database', default = 'Jane Doe', type=str)
+parser.add_argument('--db_date',  help='Date database was created as YYYY-MM-DD', default = '2022-12-31', type=str)
+
+# Optional output file names that you probably want to leave as defaults
+parser.add_argument('--signatures_output_filename', '-s', help='Output filename for genome signatures', default = 'database.gs', type=str)
+parser.add_argument('--database_output_filename', '-g', help='Output filename for core database', default = 'database.gdb', type=str)
+parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
+options = parser.parse_args()
+
+
+import pandas as pd
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+# AGPL-3.0
+from gambit.db import ReferenceGenomeSet, Genome, AnnotatedGenome, Taxon
+from gambit.db.migrate import init_db
+from gambit.sigs import SignaturesMeta, load_signatures, dump_signatures, AnnotatedSignatures
+
+
+meta = SignaturesMeta(
+    id=options.db_key,
+    version=options.db_version,
+    name=str(options.db_key)+ ' version '+ str(options.db_version) +' database',
+    description=str(options.db_key)+ ' version '+ str(options.db_version) +' database',
+    id_attr='key',
+)
+
+with load_signatures(options.signatures_filename) as src:
+    out_sigs = AnnotatedSignatures(src, src.ids, meta)
+    dump_signatures(options.signatures_output_filename, out_sigs)
