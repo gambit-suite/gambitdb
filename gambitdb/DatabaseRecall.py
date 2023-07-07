@@ -66,6 +66,8 @@ class DatabaseRecall:
         gambit_results = pd.read_csv(self.gambit_results_file)
         num_samples = gambit_results.shape[0]
         
+        # if the species name end in 'subspecies X' in assembly_metadata, replace remove it
+        assembly_metadata['species'] = assembly_metadata['species'].str.replace('subspecies.*', '')
 
         # Join the two spreadsheets on the accession number
         joined = pd.merge(assembly_metadata, gambit_results, left_on='assembly_accession', right_on='query')
