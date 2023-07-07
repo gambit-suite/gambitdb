@@ -2,6 +2,14 @@
 
 This is a tool to generate a Gambit database. Its primary input is a spreadsheet from GTDB such as this [release](https://data.gtdb.ecogenomic.org/releases/release214/214.0/bac120_metadata_r214.tar.gz).
 
+
+# Prebuilt databases
+| Name | No. species | No. genus | Files | GTDB release |
+|----------|----------|----------|----------|----------|
+| Complete genomes | 2588 | 769 | [File 1](https://storage.googleapis.com/ajp_gambit_db/gtdb_complete_20230623/gtdb_complete_20230623.gdb), [File 2](https://storage.googleapis.com/ajp_gambit_db/gtdb_complete_20230623/gtdb_complete_20230623.gs)| r214 |
+| Mycobacterium | 138 | 1 | [File 1](https://storage.googleapis.com/ajp_gambit_db/Mycobacterium_GTDB_20230707/Mycobacterium_GTDB_20230707.gdb), [File 2](https://storage.googleapis.com/ajp_gambit_db/Mycobacterium_GTDB_20230707/Mycobacterium_GTDB_20230707.gs) | r214 |
+
+
 ## Installation
 This software can be installed using pip:
 ```
@@ -16,7 +24,7 @@ Additional dependancies are:
 To run the analysis, execute the `run_gambitdb.sh` script:
 
 ```bash
-./run_gambitdb.sh /path/to/working_directory /path/to/spreadsheet.tsv num_cores
+./run_gambitdb.sh /path/to/working_directory /path/to/gtdb_spreadsheet.tsv num_cores
 ```
 
 This script will create a Gambit database from a GTDB spreadsheet. It parses the spreadsheet, downloads data with ncbi-genome-download
