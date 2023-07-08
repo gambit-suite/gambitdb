@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
+#./scripts/gambit-apply-patch --signatures_output_filename /home/a_page/data/gambit/patch/out.gs --database_output_filename /home/a_page/data/gambit/patch/out.gdb /home/a_page/data/gambit/patch/gtdb_complete_20230623.gs /home/a_page/data/gambit/patch/gtdb_complete_20230623.gdb /home/a_page/data/gambit/patch/patch.gs  /home/a_page/data/gambit/patch/patch.gdb 
 import argparse
 import numpy as np
 import sqlite3
-import os
 import shutil
+import logging
+import os
 
 parser = argparse.ArgumentParser(
     description = 'Given two Gambit signatures files, merge them and return a new file.',
@@ -23,54 +25,103 @@ parser.add_argument('--database_output_filename', '-d', help='Output filename fo
 parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
 options = parser.parse_args()
 
+# setup logging
+if options.verbose:
+    logging.basicConfig(level=logging.DEBUG)
+else:
+    logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger('PatchDB')
+
 # copy the database so we dont modify the original
+logger.debug("Copy main database to: " + options.database_output_filename)
 shutil.copy(options.database_main_filename, options.database_output_filename)
 
 # Connect to the database
-main_db_connection = sqlite3.connect(options.database_main_filename)
+main_db_connection = sqlite3.connect(options.database_output_filename)
 patch_db_connection = sqlite3.connect(options.database_patch_filename)
 
 # Retrieve patch data
-patch_genomes = [row.key for row in patch_db_connection.execute("SELECT key FROM genomes")]
-patch_taxa = [row.key for row in patch_db_connection.execute("SELECT name FROM taxa")]
+patch_genomes = [row[0] for row in patch_db_connection.execute("SELECT key FROM genomes")]
+patch_taxa = [row[0] for row in patch_db_connection.execute("SELECT name FROM taxa")]
+logger.debug("Patch contains " + str(len(patch_genomes)) + " genomes and " + str(len(patch_taxa)) + " taxa to be added")
+
+# Output the number of rows in main DB
+start_num_genomes = main_db_connection.execute("SELECT count(id) FROM genomes;").fetchone()[0]
+logger.debug("The number of genomes in the main database before deletion is " + str(start_num_genomes))
+start_num_taxa = main_db_connection.execute("SELECT count(id) FROM taxa;").fetchone()[0]
+logger.debug("The number of taxa in the main database before deletion is " + str(start_num_taxa))
 
 # Lookup main database for corresponding taxa and genomes
 # we are going to delete rows so store the ids in a list to help with manipulations (could do a lot of this in join statements)
-main_genome_id = [row.genome_id for row in main_db_connection.execute("SELECT genome_id FROM genome_annotation WHERE name IN (?)", patch_taxa)]
-main_taxon_id = [row.taxon_id for row in main_db_connection.execute("SELECT taxon_id FROM genome_annotation WHERE name IN (?)", patch_taxa)]
+main_genome_id = [row[0] for row in main_db_connection.execute("SELECT genome_id FROM genome_annotations WHERE organism IN (" + str(','.join(['?' for _ in patch_taxa]))+ ")", patch_taxa)]
+main_taxon_id = [row[0] for row in main_db_connection.execute("SELECT taxon_id FROM genome_annotations WHERE organism IN (" + str(','.join(['?' for _ in patch_taxa]))+ ")", patch_taxa)]
+logger.debug("Based on the patch taxa, the main database contains " + str(len(main_genome_id)) + " genomes and " + str(len(main_taxon_id)) + " taxa to be removed first")
 
-main_genome_accessions_to_remove = [row.key for row in main_db_connection.execute("SELECT key FROM genomes WHERE name IN (?)", main_genome_id)]
+main_genome_accessions_to_remove = [row[0] for row in main_db_connection.execute("SELECT key FROM genomes WHERE key IN (" + str(','.join(['?' for _ in main_genome_id]))+ ")", main_genome_id)]
 # merge the patch_genomes and main_genome_accessions_to_remove lists and remove duplicates
 genome_accessions_to_remove = list(set(patch_genomes + main_genome_accessions_to_remove))
 
-main_genome_ids_to_remove = [row.key for row in main_db_connection.execute("SELECT id FROM genomes WHERE name IN (?)", genome_accessions_to_remove)]
+logger.debug("The total number of genomes to remove (when including the patch genomes) is " + str(len(genome_accessions_to_remove)))
+main_genome_ids_to_remove = [row[0] for row in main_db_connection.execute("SELECT id FROM genomes WHERE key IN (" + str(','.join(['?' for _ in genome_accessions_to_remove]))+ ")", genome_accessions_to_remove)]
 
 # remove genomes and taxa from main database
-main_db_connection.execute("DELETE FROM genomes WHERE key IN (?)", main_genome_ids_to_remove)
-main_db_connection.execute("DELETE FROM genome_annotation WHERE genome_id IN (?)", main_genome_ids_to_remove)
-main_db_connection.execute("DELETE FROM genome_annotation WHERE taxon_id IN (?)", main_taxon_id)
-main_db_connection.execute("DELETE FROM taxa WHERE id IN (?)", main_taxon_id)
+logger.debug("Deleting genomes, genome_annotations and taxa from main database")
+cursor = main_db_connection.execute("DELETE FROM genomes WHERE id IN (" + str(','.join(['?' for _ in main_genome_ids_to_remove]))+ ")", main_genome_ids_to_remove)
+logger.debug("Deleted "+ str(cursor.rowcount)+ " rows from the genomes table")
+cursor = main_db_connection.execute("DELETE FROM genome_annotations WHERE genome_id IN (" + str(','.join(['?' for _ in main_genome_ids_to_remove]))+ ")", main_genome_ids_to_remove)
+logger.debug("Deleted "+ str(cursor.rowcount)+ " rows from the genome_annotations table")
+cursor = main_db_connection.execute("DELETE FROM genome_annotations WHERE taxon_id IN (" + str(','.join(['?' for _ in main_taxon_id]))+ ")", main_taxon_id)
+logger.debug("Deleted "+ str(cursor.rowcount)+ " rows from the genome_annotations table")
+cursor = main_db_connection.execute("DELETE FROM taxa WHERE id IN (" + str(','.join(['?' for _ in main_taxon_id]))+ ")", main_taxon_id)
+logger.debug("Deleted "+ str(cursor.rowcount)+ " rows from the taxa table")
+
+# Output the number of rows after deletion so that you know if it worked in verbose mode.
+post_delete_num_genomes = main_db_connection.execute("SELECT count(id) FROM genomes;").fetchone()[0]
+logger.debug("The number of genomes in the main database after deletion is " + str(post_delete_num_genomes))
+post_delete_num_taxa = main_db_connection.execute("SELECT count(id) FROM taxa;").fetchone()[0]
+logger.debug("The number of taxa in the main database after deletion is " + str(post_delete_num_taxa))
 
 # get the maximum id from the taxa table
-taxa_id_offset = main_db_connection.execute("SELECT MAX(id) FROM taxa limit 1;").fetchone()[0]
-genomes_id_offset = main_db_connection.execute("SELECT MAX(id) FROM genomes limit 1;").fetchone()[0]
+taxa_id_offset = int(main_db_connection.execute("SELECT MAX(id) FROM taxa limit 1;").fetchone()[0])
+genomes_id_offset = int(main_db_connection.execute("SELECT MAX(id) FROM genomes limit 1;").fetchone()[0])
+logger.debug("The maximum ID in the main taxa table is " + str(taxa_id_offset) + " and this will be added to every taxa ID from the patch database")
+logger.debug("The maximum ID in the main genomes table is " + str(genomes_id_offset) + " and this will be added to every genome ID from the patch database")
 
 # select all rows from patch_db_connection taxa table and add taxa_id_offset to the ID
+logger.debug("Add all the patch taxa rows to the main database")
 for row in patch_db_connection.execute("SELECT * FROM taxa"):
-    main_db_connection.execute("INSERT INTO taxa VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (row.id + taxa_id_offset, row.key, row.name, row.rank, row.description, row.distance_threshold, row.report, 1, row.parent_id + taxa_id_offset, row.ncbi_id))
+    parent_taxon_id = '' if row[8] == '' or row[8] is None else int(row[8]) + taxa_id_offset
+    main_db_connection.execute("INSERT INTO taxa VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (int(row[0]) + taxa_id_offset, row[1], row[2], row[3], row[4], row[5], row[6], row[7], parent_taxon_id, row[9], ''))
 
+logger.debug("Add all the patch genome rows to the main database")
 # select all rows from patch_db_connection genomes table and add genomes_id_offset to the ID
 for row in patch_db_connection.execute("SELECT * FROM genomes"):
-    main_db_connection.execute("INSERT INTO genomes VALUES (?, ?, ?, ?, ?, ?)", (row.id + genomes_id_offset, row.key,  row.description, row.ncbi_db, row.ncbi_id, row.genbank_acc))
+    # check if a row with the same genbank_acc value already exists in the table
+    existing_row = main_db_connection.execute("SELECT * FROM genomes WHERE genbank_acc=?", (str(row[5]),)).fetchone()
+    
+    if existing_row is not None:
+        # if a row with the same genbank_acc value exists, skip this row
+        #logger.debug("Skipping genome with genbank_acc " + row[5] + " because it already exists in the main database")
+        continue
+    # if a row with the same genbank_acc value does not exist, insert the row
+    main_db_connection.execute("INSERT INTO genomes VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (int(row[0]) + genomes_id_offset, row[1],  row[2], row[3], row[4], row[5], None, None))
 
-# select all rows from patch_db_connection genome_annotation table and add genomes_id_offset and taxa_id_offset to the ID
-for row in patch_db_connection.execute("SELECT * FROM genome_annotation"):
-    main_db_connection.execute("INSERT INTO genome_annotations VALUES (?, ?, ?, ?)", (row.genome_id + genomes_id_offset, row.genome_set_id, row.taxon_id + taxa_id_offset, row.organism))
+logger.debug("Add all the patch genome_annotations rows to the main database")
+# select all rows from patch_db_connection genome_annotations table and add genomes_id_offset and taxa_id_offset to the ID
+for row in patch_db_connection.execute("SELECT * FROM genome_annotations"):
+    main_db_connection.execute("INSERT INTO genome_annotations VALUES (?, ?, ?, ?)", (int(row[0]) + genomes_id_offset, row[1], int(row[2]) + taxa_id_offset, row[3]))
+
+# Output the number of inserted rows so that you know if it worked in verbose mode.
+final_num_genomes = main_db_connection.execute("SELECT count(id) FROM genomes;").fetchone()[0]
+logger.debug("The final number of genomes in the main database is " + str(final_num_genomes))
+final_num_taxa = main_db_connection.execute("SELECT count(id) FROM taxa;").fetchone()[0]
+logger.debug("The final number of taxa in the main database is " + str(final_num_taxa))
 
 # remove genomes from main signatures file - refactor to do it without an intermediate file.
 from gambit.sigs import  load_signatures, dump_signatures, AnnotatedSignatures, SignatureList
 # read in the signatures file, filter out the genome accessions we dont need and write a new file.
 temp_main_signatures_filename = 'temp_main_signatures_filename.gs'
+logger.debug("Remove all the patch genomes from the main signatures file (so there are no name clashes later) and save to a temp file "+ str(temp_main_signatures_filename))
 with load_signatures(options.signatures_main_filename) as src:
     in_gidxs = np.flatnonzero(~np.in1d(src.ids,genome_accessions_to_remove))
     filtered_src_ids = src.ids[in_gidxs]
@@ -79,6 +130,7 @@ with load_signatures(options.signatures_main_filename) as src:
     dump_signatures(temp_main_signatures_filename, out_sigs)
 
 # merge the two signatures files
+logger.debug("Merge the two signatures files saving to " + options.signatures_output_filename)
 with load_signatures(temp_main_signatures_filename) as main_sig, load_signatures(options.signatures_patch_filename) as patch_sig:
     # merge the two signatures files
     merged_src_ids = np.concatenate((main_sig.ids, patch_sig.ids))
@@ -90,8 +142,9 @@ with load_signatures(temp_main_signatures_filename) as main_sig, load_signatures
 # delete temp_main_signatures_filename
 os.remove(temp_main_signatures_filename)
 
-# Save the main_db_connection database to a new file
-
 # Close the connection
 main_db_connection.close()
 patch_db_connection.close()
+
+logger.debug("Final patched database file: " + options.database_output_filename)
+logger.debug("Final patched signatures file: " + options.signatures_output_filename)
