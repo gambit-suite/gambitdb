@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-#./scripts/gambit-apply-patch --signatures_output_filename /home/a_page/data/gambit/patch/out.gs --database_output_filename /home/a_page/data/gambit/patch/out.gdb /home/a_page/data/gambit/patch/gtdb_complete_20230623.gs /home/a_page/data/gambit/patch/gtdb_complete_20230623.gdb /home/a_page/data/gambit/patch/patch.gs  /home/a_page/data/gambit/patch/patch.gdb 
+#./scripts/gambit-apply-patch --verbose --signatures_output_filename /home/michelle_scribner/gambit_patch/out.gs --database_output_filename /home/michelle_scribner/gambit_patch/out.gdb /home/michelle_scribner/gambit_patch/gambit-signatures-1.0b1-210719.h5 /home/michelle_scribner/gambit_patch/gambit-genomes-1.0b2-rev2-211116.db /home/michelle_scribner/gambit_patch/230417-theiagen-prok-patch-final.h5 /home/michelle_scribner/gambit_patch/230417-theiagen-prok-patch-final.db 
 import argparse
 import numpy as np
 import sqlite3
@@ -43,6 +43,8 @@ patch_db_connection = sqlite3.connect(options.database_patch_filename)
 # Retrieve patch data
 patch_genomes = [row[0] for row in patch_db_connection.execute("SELECT key FROM genomes")]
 patch_taxa = [row[0] for row in patch_db_connection.execute("SELECT name FROM taxa")]
+# remove taxa with changed names from prior database versions
+patch_taxa_keys = [row[0] for row in patch_db_connection.execute("SELECT key FROM taxa")]
 logger.debug("Patch contains " + str(len(patch_genomes)) + " genomes and " + str(len(patch_taxa)) + " taxa to be added")
 
 # Output the number of rows in main DB
@@ -74,6 +76,8 @@ cursor = main_db_connection.execute("DELETE FROM genome_annotations WHERE taxon_
 logger.debug("Deleted "+ str(cursor.rowcount)+ " rows from the genome_annotations table")
 cursor = main_db_connection.execute("DELETE FROM taxa WHERE id IN (" + str(','.join(['?' for _ in main_taxon_id]))+ ")", main_taxon_id)
 logger.debug("Deleted "+ str(cursor.rowcount)+ " rows from the taxa table")
+cursor = main_db_connection.execute("DELETE FROM taxa WHERE key IN (" + str(','.join(['?' for _ in patch_taxa_keys]))+ ")", patch_taxa_keys)
+logger.debug("Deleted "+ str(cursor.rowcount)+ " rows from the taxa table where taxa name was changed from prior database versions")
 
 # Output the number of rows after deletion so that you know if it worked in verbose mode.
 post_delete_num_genomes = main_db_connection.execute("SELECT count(id) FROM genomes;").fetchone()[0]
@@ -141,6 +145,9 @@ with load_signatures(temp_main_signatures_filename) as main_sig, load_signatures
 
 # delete temp_main_signatures_filename
 os.remove(temp_main_signatures_filename)
+
+# Commit connection
+main_db_connection.commit()
 
 # Close the connection
 main_db_connection.close()
