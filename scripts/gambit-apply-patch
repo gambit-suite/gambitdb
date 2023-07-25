@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-#./scripts/gambit-apply-patch --verbose --signatures_output_filename /home/michelle_scribner/gambit_patch/out.gs --database_output_filename /home/michelle_scribner/gambit_patch/out.gdb /home/michelle_scribner/gambit_patch/gambit-signatures-1.0b1-210719.h5 /home/michelle_scribner/gambit_patch/gambit-genomes-1.0b2-rev2-211116.db /home/michelle_scribner/gambit_patch/230417-theiagen-prok-patch-final.h5 /home/michelle_scribner/gambit_patch/230417-theiagen-prok-patch-final.db 
+#./scripts/gambit-apply-patch --verbose --signatures_output_filename /home/michelle_scribner/gambit_patch/out.gs --database_output_filename /home/michelle_scribner/gambit_patch/out.gdb /home/michelle_scribner/gambit_patch/gambit-signatures-1.0b1-210719.h5 /home/michelle_scribner/gambit_patch/gambit-genomes-1.0b2-rev2-211116.db /home/michelle_scribner/gambit_patch/230417-theiagen-prok-patch-final.h5 /home/michelle_scribner/gambit_patch/230417-theiagen-prok-patch-final.db --signatures_main_removed_filename /home/michelle_scribner/gambit_patch/main_database_removed.gs --database_main_removed_filename /home/michelle_scribner/gambit_patch/main_database_removed.gdb
 import argparse
 import numpy as np
 import sqlite3
@@ -21,6 +21,8 @@ parser.add_argument('database_patch_filename', help='An SQLite database', type=s
 # Output
 parser.add_argument('--signatures_output_filename', '-s', help='Output filename for genome signatures', default = 'patched_database.gs', type=str)
 parser.add_argument('--database_output_filename', '-d', help='Output filename for database', default = 'patched_database.gdb', type=str)
+parser.add_argument('--signatures_main_removed_filename', help='Output filename for genome signatures with patched genomes removed', default = 'main_database_removed.gs', type=str)
+parser.add_argument('--database_main_removed_filename', help='Output filename for database with patched genomes removed', default = 'main_database_removed.gdb', type=str)
 
 parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
 options = parser.parse_args()
@@ -85,6 +87,11 @@ logger.debug("The number of genomes in the main database after deletion is " + s
 post_delete_num_taxa = main_db_connection.execute("SELECT count(id) FROM taxa;").fetchone()[0]
 logger.debug("The number of taxa in the main database after deletion is " + str(post_delete_num_taxa))
 
+# Commit connection
+main_db_connection.commit()
+# copy the database 
+shutil.copy(options.database_output_filename, options.database_main_removed_filename)
+
 # get the maximum id from the taxa table
 taxa_id_offset = int(main_db_connection.execute("SELECT MAX(id) FROM taxa limit 1;").fetchone()[0])
 genomes_id_offset = int(main_db_connection.execute("SELECT MAX(id) FROM genomes limit 1;").fetchone()[0])
@@ -142,6 +149,9 @@ with load_signatures(temp_main_signatures_filename) as main_sig, load_signatures
     merged_src.extend(patch_sig)
     out_sigs = AnnotatedSignatures(merged_src, merged_src_ids, main_sig.meta)
     dump_signatures(options.signatures_output_filename, out_sigs)
+
+# copy temp_main_signatures_filename to signatures_main_removed_filename
+shutil.copy(temp_main_signatures_filename, options.signatures_main_removed_filename)
 
 # delete temp_main_signatures_filename
 os.remove(temp_main_signatures_filename)
