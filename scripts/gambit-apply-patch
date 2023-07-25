@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-#./scripts/gambit-apply-patch --verbose --signatures_output_filename /home/michelle_scribner/gambit_patch/out.gs --database_output_filename /home/michelle_scribner/gambit_patch/out.gdb /home/michelle_scribner/gambit_patch/gambit-signatures-1.0b1-210719.h5 /home/michelle_scribner/gambit_patch/gambit-genomes-1.0b2-rev2-211116.db /home/michelle_scribner/gambit_patch/230417-theiagen-prok-patch-final.h5 /home/michelle_scribner/gambit_patch/230417-theiagen-prok-patch-final.db --signatures_main_removed_filename /home/michelle_scribner/gambit_patch/main_database_removed.gs --database_main_removed_filename /home/michelle_scribner/gambit_patch/main_database_removed.gdb
+#./scripts/gambit-apply-patch --verbose --signatures_output_filename /home/michelle_scribner/gambit_patch/patched_db/out.gs --database_output_filename /home/michelle_scribner/gambit_patch/patched_db/out.gdb /home/michelle_scribner/gambit_patch/main_db/gambit-signatures-1.0b1-210719.h5 /home/michelle_scribner/gambit_patch/main_db/gambit-genomes-1.0b2-rev2-211116.db /home/michelle_scribner/gambit_patch/patch_db/230417-theiagen-prok-patch-final.h5 /home/michelle_scribner/gambit_patch/patch_db/230417-theiagen-prok-patch-final.db --signatures_main_removed_filename /home/michelle_scribner/gambit_patch/removed_db/main_database_removed.gs --database_main_removed_filename /home/michelle_scribner/gambit_patch/removed_db/main_database_removed.gdb
 import argparse
 import numpy as np
 import sqlite3
@@ -59,9 +59,9 @@ logger.debug("The number of taxa in the main database before deletion is " + str
 # we are going to delete rows so store the ids in a list to help with manipulations (could do a lot of this in join statements)
 main_genome_id = [row[0] for row in main_db_connection.execute("SELECT genome_id FROM genome_annotations WHERE organism IN (" + str(','.join(['?' for _ in patch_taxa]))+ ")", patch_taxa)]
 main_taxon_id = [row[0] for row in main_db_connection.execute("SELECT taxon_id FROM genome_annotations WHERE organism IN (" + str(','.join(['?' for _ in patch_taxa]))+ ")", patch_taxa)]
-logger.debug("Based on the patch taxa, the main database contains " + str(len(main_genome_id)) + " genomes and " + str(len(main_taxon_id)) + " taxa to be removed first")
+logger.debug("Based on the patch taxa, the main database contains " + str(len(main_genome_id)) + " genomes to be removed first")
 
-main_genome_accessions_to_remove = [row[0] for row in main_db_connection.execute("SELECT key FROM genomes WHERE key IN (" + str(','.join(['?' for _ in main_genome_id]))+ ")", main_genome_id)]
+main_genome_accessions_to_remove = [row[0] for row in main_db_connection.execute("SELECT key FROM genomes WHERE id IN (" + str(','.join(['?' for _ in main_genome_id]))+ ")", main_genome_id)]
 # merge the patch_genomes and main_genome_accessions_to_remove lists and remove duplicates
 genome_accessions_to_remove = list(set(patch_genomes + main_genome_accessions_to_remove))
 
@@ -115,7 +115,7 @@ for row in patch_db_connection.execute("SELECT * FROM genomes"):
         #logger.debug("Skipping genome with genbank_acc " + row[5] + " because it already exists in the main database")
         continue
     # if a row with the same genbank_acc value does not exist, insert the row
-    main_db_connection.execute("INSERT INTO genomes VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (int(row[0]) + genomes_id_offset, row[1],  row[2], row[3], row[4], row[5], None, None))
+    main_db_connection.execute("INSERT INTO genomes VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (int(row[0]) + genomes_id_offset, row[1], row[2], row[3], row[4], row[5], row[6], None))
 
 logger.debug("Add all the patch genome_annotations rows to the main database")
 # select all rows from patch_db_connection genome_annotations table and add genomes_id_offset and taxa_id_offset to the ID
