@@ -173,13 +173,6 @@ Library.
 
 import argparse
 
-import pkg_resources
-version = ''
-try:
-    version = pkg_resources.get_distribution("gambitdb").version
-except pkg_resources.DistributionNotFound:
-    version = 'x.y.z'
-
 parser = argparse.ArgumentParser(
     description = 'Given a signatures file, rebuild the database.',
     usage = 'gambitdb-rebuild-signatures [options]',

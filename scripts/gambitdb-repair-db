@@ -5,13 +5,6 @@ import sqlite3
 import shutil
 import logging
 
-import pkg_resources
-version = ''
-try:
-    version = pkg_resources.get_distribution("gambitdb").version
-except pkg_resources.DistributionNotFound:
-    version = 'x.y.z'
-
 parser = argparse.ArgumentParser(
     description = 'Given a GAMBIT database, repair it',
     usage = 'gambitdb-repair-db [options]',

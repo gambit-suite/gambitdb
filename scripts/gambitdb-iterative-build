@@ -3,8 +3,6 @@
 
 import sys
 import argparse
-import pkg_resources
-import logging
 import sqlite3
 import tempfile
 import os
@@ -16,12 +14,6 @@ sys.path.append('./')
 
 
 from gambitdb.GtdbSpreadsheetParser import GtdbSpreadsheetParser
-
-version = ''
-try:
-    version = pkg_resources.get_distribution("gambitdb").version
-except pkg_resources.DistributionNotFound:
-    version = 'x.y.z'
 
 parser = argparse.ArgumentParser(
     description = 'Iteratively add species to a database',

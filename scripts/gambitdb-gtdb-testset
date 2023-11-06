@@ -1,17 +1,10 @@
 #!/usr/bin/env python3
 import sys
 import argparse
-import pkg_resources
 import logging
 sys.path.append('../')
 sys.path.append('./')
 from gambitdb.GtdbTestset import GtdbTestset
-
-version = ''
-try:
-    version = pkg_resources.get_distribution("gambitdb").version
-except pkg_resources.DistributionNotFound:
-    version = 'x.y.z'
 
 parser = argparse.ArgumentParser(
     description = 'Check a gambit database built using GTDB against genomes which were not used in the training set. Produces a list of genomes to use and their predicted species (GTDB)',

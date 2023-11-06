@@ -181,13 +181,6 @@ import logging
 import os
 from gambit.sigs import  load_signatures, dump_signatures, AnnotatedSignatures, SignatureList
 
-import pkg_resources
-version = ''
-try:
-    version = pkg_resources.get_distribution("gambitdb").version
-except pkg_resources.DistributionNotFound:
-    version = 'x.y.z'
-
 parser = argparse.ArgumentParser(
     description = 'Given two GAMBIT signatures files, merge them and return a new file.',
     usage = 'gambitdb-apply-patch [options]',

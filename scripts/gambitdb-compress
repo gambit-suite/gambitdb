@@ -179,16 +179,9 @@ import pandas as pd
 import sqlite3
 import shutil
 import logging
-import pkg_resources
 from gambit.sigs import load_signatures, dump_signatures, AnnotatedSignatures, SignatureArray
 
 def parse_arguments():
-
-    version = ''
-    try:
-        version = pkg_resources.get_distribution("gambitdb").version
-    except pkg_resources.DistributionNotFound:
-        version = 'x.y.z'
 
     parser = argparse.ArgumentParser(
         description='Compresses a GAMBIT database by filtering out genomes based on specified criteria.',

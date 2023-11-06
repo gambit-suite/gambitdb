@@ -1,17 +1,11 @@
 #!/usr/bin/env python3
 import sys
 import argparse
-import pkg_resources
 import logging
 sys.path.append('../')
 sys.path.append('./')
 from gambitdb.GambitDb import GambitDb
 
-version = ''
-try:
-    version = pkg_resources.get_distribution("gambitdb").version
-except pkg_resources.DistributionNotFound:
-    version = 'x.y.z'
 
 parser = argparse.ArgumentParser(
     description = 'Generate a Gambit database',

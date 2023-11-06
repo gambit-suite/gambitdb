@@ -175,12 +175,6 @@ Library.
 import argparse
 import uuid
 
-import pkg_resources
-version = ''
-try:
-    version = pkg_resources.get_distribution("gambitdb").version
-except pkg_resources.DistributionNotFound:
-    version = 'x.y.z'
 
 parser = argparse.ArgumentParser(
     description = 'Generate a GAMBIT database. Requires preprocessed input files',

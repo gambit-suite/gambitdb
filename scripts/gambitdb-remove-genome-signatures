@@ -174,13 +174,6 @@ permanent authorization for you to choose that version for the
 Library.
 """
 
-import pkg_resources
-version = ''
-try:
-    version = pkg_resources.get_distribution("gambitdb").version
-except pkg_resources.DistributionNotFound:
-    version = 'x.y.z'
-
 parser = argparse.ArgumentParser(
     description = 'Given a Gambit signatures file, remove a list of genomes from it and return a new file.',
     usage = 'gambitdb-remove-genome-signatures [options]',
