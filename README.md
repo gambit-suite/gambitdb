@@ -9,7 +9,7 @@ pip install .
 ```
 or
 ```
-pip install git+
+pip install git+https://github.com/gambit-suite/gambitdb.git
 ```
 
 Additional dependancies are:
@@ -29,6 +29,10 @@ docker run -v $(pwd):/data gambitdb gambitdb -h
 
 # Usage
 ## One step database
+### Description
+There is a single shell script for creating a database from a GTDB spreadsheet (one for bacteria, one for archaea). This script will download the data, create a GAMBIT database and signatures files, then check the recall against the downloaded files for QC purposes. It is the easiest way to create a database.
+
+### Usage
 To create a database in one step, execute the `run_gambitdb_bacteria.sh` script:
 
 ```bash
@@ -38,6 +42,17 @@ This script will create a GAMBIT database from a GTDB spreadsheet. It parses the
 
 ## gambitdb-gtdb
 
+### Description
+This script will parse a GTDB spreadsheet (see https://data.gtdb.ecogenomic.org/releases) and output a list of accessions to download, a species taxon file and a genome metadata file. It is the first step in creating a database.
+The script provides several options for customization, including the ability to set a maximum number of contigs, include derived samples from metagenomes, environment, single cell, include novel species, set a minimum number of genomes in a species, and specify output filenames for the taxonomy, genome metadata, and genome accessions for download.
+
+### Usage
+To run this script, use the following command:
+```
+gambitdb-gtdb /path/to/gtdb_spreadsheet.tsv
+```
+
+The parameters for the script are:
 ```
 usage: gambitdb-gtdb [options]
 
@@ -74,6 +89,16 @@ options:
 ```
 
 ## gambitdb
+### Description
+The `gambitdb` script is used to generate a Gambit database. It requires a directory containing assemblies in FASTA format and a CSV file containing the assembly file and path, and the species taxon ID. Optionally, it can also take a CSV containing species taxonomy. The script provides several options for customization, including the ability to specify species and accessions to remove, output directory, output filenames, k-mer length, k-mer prefix, minimum number of genomes for a species to be included, number of CPUs to use, and parameters for including a species in a small cluster.
+
+### Usage
+To run this script, use the following command:
+```bash
+gambitdb [options] <assembly_directory> <genome_assembly_metadata> <species_taxon_filename> 
+```
+
+The parameters for the script are:
 ```
 usage: gambitdb [options]
 
@@ -125,6 +150,17 @@ options:
 ```
 
 ## gambitdb-create
+### Description
+The `gambitdb-create` script is used to generate a GAMBIT database. It requires preprocessed input files including a CSV containing the assembly file and path, and the species taxon ID, a CSV containing species taxonomy, and a signatures .h5 file created by gambit signatures.
+
+### Usage
+To run this script, use the following command:
+
+```
+gambitdb-create [options] genome_assembly_metadata species_taxon_filename signatures_filename 
+```
+
+The parameters for the script are:
 ```
 usage: gambitdb-create [options]
 
@@ -156,6 +192,17 @@ options:
 
 # Scripts for working with existing databases
 ## gambitdb-apply-patch
+
+### Description
+The `gambitdb-apply-patch` script is used to apply a patch to an existing GAMBIT database. It requires a signatures .h5 file created by gambit signatures, an SQLite database, a signatures .h5 file created by gambit signatures, and an SQLite database. The script provides several options for customization, including the ability to specify output filenames and turn on verbose output.
+
+### Usage
+To run this script, use the following command:
+```
+gambitdb-apply-patch [options] <signatures_main_filename> <database_main_filename> <signatures_patch_filename> <database_patch_filename>
+```
+
+The parameters for the script are:
 ```
 usage: gambitdb-apply-patch [options]
 
@@ -186,6 +233,16 @@ options:
 
 
 ## gambitdb-compress
+### Description
+The `gambitdb-compress` script is used to compress a GAMBIT database by filtering out genomes based on specified criteria. It requires a signatures .h5 file created by gambit signatures and an SQLite database. The script provides several options for customization, including the ability to specify output filenames, the minimum number of genomes in a species to consider, the maximum number of genomes in a species to consider, the proportion of genomes a kmer must be in for a species to be considered core, the number of cpus to use, the number of genomes to keep for a species, and whether to keep species under minima rather than removing them.
+
+### Usage
+To run this script, use the following command:
+```
+gambitdb-compress [options] <signatures_filename> <database_filename>
+```
+
+The parameters for the script are:
 ```
 usage: gambitdb-compress [options]
 
@@ -216,6 +273,16 @@ options:
 ```
 
 ## gambitdb-remove-genome-signatures
+### Description
+The `gambitdb-remove-genome-signatures` script is used to remove a list of genomes from a GAMBIT database. It requires a signatures .h5 file created by gambit signatures and a list of genomes to remove. The script provides several options for customization, including the ability to specify output filenames and turn on verbose output.
+
+### Usage
+To run this script, use the following command:
+```
+gambitdb-remove-genome-signatures [options] <signatures_filename> <genomes_to_remove_filename>
+```
+
+The parameters for the script are:
 ```
 usage: gambitdb-remove-genome-signatures [options]
 
@@ -234,6 +301,16 @@ options:
 ```
 
 ## gambitdb-repair-db
+### Description
+The `gambitdb-repair-db` script is used to repair a GAMBIT database. It requires an SQLite database. The script provides several options for customization, including the ability to specify output filenames and turn on verbose output.
+
+### Usage
+To run this script, use the following command:
+```
+gambitdb-repair-db [options] <database_main_filename>
+```
+
+The parameters for the script are:
 ```
 usage: gambitdb-repair-db [options]
 
@@ -251,6 +328,16 @@ options:
 ```
 
 ## gambitdb-rebuild-signatures
+### Description
+The `gambitdb-rebuild-signatures` script is used to rebuild a GAMBIT database. It requires a signatures .h5 file created by gambit signatures. The script provides several options for customization, including the ability to specify output filenames, database key, database version, database author, database date, and turn on verbose output.
+
+### Usage
+To run this script, use the following command:
+```
+gambitdb-rebuild-signatures [options] <signatures_filename>
+```
+
+The parameters for the script are:
 ```
 usage: gambitdb-rebuild-signatures [options]
 
@@ -275,6 +362,16 @@ options:
 ```
 
 ## gambitdb-iterative-build
+### Description
+The `gambitdb-iterative-build` script is used to iteratively build a GAMBIT database. It requires a signatures .h5 file created by gambit signatures, an SQLite database, and a GTDB spreadsheet. The script provides several options for customization, including the ability to specify output filenames, the minimum number of genomes a species must have, a list of species to ignore, the taxonomic rank to use, and the number of cpus to use.
+
+### Usage
+To run this script, use the following command:
+```
+gambitdb-iterative-build [options] <signatures_main_filename> <database_main_filename> <gtdb_metadata_spreadsheet>
+```
+
+The parameters for the script are:
 ```
 usage: gambitdb-iterative-build [options]
 
@@ -304,6 +401,16 @@ options:
 These are scripts which allow you to access functionality deep within the GAMBITdb software and are mostly for advanced usage, debugging or restarting a failed database run partway through.
 
 ## gambitdb-curate
+### Description
+The `gambitdb-curate` script is used to curate a GAMBIT database. It requires a species taxon file, a genome metadata file, a directory containing assemblies in FASTA format, and a pairwise distance file between each assembly. The script provides several options for customization, including the ability to specify species and accessions to remove, output filenames, the minimum number of genomes for a species to be included, the number of cpus to use, the number of genomes for a species to be included in a small cluster, the maximum diameter of a species to be included in a small cluster, the maximum diameter to allow before attempting to split a species into subspecies, and the minimum number of genomes which must be present after splitting a species into subspecies.
+
+### Usage
+To run this script, use the following command:
+```
+gambitdb-curate [options] <species_taxon_filename> <genome_assembly_metadata> <assembly_directory> <pairwise_distances_filename>
+```
+
+The parameters for the script are:
 ```
 usage: gambitdb-curate [options]
 
@@ -347,6 +454,17 @@ options:
 ```
 
 ## gambitdb-diameters
+
+### Description
+The `gambitdb-diameters` script is used to calculate the diameters of species in a GAMBIT database. It requires a species taxon file, a pairwise distance file between each assembly, and a CSV containing species taxon IDs. The script provides several options for customization, including the ability to specify output filenames and turn on verbose output.
+
+### Usage
+To run this script, use the following command:
+```
+gambitdb-diameters [options] <genome_assembly_metadata> <pairwise_distances_filename> <species_taxon_filename>
+```
+
+The parameters for the script are:
 ```
 usage: gambitdb-diameters [options]
 
@@ -371,6 +489,17 @@ options:
 ```
 
 ## gambitdb-gtdb-testset
+
+### Description
+The `gambitdb-gtdb-testset` script is used to check a GAMBIT database built using GTDB against genomes which were not used in the training set. It requires a species taxon file, a genome metadata file, and a GTDB spreadsheet. The script provides several options for customization, including the ability to specify output filenames, the maximum number of genomes per species, and turn on verbose output.
+
+### Usage
+To run this script, use the following command:
+```
+gambitdb-gtdb-testset [options] <species_taxon_file> <assembly_metadata_file> <gtdb_metadata_file>
+```
+
+The parameters for the script are:
 ```
 usage: gambitdb-gtdb-testset [options]
 
@@ -394,6 +523,16 @@ options:
   --verbose, -v         Turn on verbose output (default: False)
 ```
 ## gambitdb-pairwise-table
+### Description
+The `gambitdb-pairwise-table` script is used to generate a table of pairwise distances between assemblies. It requires a directory containing assemblies in FASTA format. The script provides several options for customization, including the ability to specify output filenames, the k-mer length, the k-mer prefix, the number of cpus to use, and turn on verbose output.
+
+### Usage
+To run this script, use the following command:
+```
+gambitdb-pairwise-table [options] <assembly_directory>
+```
+
+The parameters for the script are:
 ```
 usage: gambitdb-pairwise-table [options]
 
@@ -419,6 +558,16 @@ options:
 ```
 
 ## gambitdb-merge-signatures
+### Description
+The `gambitdb-merge-signatures` script is used to merge two GAMBIT signatures files. It requires two signatures .h5 files created by gambit signatures. The script provides several options for customization, including the ability to specify output filenames and turn on verbose output.
+
+### Usage
+To run this script, use the following command:
+```
+gambitdb-merge-signatures [options] <signatures_main_filename> <signatures_patch_filename>
+```
+
+The parameters for the script are:
 ```
 usage: gambitdb-merge-signatures [options]
 
@@ -436,11 +585,6 @@ options:
                         Output filename for genome signatures (default: merged_database.gs)
   --verbose, -v         Turn on verbose output (default: False)
 ```
-
-
-## Results
-
-The results of the analysis will be output to '/path/to/working_directory/final'
 
 ## Contributing
 
