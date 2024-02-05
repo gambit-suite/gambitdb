@@ -6,6 +6,8 @@ import logging
 from gambitdb.PairwiseTable import PairwiseTable
 from gambitdb.Diameters import Diameters
 from gambitdb.Curate import Curate
+from gambitdb.CompressClusters import CompressClusters
+import tempfile
 
 class GambitDb:
     """
@@ -17,7 +19,7 @@ class GambitDb:
                  accession_removed_output_filename, species_removed_output_filename , 
                  signatures_output_filename, database_output_filename, species_taxon_output_filename, 
                  genome_assembly_metadata_output_filename, kmer, kmer_prefix, minimum_ngenomes, cpus, 
-                 small_cluster_ngenomes, small_cluster_diameter, maximum_diameter, minimum_cluster_size, verbose):
+                 small_cluster_ngenomes, small_cluster_diameter, maximum_diameter, minimum_cluster_size, compress_max_distance, verbose):
         """
     Initializes a GambitDb object.
     Args:
@@ -26,7 +28,7 @@ class GambitDb:
       genome_assembly_metadata (str): The path to the genome assembly metadata file.
       species_taxon_filename (str): The path to the species taxon file.
       species_to_remove (list): A list of species to remove.
-      accessions_to_remove (list): A list of accessions to remove.
+      accessions_to_remove (list): A file containing a list of accessions to remove.
       accession_removed_output_filename (str): The path to the accession removed output file.
       species_removed_output_filename (str): The path to the species removed output file.
       signatures_output_filename (str): The path to the signatures output file.
@@ -71,6 +73,7 @@ class GambitDb:
         self.small_cluster_diameter = small_cluster_diameter
         self.maximum_diameter = maximum_diameter
         self.minimum_cluster_size = minimum_cluster_size
+        self.compress_max_distance = compress_max_distance
         self.verbose = verbose
         if self.verbose:
             self.logger.setLevel(logging.DEBUG)
@@ -145,6 +148,30 @@ class GambitDb:
                                             self.species_taxon_filename,  
                                             self.intermediate_species_taxon_filename(), 
                                             self.genome_assembly_metadata)
+
+        # Many highly similar samples are in the public databases which offer little additional information for GAMBIT. Cluster similar samples together, keep the centroid and remove the rest.
+        if self.compress_max_distance is not None:
+            compress = CompressClusters(pairwise.distance_table_output_filename, 
+                                        os.path.join(self.output_directory, 'pw-dists-compressed.csv'), 
+                                        self.compress_max_distance, 
+                                        self.verbose)
+            sample_accessions_highly_similar, num_samples = compress.identify_samples_to_remove()
+            # dont remove too many samples, if that happens remove some from the sample_accessions_highly_similar list
+            if len(sample_accessions_highly_similar) + self.minimum_ngenomes >= num_samples:
+                no_samples_to_keep = (len(sample_accessions_highly_similar) + self.minimum_ngenomes) - num_samples
+                sample_accessions_highly_similar = sample_accessions_highly_similar[:-no_samples_to_keep]
+
+            # if a file path exists for accessions_to_remove then open it for appending and write the sample_accessions_highly_similar, one per line
+            # otherwise create a new file and write the sample_accessions_highly_similar, one per line
+            if self.accessions_to_remove is not None:
+                with open(self.accessions_to_remove, 'a') as f:
+                    for accession in sample_accessions_highly_similar:
+                        f.write(accession + '\n')
+            else:
+                with tempfile.NamedTemporaryFile(mode='w', delete=False) as f:
+                  self.accessions_to_remove = f.name
+                  for accession in sample_accessions_highly_similar:
+                    f.write(accession + '\n')
 
         # Curate the outputs
         Curate( self.intermediate_species_taxon_filename(), 
