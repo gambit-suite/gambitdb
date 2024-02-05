@@ -27,6 +27,10 @@ for file in *_genomic.fna.gz; do
     mv "$file" "$(echo "$file" | awk -F '_' '{print $1"_"$2".fna.gz"}')"
 done
 
+cd $BASEDIR
+# Sometimes file downloads can be corrupted. Check for this and report but continue.
+find $BASEDIR/fasta -name "*fna.gz" | parallel -j $CORES 'gzip -t {} || echo {} is corrupted or truncated'
+
 # Build the signatures and database files. This is the key part of the process
 gambitdb -v --cpus $CORES -d $BASEDIR/intermediate_files $BASEDIR/fasta $BASEDIR/assembly_metadata.csv $BASEDIR/species_taxa.csv
 gambitdb-create --database_output_filename $BASEDIR/final/database.gdb --signatures_output_filename $BASEDIR/final/database.gs $BASEDIR/intermediate_files/genome_assembly_metadata.csv $BASEDIR/intermediate_files/species_taxon.csv $BASEDIR/intermediate_files/database.gs
