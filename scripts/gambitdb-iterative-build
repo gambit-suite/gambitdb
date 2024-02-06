@@ -12,8 +12,22 @@ import numpy as np
 sys.path.append('../')
 sys.path.append('./')
 
-
 from gambitdb.GtdbSpreadsheetParser import GtdbSpreadsheetParser
+
+# open the accessions_to_download_filename and read it into a list. If the file exists, copy it to the output directory and remove from the list.  Write the list back to the file
+def copy_cached_downloads(cached_downloads, accessions_to_download_filename, output_directory ):
+    if cached_downloads:
+        with open(accessions_to_download_filename, 'r') as f:
+            accessions = f.read().splitlines()
+        for accession in accessions:
+            cached_file = os.path.join(cached_downloads, accession + '.fna.gz')
+            if os.path.exists(cached_file):
+                # symlink cached_file to output_directory
+                os.symlink(cached_file, os.path.join(output_directory, accession + '.fna.gz'))
+                #shutil.copy(cached_file, output_directory)
+                accessions.remove(accession)
+        with open(accessions_to_download_filename, 'w') as f:
+            f.write('\n'.join(accessions))
 
 parser = argparse.ArgumentParser(
     description = 'Iteratively add species to a database',
@@ -29,6 +43,7 @@ parser.add_argument('gtdb_metadata_spreadsheet',  help='GTDB database', type=str
 parser.add_argument('--species_added',  help='file containing a list of species added', type=str, default='species_added')
 parser.add_argument('--min_genomes',  help='minimum genomes a species must have', type=int, default=2)
 parser.add_argument('--species_to_ignore', help='file containing a list of species to ignore', type=str)
+parser.add_argument('--cached_downloads', help='A directory with cached downloads of FASTA gzipped files', type=str)
 
 parser.add_argument('--rank', '-r', help='taxonomic rank (genus/species)', default = 'species', type=str)
 
@@ -42,7 +57,6 @@ taxa = [row[0] for row in main_db_connection.execute("SELECT name FROM taxa WHER
 
 with open(options.species_added, "w") as f:
     f.write("\t".join(['action','species', 'closest_diameter', 'ngenomes']) + "\n")
-               
 
 # Create a temporary working directory
 with tempfile.TemporaryDirectory() as temp_dir:
@@ -74,11 +88,11 @@ with tempfile.TemporaryDirectory() as temp_dir:
 
     # now we have a spreadsheet with novel species
     g = GtdbSpreadsheetParser(filtered_spreadsheet, 
-                      95,
-                      5,
-                      400,
+                      97,
+                      3,
+                      300,
                       False,
-                      False,
+                      True,
                       options.min_genomes,
                       '',
                       temp_dir+'/species_taxa.csv', temp_dir+'/assembly_metadata.csv', temp_dir+'/accessions_to_download.csv',  False, False ).generate_spreadsheets()
@@ -99,11 +113,11 @@ with tempfile.TemporaryDirectory() as temp_dir:
     for species_index, s in enumerate(species):
         print("Creating database for species "+ str(s) + "("+ str(species_index) +"/"+ str(len(species)) +")")
         g = GtdbSpreadsheetParser(filtered_spreadsheet, 
-                      95,
-                      5,
-                      400,
+                      97,
+                      3,
+                      300,
                       False,
-                      False,
+                      True,
                       options.min_genomes,
                       s,
                       temp_dir+'/species_taxa.csv', temp_dir+'/assembly_metadata.csv', temp_dir+'/accessions_to_download.csv',  False, False ).generate_spreadsheets()
@@ -136,6 +150,8 @@ with tempfile.TemporaryDirectory() as temp_dir:
             if options.cpus > 8:
                 download_cpus = 8
 
+            copy_cached_downloads(options.cached_downloads, temp_dir2+'/accessions_to_download.csv', temp_dir2+'/fasta' )
+
             os.system('ncbi-genome-download -r 3 -A '+temp_dir2+'/accessions_to_download.csv -F fasta  -o '+temp_dir2+'/fasta --flat-output -s genbank -p '+str(download_cpus)+' bacteria')
             os.system('ncbi-genome-download -r 3 -A '+temp_dir2+'/accessions_to_download.csv -F fasta  -o '+temp_dir2+'/fasta --flat-output -s refseq -p '+str(download_cpus)+' bacteria')
 
@@ -146,8 +162,8 @@ with tempfile.TemporaryDirectory() as temp_dir:
                     new_filename = parts[0] + '_' + parts[1] + '.fna.gz'
                     os.rename(os.path.join(directory_path, filename), os.path.join(directory_path, new_filename))
 
-            os.system('./scripts/gambitdb -v --cpus '+ str(options.cpus)+' -d '+temp_dir2+'/intermediate_files '+temp_dir2+'/fasta '+temp_dir2+'/assembly_metadata.csv '+temp_dir2+'/species_taxa.csv')
-            os.system('./scripts/gambit-create --database_output_filename '+temp_dir2+'/final/database.gdb --signatures_output_filename '+temp_dir2+'/final/database.gs '+temp_dir2+'/intermediate_files/genome_assembly_metadata.csv '+temp_dir2+'/intermediate_files/species_taxon.csv '+temp_dir2+'/intermediate_files/database.gs')
+            os.system('gambitdb --compress_max_distance 0.1 -v --cpus '+ str(options.cpus)+' -d '+temp_dir2+'/intermediate_files '+temp_dir2+'/fasta '+temp_dir2+'/assembly_metadata.csv '+temp_dir2+'/species_taxa.csv')
+            os.system('gambitdb-create --database_output_filename '+temp_dir2+'/final/database.gdb --signatures_output_filename '+temp_dir2+'/final/database.gs '+temp_dir2+'/intermediate_files/genome_assembly_metadata.csv '+temp_dir2+'/intermediate_files/species_taxon.csv '+temp_dir2+'/intermediate_files/database.gs')
 
             if not os.path.exists(temp_dir2+'/final/database.gs') or os.stat(temp_dir2+'/final/database.gs').st_size == 0:
                 print("No /final/database.gs file so skipping species:"+ str(s))
@@ -184,7 +200,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
             else:
                 print("Adding species "+ str(s) +" to the database with where nearest diameter is "+ str(df_lowest_value))
 
-            os.system('./scripts/gambit-apply-patch --signatures_main_removed_filename '+temp_dir2+'/ignore.gs --database_main_removed_filename '+temp_dir2+'/ignore.gdb -s '+ temp_dir2+'/patched/patched.gs -d '+ temp_dir2+'/patched/patched.gdb '+ temp_dir+'/input_db.gs '+ temp_dir+ '/input_db.gdb '+temp_dir2+'/final/database.gs ' +temp_dir2+'/final/database.gdb')
+            os.system('gambitdb-apply-patch --signatures_main_removed_filename '+temp_dir2+'/ignore.gs --database_main_removed_filename '+temp_dir2+'/ignore.gdb -s '+ temp_dir2+'/patched/patched.gs -d '+ temp_dir2+'/patched/patched.gdb '+ temp_dir+'/input_db.gs '+ temp_dir+ '/input_db.gdb '+temp_dir2+'/final/database.gs ' +temp_dir2+'/final/database.gdb')
 
             # copy the patched database to the main directory
             os.system('cp '+temp_dir2+'/patched/patched.gdb '+temp_dir+'/input_db.gdb')
@@ -200,5 +216,5 @@ with tempfile.TemporaryDirectory() as temp_dir:
             # open the file options.species_added and append s to the end. Create the file if it doesnt exist
             with open(options.species_added, "a+") as f:
                 f.write("\t".join(['added', str(s), str(df_lowest_value), str(num_accessions)]) + "\n")
-                    
-           
+
+

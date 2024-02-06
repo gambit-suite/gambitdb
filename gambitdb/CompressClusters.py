@@ -73,7 +73,7 @@ class CompressClusters:
                 print('Compressed cluster: ' + representative_sample + ' -> ' + ','.join(component_samples))
             
             if self.verbose:
-            print('Samples to compress: '+ str(len(samples_to_remove)))
+                print('Samples to compress: '+ str(len(samples_to_remove)))
 
         return samples_to_remove, num_samples
 
