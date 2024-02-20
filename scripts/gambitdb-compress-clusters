@@ -19,6 +19,7 @@ parser.add_argument('--output_pairwise_filename', '-p', help='Output filename fo
 
 # Optional input parameters for gambit
 parser.add_argument('--max_distance',	 '-m', help='maximum pairwise distance for a cluster', type=float, default = 0.1)
+parser.add_argument('--representative_genomes', help='List of accessions corresponding to representative genomes which you want to keep when compressing clusters', type=str)
 parser.add_argument('--debug', action='store_true', help='Turn on debugging', default = False)
 parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
 
@@ -35,6 +36,7 @@ if options.debug:
     CompressClusters(options.pairwise_distances_filename, 
                      options.output_pairwise_filename,
                      options.max_distance,
+                     options.representative_genomes,
                   options.verbose).compress()
     
     pr.disable()
@@ -47,4 +49,5 @@ else:
     CompressClusters(options.pairwise_distances_filename, 
                      options.output_pairwise_filename,
                      options.max_distance,
+                     options.representative_genomes,
                   options.verbose).compress()

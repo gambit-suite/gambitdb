@@ -19,7 +19,7 @@ class GambitDb:
                  accession_removed_output_filename, species_removed_output_filename , 
                  signatures_output_filename, database_output_filename, species_taxon_output_filename, 
                  genome_assembly_metadata_output_filename, kmer, kmer_prefix, minimum_ngenomes, cpus, 
-                 small_cluster_ngenomes, small_cluster_diameter, maximum_diameter, minimum_cluster_size, compress_max_distance, verbose):
+                 small_cluster_ngenomes, small_cluster_diameter, maximum_diameter, minimum_cluster_size, compress_max_distance, representative_genomes, verbose):
         """
     Initializes a GambitDb object.
     Args:
@@ -74,6 +74,7 @@ class GambitDb:
         self.maximum_diameter = maximum_diameter
         self.minimum_cluster_size = minimum_cluster_size
         self.compress_max_distance = compress_max_distance
+        self.representative_genomes = representative_genomes
         self.verbose = verbose
         if self.verbose:
             self.logger.setLevel(logging.DEBUG)
@@ -154,8 +155,9 @@ class GambitDb:
             compress = CompressClusters(pairwise.distance_table_output_filename, 
                                         os.path.join(self.output_directory, 'pw-dists-compressed.csv'), 
                                         self.compress_max_distance, 
+                                        self.representative_genomes,
                                         self.verbose)
-            sample_accessions_highly_similar, num_samples = compress.identify_samples_to_remove()
+            sample_accessions_highly_similar, num_samples = compress.compress()
             # dont remove too many samples, if that happens remove some from the sample_accessions_highly_similar list
             if len(sample_accessions_highly_similar) + self.minimum_ngenomes >= num_samples:
                 no_samples_to_keep = (len(sample_accessions_highly_similar) + self.minimum_ngenomes) - num_samples

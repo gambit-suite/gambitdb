@@ -109,6 +109,10 @@ with tempfile.TemporaryDirectory() as temp_dir:
     # create an array from the name column
     species = species_details['name'].to_numpy()
 
+    # list of accessions which correpsond to refseq representative genomes. File is in a temp directory so will get cleaned up.
+    representative_genomes_filename = temp_dir+'/representative_genomes.csv'
+    representative_genomes_file = g.save_representative_genome_accessions_to_file(representative_genomes_filename)
+
     # for each species, create a new database
     for species_index, s in enumerate(species):
         print("Creating database for species "+ str(s) + "("+ str(species_index) +"/"+ str(len(species)) +")")
@@ -162,7 +166,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
                     new_filename = parts[0] + '_' + parts[1] + '.fna.gz'
                     os.rename(os.path.join(directory_path, filename), os.path.join(directory_path, new_filename))
 
-            os.system('gambitdb --compress_max_distance 0.1 -v --cpus '+ str(options.cpus)+' -d '+temp_dir2+'/intermediate_files '+temp_dir2+'/fasta '+temp_dir2+'/assembly_metadata.csv '+temp_dir2+'/species_taxa.csv')
+            os.system('gambitdb --representative_genomes ' + str(representative_genomes_filename) + ' --compress_max_distance 0.1 -v --cpus '+ str(options.cpus)+' -d '+temp_dir2+'/intermediate_files '+temp_dir2+'/fasta '+temp_dir2+'/assembly_metadata.csv '+temp_dir2+'/species_taxa.csv')
             os.system('gambitdb-create --database_output_filename '+temp_dir2+'/final/database.gdb --signatures_output_filename '+temp_dir2+'/final/database.gs '+temp_dir2+'/intermediate_files/genome_assembly_metadata.csv '+temp_dir2+'/intermediate_files/species_taxon.csv '+temp_dir2+'/intermediate_files/database.gs')
 
             if not os.path.exists(temp_dir2+'/final/database.gs') or os.stat(temp_dir2+'/final/database.gs').st_size == 0:
@@ -216,5 +220,6 @@ with tempfile.TemporaryDirectory() as temp_dir:
             # open the file options.species_added and append s to the end. Create the file if it doesnt exist
             with open(options.species_added, "a+") as f:
                 f.write("\t".join(['added', str(s), str(df_lowest_value), str(num_accessions)]) + "\n")
+
 
 

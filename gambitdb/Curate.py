@@ -136,7 +136,7 @@ class Curate:
       pandas.DataFrame({'species_taxid': [1, 3], 'assembly_accession': ['accession1', 'accession3']}, index=['accession1', 'accession3'])
     """
         self.logger.debug('remove_accessions')
-        if self.accessions_to_remove and os.path.isfile(self.accessions_to_remove):
+        if self.accessions_to_remove and os.path.isfile(self.accessions_to_remove) and os.stat(self.accessions_to_remove).st_size != 0:
             accessions_to_remove = pandas.read_csv(self.accessions_to_remove, header=None)
             accessions_to_remove = accessions_to_remove[0].tolist()
             genome_metadata = genome_metadata[~genome_metadata.index.isin(accessions_to_remove)]
@@ -145,7 +145,6 @@ class Curate:
             # append accessions_to_remove to list self.accessions_removed
             self.accessions_removed = self.accessions_removed + accessions_to_remove
         return genome_metadata
-
 
     # given the genome_metadata dataframe, remove assembly_accession which are not contained in the filenames of the assembly_directory
     def remove_accessions_for_truncated_assemblies(self, genome_metadata):

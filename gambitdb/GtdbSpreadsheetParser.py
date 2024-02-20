@@ -119,6 +119,8 @@ class GtdbSpreadsheetParser:
         self.stats_starting_species = 0
         self.stats_species = 0
 
+        self.representative_genomes = []
+
     def filter_input_spreadsheet(self, input_spreadsheet_df):
         """
     Filters a given spreadsheet to only include genomes with a checkm completeness of x% or greater, a checkm contamination of x% or less, and below the maximum number of contigs.
@@ -172,6 +174,8 @@ class GtdbSpreadsheetParser:
         # This is a massive spreadsheet with all the GTDB metadata
         input_spreadsheet_df = self.read_in_gtdb_spreadsheet()
         accessions_spreadsheet_df = self.generate_accessions_df()
+
+        self.representative_genomes = self.get_representative_genomes(input_spreadsheet_df)
 
         # Get statistics for what gets passed in before filtering.
         species_taxon_ids = self.create_mock_taxon_ids_for_species(input_spreadsheet_df['species'])
@@ -410,3 +414,33 @@ class GtdbSpreadsheetParser:
         print("No. Genus:\t" + str(self.stats_genus))
         print("Starting species:\t" + str(self.stats_starting_species))
         print("Final Species:\t" + str(self.stats_species))
+
+    def get_representative_genomes(self, input_spreadsheet_df):
+      """
+      Filters the input spreadsheet to get only the rows with 'ncbi_refseq_category' equal to 'representative genome',
+      and returns a dataframe with the 'assembly_accession' column.
+      Args:
+        input_spreadsheet_df (DataFrame): The input spreadsheet dataframe.
+      Returns:
+        DataFrame: A dataframe with the 'assembly_accession' column.
+      Examples:
+        >>> get_representative_genomes(input_spreadsheet_df)
+        Representative genomes dataframe
+      """
+      filtered_input_spreadsheet_df = input_spreadsheet_df[input_spreadsheet_df['ncbi_refseq_category'] == 'representative genome']
+      representative_accessions = pandas.DataFrame(columns=['assembly_accession'])
+      representative_accessions['assembly_accession'] = filtered_input_spreadsheet_df['accession']
+      return representative_accessions
+
+    def save_representative_genome_accessions_to_file(self, output_filename):
+      """
+      Saves the representative genome accessions to a file.
+      Args:
+        output_filename (str): The path to the output file.
+      Side Effects:
+        Saves the representative genome accessions to a file.
+      Examples:
+        >>> save_representative_genome_accessions_to_file("representative_genomes.tsv")
+        Saves the representative genome accessions to a file
+      """
+      self.representative_genomes.to_csv(output_filename, index=False)

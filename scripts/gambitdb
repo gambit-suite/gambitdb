@@ -44,7 +44,9 @@ parser.add_argument('--small_cluster_diameter', help='Maximum diameter of a spec
 parser.add_argument('--maximum_diameter', help='The maximum diameter to allow before attempting to split a species into subspecies', default = 0.7, type=float)
 parser.add_argument('--minimum_cluster_size', help='After splitting a species into subspecies, this is the minimum number of genomes which must be present, otherwise the genome is removed.', default = 2, type=int)
 
+# Compression input parameters
 parser.add_argument('--compress_max_distance', help='Maximum pairwise distance for a cluster (between 0.0001 and 0.9999)', type=float)
+parser.add_argument('--representative_genomes', help='List of accessions corresponding to representative genomes which you want to keep when compressing clusters', type=str)
 
 parser.add_argument('--debug', action='store_true', help='Turn on debugging', default = False)
 parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
@@ -75,4 +77,5 @@ GambitDb(options.output_directory,
          options.maximum_diameter,
          options.minimum_cluster_size,
          options.compress_max_distance,
+         options.representative_genomes,
          options.verbose).generate_gambit_db()
