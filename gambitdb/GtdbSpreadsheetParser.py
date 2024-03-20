@@ -20,6 +20,7 @@ class GtdbSpreadsheetParser:
                  species_taxon_output_filename, 
                  genome_assembly_metadata_output_filename, 
                  accessions_output_filename, 
+                 representative_genomes_filename,
                  debug, 
                  verbose):
         """
@@ -89,6 +90,7 @@ class GtdbSpreadsheetParser:
         self.species_taxon_output_filename = species_taxon_output_filename
         self.genome_assembly_metadata_output_filename = genome_assembly_metadata_output_filename
         self.accessions_output_filename = accessions_output_filename
+        self.representative_genomes_filename = representative_genomes_filename
         self.debug = debug
         self.verbose = verbose
         self.logger = logging.getLogger(__name__)
@@ -176,6 +178,8 @@ class GtdbSpreadsheetParser:
         accessions_spreadsheet_df = self.generate_accessions_df()
 
         self.representative_genomes = self.get_representative_genomes(input_spreadsheet_df)
+        if self.representative_genomes_filename:
+          self.save_representative_genome_accessions_to_file(self.representative_genomes_filename)
 
         # Get statistics for what gets passed in before filtering.
         species_taxon_ids = self.create_mock_taxon_ids_for_species(input_spreadsheet_df['species'])

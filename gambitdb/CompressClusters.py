@@ -19,19 +19,19 @@ class CompressClusters:
 
         self.logger = logging.getLogger('CompressClusters')
 
-    def generate_represenate_genomes(self):
+    def generate_representative_genomes(self):
         if self.representative_genomes is None:
             return []
 
         # read in the csv file containing the representative genomes
         with open(self.representative_genomes, 'r') as f:
             reader = csv.reader(f)
-            representative_genomes = list(reader)
-            representative_genomes = [item for sublist in representative_genomes for item in sublist]
+            next(reader)  # Skip the header
+            representative_genomes = [row[0] for row in reader]
         return representative_genomes
 
     def compress(self):
-        representative_accessions = self.generate_represenate_genomes()
+        representative_accessions = self.generate_representative_genomes()
         return self.identify_samples_to_remove(representative_accessions)
 
     #  Gives array([[0.1, 0.2, 0.3],

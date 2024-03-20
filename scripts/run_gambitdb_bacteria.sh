@@ -6,7 +6,7 @@ INPUTFILE=$2
 CORES=$3
 
 # Take the GTDB spreadsheet and filter the genomes to remove the ones that are lower quality
-gambitdb-gtdb --checkm_completeness 95 --checkm_contamination 5 --include_novel_species --max_contigs 300 -s $BASEDIR/species_taxa.csv -g $BASEDIR/assembly_metadata.csv -a $BASEDIR/accessions_to_download.csv $INPUTFILE 
+~/code/gambitdb/scripts/gambitdb-gtdb --checkm_completeness 97 --checkm_contamination 3  --max_contigs 100 -s $BASEDIR/species_taxa.csv -g $BASEDIR/assembly_metadata.csv -a $BASEDIR/accessions_to_download.csv $INPUTFILE 
 
 # Overwrite the existing base directory files and setup the folders
 cd $BASEDIR/
@@ -32,8 +32,8 @@ cd $BASEDIR
 find $BASEDIR/fasta -name "*fna.gz" | parallel -j $CORES 'gzip -t {} || echo {} is corrupted or truncated'
 
 # Build the signatures and database files. This is the key part of the process
-gambitdb -v --cpus $CORES -d $BASEDIR/intermediate_files $BASEDIR/fasta $BASEDIR/assembly_metadata.csv $BASEDIR/species_taxa.csv
-gambitdb-create --database_output_filename $BASEDIR/final/database.gdb --signatures_output_filename $BASEDIR/final/database.gs $BASEDIR/intermediate_files/genome_assembly_metadata.csv $BASEDIR/intermediate_files/species_taxon.csv $BASEDIR/intermediate_files/database.gs
+~/code/gambitdb/scripts/gambitdb --compress_max_distance 0.1 -v --cpus $CORES -d $BASEDIR/intermediate_files $BASEDIR/fasta $BASEDIR/assembly_metadata.csv $BASEDIR/species_taxa.csv
+~/code/gambitdb/scripts/gambitdb-create --database_output_filename $BASEDIR/final/database.gdb --signatures_output_filename $BASEDIR/final/database.gs $BASEDIR/intermediate_files/genome_assembly_metadata.csv $BASEDIR/intermediate_files/species_taxon.csv $BASEDIR/intermediate_files/database.gs
 
 # Check the database works by running a query on the input genomes and looking at how they are 
 # classified.

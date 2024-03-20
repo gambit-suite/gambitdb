@@ -95,7 +95,8 @@ with tempfile.TemporaryDirectory() as temp_dir:
                       True,
                       options.min_genomes,
                       '',
-                      temp_dir+'/species_taxa.csv', temp_dir+'/assembly_metadata.csv', temp_dir+'/accessions_to_download.csv',  False, False ).generate_spreadsheets()
+                      temp_dir+'/species_taxa.csv', temp_dir+'/assembly_metadata.csv', temp_dir+'/accessions_to_download.csv', None, False, False )
+    g.generate_spreadsheets()
     os.system('rm '+temp_dir+'/assembly_metadata.csv')
     os.system('rm '+temp_dir+'/accessions_to_download.csv')
     species = []
@@ -124,7 +125,8 @@ with tempfile.TemporaryDirectory() as temp_dir:
                       True,
                       options.min_genomes,
                       s,
-                      temp_dir+'/species_taxa.csv', temp_dir+'/assembly_metadata.csv', temp_dir+'/accessions_to_download.csv',  False, False ).generate_spreadsheets()
+                      temp_dir+'/species_taxa.csv', temp_dir+'/assembly_metadata.csv', temp_dir+'/accessions_to_download.csv', None, False, False )
+        g.generate_spreadsheets()
         
         # count the number of lines in the file temp_dir+'/accessions_to_download.csv'
         num_accessions = len(open(temp_dir+'/accessions_to_download.csv').readlines())

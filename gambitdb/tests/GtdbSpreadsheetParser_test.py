@@ -63,6 +63,7 @@ class TestGtdbSpreadsheetParser(unittest.TestCase):
                                     os.path.join(data_dir, 'output_species.csv'),
                                     os.path.join(data_dir, 'output_genome_metadata.csv'),
                                     os.path.join(data_dir, 'output_accessions_to_download.csv'),
+                                    None,
                                     False,
                                     False)
         g.generate_spreadsheets()
@@ -77,6 +78,32 @@ class TestGtdbSpreadsheetParser(unittest.TestCase):
 
         self.cleanup()
 
+    def test_representative_genomes(self):
+        self.cleanup()
+        g = GtdbSpreadsheetParser(os.path.join(data_dir, 'representative_genomes.csv'),
+                                    95,
+                                    5,
+                                    400,
+                                    False,
+                                    False,
+                                    1,
+                                    '',
+                                    os.path.join(data_dir, 'output_species.csv'),
+                                    os.path.join(data_dir, 'output_genome_metadata.csv'),
+                                    os.path.join(data_dir, 'output_accessions_to_download.csv'),
+                                    None,
+                                    False,
+                                    False)
+        g.generate_spreadsheets()
+        output_filename = os.path.join(data_dir, 'output_representative_genomes.csv')
+        g.save_representative_genome_accessions_to_file( output_filename)
+
+        self.assertTrue(os.path.exists(output_filename))
+        self.assertTrue(self.comp_files(output_filename, os.path.join(data_dir, 'expected_representative_genomes.csv')))
+
+        #self.cleanup()
+        
+
     def cleanup(self):
         """
     Removes the generated spreadsheets from the data directory.
@@ -90,6 +117,6 @@ class TestGtdbSpreadsheetParser(unittest.TestCase):
       >>> cleanup()
       <No output>
     """
-        for f in ['output_genome_metadata.csv', 'output_species.csv', 'output_accessions_to_download.csv']:
+        for f in ['output_genome_metadata.csv', 'output_species.csv', 'output_accessions_to_download.csv', 'output_representative_genomes.csv']:
             if os.path.exists(os.path.join(data_dir, f)):
                 os.remove(os.path.join(data_dir, f))

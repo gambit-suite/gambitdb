@@ -27,6 +27,7 @@ parser.add_argument('--species_filter', '-j',  help='Only include species that m
 parser.add_argument('--species_taxon_output_filename', '-s', help='Output filename for with the taxonomy', default = 'species_taxa.csv', type=str)
 parser.add_argument('--genome_assembly_metadata_output_filename', '-g', help='Genome metadata', default = 'assembly_metadata.csv', type=str)
 parser.add_argument('--accessions_output_filename', '-a', help='Genome accessions for download', default = 'accessions_to_download.csv', type=str)
+parser.add_argument('--representative_genomes', '-r', help='Representative genome accessions', default = 'representative_genomes.csv', type=str)
 
 parser.add_argument('--debug', action='store_true', help='Turn on debugging', default = False)
 parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
@@ -45,5 +46,6 @@ GtdbSpreadsheetParser(options.gtdb_metadata_spreadsheet,
                       options.species_taxon_output_filename, 
                       options.genome_assembly_metadata_output_filename, 
                       options.accessions_output_filename, 
+                      options.representative_genomes,
                       options.debug,
                       options.verbose ).generate_spreadsheets()

@@ -1,0 +1,12 @@
+species_taxid,name,rank,parent_taxid,ncbi_taxid,gambit_taxid,report,ngenomes
+1,Lactococcus cremoris,species,13,1,1,1,1
+2,Syntrophotalea carbinolica,species,14,2,2,1,1
+3,Vibrio ichthyoenteri,species,15,3,3,1,1
+4,Quasibacillus thermotolerans,species,16,4,4,1,1
+5,Flavobacterium subsaxonicum,species,17,5,5,1,1
+6,Thalassolituus oleivorans,species,18,6,6,1,1
+7,Escherichia coli,species,19,7,7,1,6
+8,Klebsiella pneumoniae,species,20,8,8,1,3
+9,Nisaea denitrificans,species,21,9,9,1,1
+10,Eubacterium limosum,species,22,10,10,1,1
+11,Acinetobacter oleivorans,species,23,11,11,1,1

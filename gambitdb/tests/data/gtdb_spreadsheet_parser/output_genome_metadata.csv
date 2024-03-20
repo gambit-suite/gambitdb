@@ -1,0 +1,19 @@
+uuid,species_taxid,assembly_accession,species
+GCF_000468955.1,1,GCF_000468955.1,Lactococcus cremoris
+GCF_000012885.1,2,GCF_000012885.1,Syntrophotalea carbinolica
+GCF_000222605.1,3,GCF_000222605.1,Vibrio ichthyoenteri
+GCF_000812025.2,4,GCF_000812025.2,Quasibacillus thermotolerans
+GCF_000422725.1,5,GCF_000422725.1,Flavobacterium subsaxonicum
+GCF_000355675.1,6,GCF_000355675.1,Thalassolituus oleivorans
+GCA_002946735.1,7,GCA_002946735.1,Escherichia coli
+GCA_000614665.1,8,GCA_000614665.1,Klebsiella pneumoniae
+GCA_000826585.2,8,GCA_000826585.2,Klebsiella pneumoniae
+GCA_000827775.2,8,GCA_000827775.2,Klebsiella pneumoniae
+GCA_012934735.1,7,GCA_012934735.1,Escherichia coli
+GCA_012934815.1,7,GCA_012934815.1,Escherichia coli
+GCA_013394495.1,7,GCA_013394495.1,Escherichia coli
+GCA_013394515.1,7,GCA_013394515.1,Escherichia coli
+GCA_000613265.1,7,GCA_000613265.1,Escherichia coli
+GCF_000426505.1,9,GCF_000426505.1,Nisaea denitrificans
+GCF_000807675.2,10,GCF_000807675.2,Eubacterium limosum
+GCF_000196795.1,11,GCF_000196795.1,Acinetobacter oleivorans
