@@ -1,0 +1,44 @@
+#!/usr/bin/env python3
+import argparse
+import numpy as np
+import sqlite3
+import shutil
+import logging
+
+parser = argparse.ArgumentParser(
+    description = 'Make sure the signatures file only contains genomes contained in the database',
+    usage = 'gambitdb-sync-signatures-db [options]',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+# Required input files
+parser.add_argument('database_main_filename', help='An SQLite database', type=str)
+parser.add_argument('signatures_filename', help='A signatures .h5 file created by gambit signatures', type=str)
+
+# Output
+parser.add_argument('--signatures_output_filename', '-d', help='Output filename for signatures', default = 'fixed_sigantures.gs', type=str)
+
+parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
+options = parser.parse_args()
+
+# Get all the accessions from the database
+main_db_connection = sqlite3.connect(options.database_main_filename)
+all_genome_accessions_db = [row[0] for row in main_db_connection.execute("SELECT key FROM genomes")]
+main_db_connection.close()
+
+print("No. Genomes in Database: ", len(all_genome_accessions_db))
+
+# read in the signatures file and only keep the listed genomes.
+from gambit.sigs import  load_signatures, dump_signatures, AnnotatedSignatures
+
+with load_signatures(options.signatures_filename) as src:
+    in_gidxs = np.flatnonzero(np.in1d(src.ids,all_genome_accessions_db))
+    filtered_src_ids = src.ids[in_gidxs]
+    filtered_src = src[in_gidxs]
+    out_sigs = AnnotatedSignatures(filtered_src, filtered_src_ids, src.meta)
+
+    # statistics
+    print("No. Genomes in Signatures: ", len(src.ids))
+    print("No. Genomes in Filtered Signatures: ", len(filtered_src_ids))
+    print("No. Genomes Removed: ", len(src.ids) - len(filtered_src_ids))
+
+    dump_signatures(options.signatures_output_filename, out_sigs)

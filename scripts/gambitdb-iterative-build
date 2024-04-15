@@ -44,6 +44,7 @@ parser.add_argument('--species_added',  help='file containing a list of species 
 parser.add_argument('--min_genomes',  help='minimum genomes a species must have', type=int, default=2)
 parser.add_argument('--species_to_ignore', help='file containing a list of species to ignore', type=str)
 parser.add_argument('--cached_downloads', help='A directory with cached downloads of FASTA gzipped files', type=str)
+parser.add_argument('--interspecies_overlap', help='Maximum overlap between species to allow in to DB', default=0.7, type=float)
 
 parser.add_argument('--rank', '-r', help='taxonomic rank (genus/species)', default = 'species', type=str)
 
@@ -198,7 +199,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
             # ideally find out what the diameter is for each species, however as a first pass 
             # we will just look for anything less than 0.7
 
-            if df_lowest_value < 0.7:
+            if df_lowest_value < options.interspecies_overlap:
                 print("Species "+ str(s) +" has not been patched because the diameter to the existing database is "+str(df_lowest_value))
                 with open(options.species_added, "a+") as f:
                     f.write("\t".join(['skipped_overlap', str(s), str(df_lowest_value), str(num_accessions)]) + "\n")
