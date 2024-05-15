@@ -1,0 +1,119 @@
+#!/usr/bin/env python3
+# Take in a gambit database, extract the genus diameters and apply these to another database, saving to a new file.
+# This is useful for when the genus diameters are not set correctly in the database.
+
+
+import argparse
+import numpy as np
+import sqlite3
+import shutil
+import logging
+
+parser = argparse.ArgumentParser(
+    description = 'Apply gambit genus diameters from one database to another',
+    usage = 'gambitdb-transfer-db [options]',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+# Required input files
+parser.add_argument('source_database_filename', help='Source gambit database file containing genus diameters', type=str)
+parser.add_argument('destination_database_filename', help='Destination gambit database file', type=str)
+
+parser.add_argument('--max_diameter', '-m', help='Maximum diameter', default = '0.9999', type=float)
+parser.add_argument('--min_diameter', '-n', help='Minimum diameter', default = '0', type=float )
+
+# Output
+parser.add_argument('--output_filename', '-d', help='Output filename for database with genus diameters applied', default = 'fixed_database.gdb', type=str)
+parser.add_argument('--output_genus_spreadsheet_filename', '-g', help='Summary of genus diameters', default = 'genus_diameters_summary.tsv', type=str)
+parser.add_argument('--output_species_spreadsheet_filename', '-s', help='Summary of species diameters', default = 'species_diameters_summary.tsv', type=str)
+
+parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
+options = parser.parse_args()
+
+# setup logging
+if options.verbose:
+    logging.basicConfig(level=logging.DEBUG)
+else:
+    logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# copy the database so we dont modify the original
+logger.debug("Copy destination database to: " + options.destination_database_filename)
+shutil.copy(options.destination_database_filename, options.output_filename)
+
+# Connect to the database
+source_db_connection = sqlite3.connect(options.source_database_filename)
+destination_db_connection = sqlite3.connect(options.output_filename)
+
+# Get a list of all distance_thresholds for genus
+source_distance_genus = source_db_connection.execute("SELECT distance_threshold, name FROM taxa WHERE rank = 'genus' AND distance_threshold > ? and distance_threshold < ? ORDER BY distance_threshold ASC", (options.min_diameter, options.max_diameter))
+
+#Create a tsv file to output genus diameter information
+with open(options.output_genus_spreadsheet_filename, 'w') as output_file:
+    output_file.write("Genus\tSource Diameter\tDestination Diameter\tDiameter used\tComment\n")
+
+    source_used_counter = 0
+    destination_used_counter = 0
+    equal_counter = 0
+
+    for source_distance_threshold, source_genus in source_distance_genus:
+        # get all destination genus IDs that match this name or nearly match it.
+        destination_genus = destination_db_connection.execute("SELECT id, name, distance_threshold  FROM taxa WHERE rank = 'genus' AND name LIKE ? ORDER BY id ASC", (source_genus+'%',))
+
+        for destination_genus_id, destination_genus_name, destination_distance_threshold in destination_genus:
+            logger.debug("Source genus: " + source_genus + " (" + str(source_distance_threshold) + ") Destination genus: " + destination_genus_name + " (" + str(destination_distance_threshold) + ")")
+
+            if destination_distance_threshold <= options.min_diameter:
+                # update the destination genus with the source genus distance threshold
+                destination_db_connection.execute("UPDATE taxa SET distance_threshold = ? WHERE id = ?", (source_distance_threshold, destination_genus_id))
+                output_file.write(destination_genus_name + "\t" + str(source_distance_threshold) + "\t" + str(destination_distance_threshold) + "\t" + str(source_distance_threshold) + "\t" + "Updated, source used as destination diameter was below the minimum\n")
+                source_used_counter += 1
+            elif destination_distance_threshold > source_distance_threshold:
+                # update the destination genus with the source genus distance threshold
+                destination_db_connection.execute("UPDATE taxa SET distance_threshold = ? WHERE id = ?", (source_distance_threshold, destination_genus_id))
+                output_file.write(destination_genus_name + "\t" + str(source_distance_threshold) + "\t" + str(destination_distance_threshold) + "\t" + str(source_distance_threshold) + "\t" + "Updated, source less than destination\n")
+                source_used_counter += 1
+            elif destination_distance_threshold == source_distance_threshold:
+                output_file.write(destination_genus_name + "\t" + str(source_distance_threshold) + "\t" + str(destination_distance_threshold) + "\t" + str(destination_distance_threshold) + "\t" + "Not updated, destination equal to source\n")
+                equal_counter += 1
+            else:
+                output_file.write(destination_genus_name + "\t" + str(source_distance_threshold) + "\t" + str(destination_distance_threshold) + "\t" + str(destination_distance_threshold) + "\t" + "Updated, destination less than source\n")
+                destination_db_connection.execute("UPDATE taxa SET distance_threshold = ? WHERE id = ?", (source_distance_threshold, destination_genus_id))
+                destination_used_counter += 1
+
+print("Source genus diameters used: " + str(source_used_counter)
+        + "\nDestination genus diameters used: " + str(destination_used_counter)
+        + "\nNo change in genus diameters: " + str(equal_counter)
+        + "\nTotal genus: " + str(source_used_counter + destination_used_counter + equal_counter))
+
+# look at everything thats not a genus and has a diameter of zero in the source database.
+source_distance_species = source_db_connection.execute("SELECT distance_threshold, name FROM taxa WHERE rank != 'genus' AND distance_threshold = 0.0")
+species_source_used_counter = 0
+species_equal_counter = 0
+with open(options.output_species_spreadsheet_filename, 'w') as output_file:
+    output_file.write("Species\tSource Diameter\tDestination Diameter\tDiameter used\tComment\n")
+
+    for source_distance_threshold, source_species in source_distance_species:
+        # get all destination genus IDs that match this name or nearly match it.
+        destination_species = destination_db_connection.execute("SELECT id, name, distance_threshold FROM taxa WHERE  name = ? ORDER BY id ASC", (source_species,))
+        for destination_species_id, destination_species_name, destination_distance_threshold in destination_species:
+        
+            if destination_distance_threshold == 0.0 and source_distance_threshold == 0.0:
+                output_file.write(destination_species_name + "\t" + str(source_distance_threshold) + "\t" + str(destination_distance_threshold) + "\t" + str(source_distance_threshold) + "\t" + "Not updated, both 0\n")
+                species_equal_counter += 1
+            elif destination_distance_threshold > source_distance_threshold:
+                destination_db_connection.execute("UPDATE taxa SET distance_threshold = ? WHERE id = ?", (source_distance_threshold, destination_species_id))
+                output_file.write(destination_species_name + "\t" + str(source_distance_threshold) + "\t" + str(destination_distance_threshold) + "\t" + str(source_distance_threshold) + "\t" + "Updated, source less than destination\n")
+                species_source_used_counter += 1
+            else:
+                output_file.write(destination_species_name + "\t" + str(source_distance_threshold) + "\t" + str(destination_distance_threshold) + "\t" + str(destination_distance_threshold) + "\t" + "Not updated, this condition shouldnt occur\n")
+
+print("\nSource species diameters used: " + str(species_source_used_counter)
+        + "\nNo change in species diameters: " + str(species_equal_counter)
+        + "\nTotal species: " + str(species_source_used_counter + species_equal_counter))
+
+# Commit connection
+destination_db_connection.commit()
+
+# Close the connection
+destination_db_connection.close()
+source_db_connection.close()
