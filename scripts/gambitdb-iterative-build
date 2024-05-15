@@ -45,6 +45,7 @@ parser.add_argument('--min_genomes',  help='minimum genomes a species must have'
 parser.add_argument('--species_to_ignore', help='file containing a list of species to ignore', type=str)
 parser.add_argument('--cached_downloads', help='A directory with cached downloads of FASTA gzipped files', type=str)
 parser.add_argument('--interspecies_overlap', help='Maximum overlap between species to allow in to DB', default=0.7, type=float)
+parser.add_argument('--compress_max_distance', help='Maximum pairwise distance for a cluster (between 0.0001 and 0.9999)', default=0.1 type=float)
 
 parser.add_argument('--rank', '-r', help='taxonomic rank (genus/species)', default = 'species', type=str)
 
@@ -169,7 +170,11 @@ with tempfile.TemporaryDirectory() as temp_dir:
                     new_filename = parts[0] + '_' + parts[1] + '.fna.gz'
                     os.rename(os.path.join(directory_path, filename), os.path.join(directory_path, new_filename))
 
-            os.system('gambitdb --representative_genomes ' + str(representative_genomes_filename) + ' --compress_max_distance 0.1 -v --cpus '+ str(options.cpus)+' -d '+temp_dir2+'/intermediate_files '+temp_dir2+'/fasta '+temp_dir2+'/assembly_metadata.csv '+temp_dir2+'/species_taxa.csv')
+            compress_max_distance_param = ''
+            if options.compress_max_distance is not None:
+                compress_max_distance_param = '--compress_max_distance ' + str(options.compress_max_distance)
+    
+            os.system('gambitdb --representative_genomes ' + str(representative_genomes_filename) + ' ' + compress_max_distance_param+' -v --cpus '+ str(options.cpus)+' -d '+temp_dir2+'/intermediate_files '+temp_dir2+'/fasta '+temp_dir2+'/assembly_metadata.csv '+temp_dir2+'/species_taxa.csv')
             os.system('gambitdb-create --database_output_filename '+temp_dir2+'/final/database.gdb --signatures_output_filename '+temp_dir2+'/final/database.gs '+temp_dir2+'/intermediate_files/genome_assembly_metadata.csv '+temp_dir2+'/intermediate_files/species_taxon.csv '+temp_dir2+'/intermediate_files/database.gs')
 
             if not os.path.exists(temp_dir2+'/final/database.gs') or os.stat(temp_dir2+'/final/database.gs').st_size == 0:
