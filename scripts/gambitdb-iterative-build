@@ -45,7 +45,7 @@ parser.add_argument('--min_genomes',  help='minimum genomes a species must have'
 parser.add_argument('--species_to_ignore', help='file containing a list of species to ignore', type=str)
 parser.add_argument('--cached_downloads', help='A directory with cached downloads of FASTA gzipped files', type=str)
 parser.add_argument('--interspecies_overlap', help='Maximum overlap between species to allow in to DB', default=0.7, type=float)
-parser.add_argument('--compress_max_distance', help='Maximum pairwise distance for a cluster (between 0.0001 and 0.9999)', default=0.1 type=float)
+parser.add_argument('--compress_max_distance', help='Maximum pairwise distance for a cluster (between 0.0001 and 0.9999) but ideally 0.1', type=float)
 
 parser.add_argument('--rank', '-r', help='taxonomic rank (genus/species)', default = 'species', type=str)
 
