@@ -17,6 +17,7 @@ import sqlite3
 import shutil
 import os
 import sys
+import uuid
 sys.path.append('../')
 sys.path.append('./')
 from gambitdb.GtdbSpreadsheetParser import GtdbSpreadsheetParser
@@ -57,6 +58,7 @@ print("Shiglla accessions found: "+ str(len(shigella_accessions)))
 
 # Remove shigella accessions from the signatures file
 from gambit.sigs import  load_signatures, dump_signatures, AnnotatedSignatures
+import uuid
 with load_signatures(options.signatures_filename) as src:
     in_gidxs = np.flatnonzero(~np.in1d(src.ids,shigella_accessions))
     filtered_src_ids = src.ids[in_gidxs]
@@ -78,6 +80,41 @@ main_db_connection.commit()
 main_db_connection.close()
 
 # Add the species to the database
+temp_database_filename = 'input_db.gdb'
+temp_signatures_filename = 'input_db.gs'
 os.system(' '.join(['gambitdb-iterative-build', '-p', str(options.cpus), '--interspecies_overlap' , '0.00001', '--do_not_filter_existing_species', options.output_signatures_filename, options.output_database_filename,  temp_gtdb_filename]))
+os.remove(temp_gtdb_filename)
+shutil.copy(temp_signatures_filename, options.output_signatures_filename)
 
+# Fix any inconsistencies that were added in the build process
+os.system(' '.join(['gambitdb-repair-db',  '--database_output_filename', options.output_database_filename, temp_database_filename]))
+os.remove(temp_database_filename)
+os.remove(temp_signatures_filename)
 
+# Add custom structure for Eschrechia/Shigella
+database_connection = sqlite3.connect(options.output_database_filename)
+# rename the genus Eschrechia to Eschrechia/Shigella - set diameter to 0.80
+database_connection.execute("UPDATE taxa SET distance_threshold = 0.8, name = 'Escherichia/Shigella' WHERE rank = 'genus' AND name = 'Escherichia'")
+# add a taxa for Eschrechia coli/Shigella, no rank, set diameter to 0.68 - point to the Eschrechia/Shigella genus as parent
+uuid_key = str(uuid.uuid4())
+database_connection.execute("INSERT INTO taxa (key, name, rank, description, distance_threshold, parent_id, report, genome_set_id) VALUES (?, 'Escherichia coli/Shigella', NULL, '', 0.68, (SELECT id FROM taxa WHERE name = 'Escherichia/Shigella'), 1, (SELECT id FROM genome_sets LIMIT 1))", (uuid_key,))
+# point Eschrechia coli species to Eschrechia coli/Shigella taxa, distance_threshold 0.0 (should be already)
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Escherichia coli/Shigella'), distance_threshold = 0 WHERE name = 'Escherichia coli'")
+# From the Shigella genus, remove the rank, set diameter to 0.68, point to the Eschrechia coli/Shigella as parent
+database_connection.execute("UPDATE taxa SET rank = NULL, distance_threshold = 0, parent_id = (SELECT id FROM taxa WHERE name = 'Escherichia coli/Shigella') WHERE name = 'Shigella'")
+
+# add custom structure for Lacticaseibacillus casei/paracasei.  Just one odd species
+# add a taxa for Lacticaseibacillus casei/paracasei with null rank and diameter 0.4745 with Lacticaseibacillus as the parent_id
+uuid_key = str(uuid.uuid4())
+database_connection.execute("INSERT INTO taxa (key, name, rank, description, distance_threshold, parent_id, report, genome_set_id) VALUES (?, 'Lacticaseibacillus casei/paracasei', NULL, '', 0.68, (SELECT id FROM taxa WHERE name = 'Lacticaseibacillus'), 1, (SELECT id FROM genome_sets LIMIT 1))", (uuid_key,))
+# change the parent_id of Lacticaseibacillus paracasei to Lacticaseibacillus casei/paracasei and set distance_threshold to be zero
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Lacticaseibacillus casei/paracasei'), distance_threshold = 0 WHERE name = 'Lacticaseibacillus paracasei'")
+
+database_connection.commit()
+database_connection.close()
+
+# Make sure the signatures file only contains signatures that correspond to genomes in the database
+temp_signatures_filename = 'temp_signatures.gs'
+shutil.copy(options.output_signatures_filename, 'temp_signatures.gs')
+os.system(' '.join(['gambitdb-sync-signatures-db', '--signatures_output_filename', options.output_signatures_filename, options.output_database_filename, temp_signatures_filename]))
+os.remove(temp_signatures_filename)
