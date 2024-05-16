@@ -129,31 +129,32 @@ database_connection.execute("INSERT INTO taxa (key, name, rank, description, dis
 database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Vibrio ordalii or anguillarum') WHERE name = 'Vibrio ordalii'")
 database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Vibrio ordalii or anguillarum') WHERE name = 'Vibrio anguillarum'")
 
+#Original 1.3.0 database
 #2129|gambit/refseq-curated/Enterobacter cloacae complex|Enterobacter cloacae complex|species group||0.0|1|1|1920||
-2102|gambit/refseq-curated/Enterobacter cloacae subspecies 1|Enterobacter cloacae subspecies 1|subspecies||0.3849|0|1|2129||
-2103|gambit/refseq-curated/Enterobacter cloacae subspecies 2|Enterobacter cloacae subspecies 2|subspecies||0.3645|0|1|2129||
+#2102|gambit/refseq-curated/Enterobacter cloacae subspecies 1|Enterobacter cloacae subspecies 1|subspecies||0.3849|0|1|2129||
+#2103|gambit/refseq-curated/Enterobacter cloacae subspecies 2|Enterobacter cloacae subspecies 2|subspecies||0.3645|0|1|2129||
 #2135|ncbi/taxonomy/550|Enterobacter cloacae|species||0.0|1|1|2129|550|
 #2136|ncbi/taxonomy/61645|Enterobacter asburiae|species||0.0|1|1|2129|61645|
 #2137|ncbi/taxonomy/158836|Enterobacter hormaechei|species||0.0|1|1|2129|158836|
-
-sqlite> select * from taxa where name like '%Enterobacter cloacae%';
-325|e8dc7227-d71d-4521-8197-e2276cc4f27b|Enterobacter cloacae|species||0.0|1|1|49|1|
-326|f530b860-5600-41ea-9c6c-dd9aadb6cb14|Enterobacter cloacae subspecies 1|||0.3849|0|1|325|1|
-327|10c7b978-4ac9-40ab-a350-3c0a55603c45|Enterobacter cloacae subspecies 2|||0.4797|0|1|325|1|
-473|bc73dc4c-05a3-4408-beb7-2f51cf9d1461|Enterobacter cloacae_M|species||0.5999|1|1|49|1|
-1565|286a6572-f5cc-41fd-a433-5645b5f6fd85|Enterobacter cloacae_I|species||0.0|1|1|49|1|
-1566|a2fc351d-3c26-4d93-8e2f-726f1f23469d|Enterobacter cloacae_I subspecies 1|||0.3466|0|1|1565|1|
-1567|7e189596-0fe5-4e2c-a887-581b91ee591f|Enterobacter cloacae_I subspecies 2|||0.4612|0|1|1565|1|
-3770|c834f167-901e-4a16-a4e1-4cf59d711b57|Enterobacter cloacae_O|species||0.336|1|1|49|1|
-4703|808ad0c3-cf72-4d4f-be25-8a2a565ae6a9|Enterobacter cloacae_L|species||0.5361|1|1|49|1|
-8915|6145724e-3455-4c70-b9bf-a0c22a33b41c|Enterobacter cloacae_N|species||0.3226|1|1|49|1|
-9005|453f1d31-7948-409d-a673-f1b19c50604a|Enterobacter cloacae_P|species||0.3383|1|1|49|1|
+# GTDB
+#325|e8dc7227-d71d-4521-8197-e2276cc4f27b|Enterobacter cloacae|species||0.0|1|1|49|1|
+#326|f530b860-5600-41ea-9c6c-dd9aadb6cb14|Enterobacter cloacae subspecies 1|||0.3849|0|1|325|1|
+#327|10c7b978-4ac9-40ab-a350-3c0a55603c45|Enterobacter cloacae subspecies 2|||0.4797|0|1|325|1|
+#473|bc73dc4c-05a3-4408-beb7-2f51cf9d1461|Enterobacter cloacae_M|species||0.5999|1|1|49|1|
+#1565|286a6572-f5cc-41fd-a433-5645b5f6fd85|Enterobacter cloacae_I|species||0.0|1|1|49|1|
+#1566|a2fc351d-3c26-4d93-8e2f-726f1f23469d|Enterobacter cloacae_I subspecies 1|||0.3466|0|1|1565|1|
+#1567|7e189596-0fe5-4e2c-a887-581b91ee591f|Enterobacter cloacae_I subspecies 2|||0.4612|0|1|1565|1|
+#3770|c834f167-901e-4a16-a4e1-4cf59d711b57|Enterobacter cloacae_O|species||0.336|1|1|49|1|
+#4703|808ad0c3-cf72-4d4f-be25-8a2a565ae6a9|Enterobacter cloacae_L|species||0.5361|1|1|49|1|
+#8915|6145724e-3455-4c70-b9bf-a0c22a33b41c|Enterobacter cloacae_N|species||0.3226|1|1|49|1|
+#9005|453f1d31-7948-409d-a673-f1b19c50604a|Enterobacter cloacae_P|species||0.3383|1|1|49|1|
 
 uuid_key = str(uuid.uuid4())
 database_connection.execute("INSERT INTO taxa (key, name, rank, description, distance_threshold,  report, genome_set_id, parent_id) VALUES (?, 'Enterobacter cloacae complex', 'species group', '', 0.0, 1, (SELECT id FROM genome_sets LIMIT 1), (SELECT id FROM taxa WHERE name = 'Enterobacter'))", (uuid_key,))
 database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Enterobacter cloacae complex') WHERE name = 'Enterobacter cloacae'")
 database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Enterobacter cloacae complex') WHERE name = 'Enterobacter asburiae'")
 database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Enterobacter cloacae complex') WHERE name = 'Enterobacter hormaechei'")
+database_connection.execute("UPDATE taxa SET report = 0, parent_id = (SELECT id FROM taxa WHERE name = 'Enterobacter cloacae complex') WHERE name LIKE ? AND name NOT LIKE ?", ('Enterobacter cloacae_%', '%subspecies%',))
 
 #10240|gambit/refseq-curated/Citrobacter cronae or Citrobacter werkmanii|Citrobacter cronae or Citrobacter werkmanii|species group||0.0|1|1|9875||
 #10242|ncbi/taxonomy/1748967|Citrobacter cronae|species||0.4312|0|1|10240|1748967|
