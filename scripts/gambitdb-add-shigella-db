@@ -1,0 +1,83 @@
+#!/usr/bin/env python3
+# Take in a gtdb spreadsheet and an existing database and signatures file.
+# Filter the spreadsheet to only include Shigella, taking the ncbi_taxonomy column and filtering on 'g__Shigella;s__Shigella '
+# Copy this data into the gtdb taxonomy column of the spreadsheet
+# get a list of all accessions
+# Remove these accessions from the DB and sigs file.
+# Using the iterative add method, add the new species to the database, but without any collapse of clusters.
+# Create a pairwise distance matrix for the new species and Ecoli. Are there e.coli genomes that are intermingled with Shigella?  
+# upate genus name to have Escherichia/Shigella
+# Set the genus/species diameters for Shigella.
+# repair the database and sigs file.
+# output a new database and signatures file
+
+import argparse
+import numpy as np
+import sqlite3
+import shutil
+import os
+import sys
+sys.path.append('../')
+sys.path.append('./')
+from gambitdb.GtdbSpreadsheetParser import GtdbSpreadsheetParser
+
+parser = argparse.ArgumentParser(
+    description = 'Add Shigella to a gambit database',
+    usage = 'gambitdb-add-shigella-db [options]',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+# Required input files
+parser.add_argument('database_filename', help='gambit database file', type=str)
+parser.add_argument('signatures_filename', help='gambit signatures file', type=str)
+parser.add_argument('gtdb_filename', help='GTDB spreadsheet (TSV)', type=str)
+
+# optional input parameters
+parser.add_argument('--species_filter', '-c', help='The taxon string to filter on in GTDB spreadsheet', default = 'g__Shigella;s__Shigella', type=str)
+parser.add_argument('--cpus',	 '-p', help='Number of cpus to use', type=int, default = 1)
+
+# Output
+parser.add_argument('--output_database_filename', '-a', help='Output filename for database with genus diameters applied', default = 'database_with_shigella.gdb', type=str)
+parser.add_argument('--output_signatures_filename', '-b', help='Summary of genus diameters', default = 'signatures_with_shigella.gs', type=str)
+
+parser.add_argument('--debug', action='store_true', help='Turn on debugging', default = False)
+parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
+options = parser.parse_args()
+
+spreadsheet_parser = GtdbSpreadsheetParser(options.gtdb_filename, 90, 10, 1000, False, False, 1, '', 'species_taxa.csv',  'assembly_metadata.csv',  'accessions_to_download.csv', 'representative_genomes.csv', options.debug, options.verbose )
+spreadsheet_df = spreadsheet_parser.read_in_gtdb_spreadsheet()
+# filter the spreadsheet to only include the species we are interested in
+spreadsheet_df = spreadsheet_df[spreadsheet_df['ncbi_taxonomy'].str.contains(options.species_filter)]
+# overwrite the gtdb taxonomy with the data from the ncbi_taxonomy column instead of the GTDB column.
+spreadsheet_df['gtdb_taxonomy'] = spreadsheet_df['ncbi_taxonomy']
+shigella_accessions = spreadsheet_df['accession'].to_list()
+# save the filtered GTDB spreadsheet to a file
+temp_gtdb_filename = options.gtdb_filename + '.temp'
+spreadsheet_df.to_csv(temp_gtdb_filename, sep='\t', index=False)
+print("Shiglla accessions found: "+ str(len(shigella_accessions)))
+
+# Remove shigella accessions from the signatures file
+from gambit.sigs import  load_signatures, dump_signatures, AnnotatedSignatures
+with load_signatures(options.signatures_filename) as src:
+    in_gidxs = np.flatnonzero(~np.in1d(src.ids,shigella_accessions))
+    filtered_src_ids = src.ids[in_gidxs]
+    filtered_src = src[in_gidxs]
+    out_sigs = AnnotatedSignatures(filtered_src, filtered_src_ids, src.meta)
+    dump_signatures(options.output_signatures_filename, out_sigs)
+
+# remove genomes from the database (if they exist) because they are linked to E.coli
+shutil.copy(options.database_filename, options.output_database_filename)
+main_db_connection = sqlite3.connect(options.output_database_filename)
+shigella_genomes = main_db_connection.execute("SELECT genome_annotations.genome_id, genomes.id FROM genome_annotations INNER JOIN genomes ON genome_annotations.genome_id = genomes.id WHERE genomes.refseq_acc IN (" + str(','.join(['?' for _ in shigella_accessions]))+ ")", shigella_accessions)
+shigella_genomes_counter = 0
+for genome_annotations_genome_id, genomes_id in shigella_genomes:
+    main_db_connection.execute("DELETE FROM genome_annotations WHERE genome_id = ?", (genome_annotations_genome_id,))
+    main_db_connection.execute("DELETE FROM genomes WHERE id = ?", (genomes_id,))
+    shigella_genomes_counter += 1
+print("Removed " + str(shigella_genomes_counter) + " Shigella genomes from the database in preparation for adding them back in properly." )
+main_db_connection.commit()
+main_db_connection.close()
+
+# Add the species to the database
+os.system(' '.join(['gambitdb-iterative-build', '-p', str(options.cpus), '--interspecies_overlap' , '0.00001', '--do_not_filter_existing_species', options.output_signatures_filename, options.output_database_filename,  temp_gtdb_filename]))
+
+
