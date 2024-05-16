@@ -110,6 +110,135 @@ database_connection.execute("INSERT INTO taxa (key, name, rank, description, dis
 # change the parent_id of Lacticaseibacillus paracasei to Lacticaseibacillus casei/paracasei and set distance_threshold to be zero
 database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Lacticaseibacillus casei/paracasei'), distance_threshold = 0 WHERE name = 'Lacticaseibacillus paracasei'")
 
+# Vibrio diabolicus or antiquarius or chemaguriensis
+#2127|gambit/refseq-curated/Vibrio diabolicus or antiquarius or chemaguriensis|Vibrio diabolicus or antiquarius or chemaguriensis|species group||0.0|1|1|1918||
+#2130|ncbi/taxonomy/50719|Vibrio diabolicus|species||0.5887|0|1|2127|50719|
+#2131|ncbi/taxonomy/150340|Vibrio antiquarius|species||0.0439|0|1|2127|150340|
+#2132|ncbi/taxonomy/2527672|Vibrio chemaguriensis|species||0.1687|0|1|2127|2527672|
+uuid_key = str(uuid.uuid4())
+database_connection.execute("INSERT INTO taxa (key, name, rank, description, distance_threshold,  report, genome_set_id, parent_id) VALUES (?, 'Vibrio diabolicus or antiquarius or chemaguriensis', 'species group', '', 0.0, 1, (SELECT id FROM genome_sets LIMIT 1), (SELECT id FROM taxa WHERE name = 'Vibrio'))", (uuid_key,))
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Vibrio diabolicus or antiquarius or chemaguriensis') WHERE name = 'Vibrio diabolicus'")
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Vibrio diabolicus or antiquarius or chemaguriensis') WHERE name = 'Vibrio antiquarius'")
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Vibrio diabolicus or antiquarius or chemaguriensis') WHERE name = 'Vibrio chemaguriensis'")
+
+#2128|gambit/refseq-curated/Vibrio ordalii or anguillarum|Vibrio ordalii or anguillarum|species group||0.0|1|1|1918||
+#2133|ncbi/taxonomy/28174|Vibrio ordalii|species||0.5013|0|1|2128|28174|
+#2134|ncbi/taxonomy/55601|Vibrio anguillarum|species||0.5958|0|1|2128|55601|
+uuid_key = str(uuid.uuid4())
+database_connection.execute("INSERT INTO taxa (key, name, rank, description, distance_threshold,  report, genome_set_id, parent_id) VALUES (?, 'Vibrio ordalii or anguillarum', 'species group', '', 0.0, 1, (SELECT id FROM genome_sets LIMIT 1), (SELECT id FROM taxa WHERE name = 'Vibrio'))", (uuid_key,))
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Vibrio ordalii or anguillarum') WHERE name = 'Vibrio ordalii'")
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Vibrio ordalii or anguillarum') WHERE name = 'Vibrio anguillarum'")
+
+#2129|gambit/refseq-curated/Enterobacter cloacae complex|Enterobacter cloacae complex|species group||0.0|1|1|1920||
+2102|gambit/refseq-curated/Enterobacter cloacae subspecies 1|Enterobacter cloacae subspecies 1|subspecies||0.3849|0|1|2129||
+2103|gambit/refseq-curated/Enterobacter cloacae subspecies 2|Enterobacter cloacae subspecies 2|subspecies||0.3645|0|1|2129||
+#2135|ncbi/taxonomy/550|Enterobacter cloacae|species||0.0|1|1|2129|550|
+#2136|ncbi/taxonomy/61645|Enterobacter asburiae|species||0.0|1|1|2129|61645|
+#2137|ncbi/taxonomy/158836|Enterobacter hormaechei|species||0.0|1|1|2129|158836|
+
+sqlite> select * from taxa where name like '%Enterobacter cloacae%';
+325|e8dc7227-d71d-4521-8197-e2276cc4f27b|Enterobacter cloacae|species||0.0|1|1|49|1|
+326|f530b860-5600-41ea-9c6c-dd9aadb6cb14|Enterobacter cloacae subspecies 1|||0.3849|0|1|325|1|
+327|10c7b978-4ac9-40ab-a350-3c0a55603c45|Enterobacter cloacae subspecies 2|||0.4797|0|1|325|1|
+473|bc73dc4c-05a3-4408-beb7-2f51cf9d1461|Enterobacter cloacae_M|species||0.5999|1|1|49|1|
+1565|286a6572-f5cc-41fd-a433-5645b5f6fd85|Enterobacter cloacae_I|species||0.0|1|1|49|1|
+1566|a2fc351d-3c26-4d93-8e2f-726f1f23469d|Enterobacter cloacae_I subspecies 1|||0.3466|0|1|1565|1|
+1567|7e189596-0fe5-4e2c-a887-581b91ee591f|Enterobacter cloacae_I subspecies 2|||0.4612|0|1|1565|1|
+3770|c834f167-901e-4a16-a4e1-4cf59d711b57|Enterobacter cloacae_O|species||0.336|1|1|49|1|
+4703|808ad0c3-cf72-4d4f-be25-8a2a565ae6a9|Enterobacter cloacae_L|species||0.5361|1|1|49|1|
+8915|6145724e-3455-4c70-b9bf-a0c22a33b41c|Enterobacter cloacae_N|species||0.3226|1|1|49|1|
+9005|453f1d31-7948-409d-a673-f1b19c50604a|Enterobacter cloacae_P|species||0.3383|1|1|49|1|
+
+uuid_key = str(uuid.uuid4())
+database_connection.execute("INSERT INTO taxa (key, name, rank, description, distance_threshold,  report, genome_set_id, parent_id) VALUES (?, 'Enterobacter cloacae complex', 'species group', '', 0.0, 1, (SELECT id FROM genome_sets LIMIT 1), (SELECT id FROM taxa WHERE name = 'Enterobacter'))", (uuid_key,))
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Enterobacter cloacae complex') WHERE name = 'Enterobacter cloacae'")
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Enterobacter cloacae complex') WHERE name = 'Enterobacter asburiae'")
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Enterobacter cloacae complex') WHERE name = 'Enterobacter hormaechei'")
+
+#10240|gambit/refseq-curated/Citrobacter cronae or Citrobacter werkmanii|Citrobacter cronae or Citrobacter werkmanii|species group||0.0|1|1|9875||
+#10242|ncbi/taxonomy/1748967|Citrobacter cronae|species||0.4312|0|1|10240|1748967|
+#10243|ncbi/taxonomy/67827|Citrobacter werkmanii|species||0.6952|0|1|10240|67827|
+uuid_key = str(uuid.uuid4())
+database_connection.execute("INSERT INTO taxa (key, name, rank, description, distance_threshold,  report, genome_set_id, parent_id) VALUES (?, 'Citrobacter cronae or Citrobacter werkmanii', 'species group', '', 0.0, 1, (SELECT id FROM genome_sets LIMIT 1), (SELECT id FROM taxa WHERE name = 'Citrobacter'))", (uuid_key,))
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Citrobacter cronae or Citrobacter werkmanii'), report = 0 WHERE name = 'Citrobacter cronae'")
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Citrobacter cronae or Citrobacter werkmanii'), report = 0 WHERE name = 'Citrobacter werkmanii'")
+
+#10241|gambit/refseq-curated/Providencia stuartii or Providencia thailandensis|Providencia stuartii or Providencia thailandensis|species group||0.0|1|1|9876||
+#10244|ncbi/taxonomy/588|Providencia stuartii|species||0.4748|0|1|10241|588|
+#10245|ncbi/taxonomy/990144|Providencia thailandensis|species||0.308|0|1|10241|990144|
+uuid_key = str(uuid.uuid4())
+database_connection.execute("INSERT INTO taxa (key, name, rank, description, distance_threshold,  report, genome_set_id, parent_id) VALUES (?, 'Providencia stuartii or Providencia thailandensis', 'species group', '', 0.0, 1, (SELECT id FROM genome_sets LIMIT 1), (SELECT id FROM taxa WHERE name = 'Providencia'))", (uuid_key,))
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Providencia stuartii or Providencia thailandensis'), report = 0 WHERE name = 'Providencia stuartii'")
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Providencia stuartii or Providencia thailandensis'), report = 0 WHERE name = 'Providencia thailandensis'")
+
+#10250|ncbi/taxonomy/2249310|Mycobacterium simiae complex|species_group||0.78489|1|1||2249310|
+#10374|ncbi/taxonomy/1784|Mycobacterium simiae|species||0.5608|1|1|10250|1784|
+#10376|ncbi/taxonomy/722731|Mycobacterium shigaense|species||0.0507|1|1|10250|722731|
+#10377|ncbi/taxonomy/220927|Mycobacterium saskatchewanense|species||0.0017|1|1|10250|220927|
+#10378|ncbi/taxonomy/292462|Mycobacterium florentinum|species||0.001|1|1|10250|292462|
+#10379|ncbi/taxonomy/470076|Mycobacterium stomatepiae|species||0.0153|1|1|10250|470076|
+#10381|ncbi/taxonomy/185642|Mycobacterium parmense|species||0.0021|1|1|10250|185642|
+#10382|ncbi/taxonomy/53376|Mycobacterium heidelbergense|species||0.0026|1|1|10250|53376|
+#10389|ncbi/taxonomy/120959|Mycobacterium kubicae|species||0.4331|1|1|10250|120959|
+#10390|ncbi/taxonomy/47839|Mycobacterium triplex|species||0.0007|1|1|10250|47839|
+#10391|ncbi/taxonomy/767916|Mycobacterium paraense|species||0.2984|1|1|10250|767916|
+#10392|ncbi/taxonomy/243061|Mycobacterium sherrisii|species||0.1049|1|1|10250|243061|
+#10393|ncbi/taxonomy/153971|Mycobacterium palustre|species||0.0956|1|1|10250|153971|
+#10394|ncbi/taxonomy/33895|Mycobacterium interjectum|species||0.0313|1|1|10250|33895|
+#10395|ncbi/taxonomy/154654|Mycobacterium montefiorense|species||0.471|1|1|10250|154654|
+#10396|ncbi/taxonomy/141349|Mycobacterium lentiflavum|species||0.3222|1|1|10250|141349|
+#10397|ncbi/taxonomy/761804|Mycobacterium europaeum|species||0.2488|1|1|10250|761804|
+#10398|ncbi/taxonomy/28445|Mycobacterium intermedium|species||0.0051|1|1|10250|28445|
+uuid_key = str(uuid.uuid4())
+database_connection.execute("INSERT INTO taxa (key, name, rank, description, distance_threshold,  report, genome_set_id, parent_id) VALUES (?, 'Mycobacterium simiae complex', 'species group', '', 0.78489, 1, (SELECT id FROM genome_sets LIMIT 1), (SELECT id FROM taxa WHERE name = 'Mycobacterium'))", (uuid_key,))
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Mycobacterium simiae complex') WHERE name = 'Mycobacterium simiae'")
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Mycobacterium simiae complex') WHERE name = 'Mycobacterium shigaense'")
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Mycobacterium simiae complex') WHERE name = 'Mycobacterium saskatchewanense'")
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Mycobacterium simiae complex') WHERE name = 'Mycobacterium florentinum'")
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Mycobacterium simiae complex') WHERE name = 'Mycobacterium stomatepiae'")
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Mycobacterium simiae complex') WHERE name = 'Mycobacterium parmense'")
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Mycobacterium simiae complex') WHERE name = 'Mycobacterium heidelbergense'")
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Mycobacterium simiae complex') WHERE name = 'Mycobacterium kubicae'")
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Mycobacterium simiae complex') WHERE name = 'Mycobacterium triplex'")
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Mycobacterium simiae complex') WHERE name = 'Mycobacterium paraense'")
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Mycobacterium simiae complex') WHERE name = 'Mycobacterium sherrisii'")
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Mycobacterium simiae complex') WHERE name = 'Mycobacterium palustre'")
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Mycobacterium simiae complex') WHERE name = 'Mycobacterium interjectum'")
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Mycobacterium simiae complex') WHERE name = 'Mycobacterium montefiorense'")
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Mycobacterium simiae complex') WHERE name = 'Mycobacterium lentiflavum'")
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Mycobacterium simiae complex') WHERE name = 'Mycobacterium europaeum'")
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Mycobacterium simiae complex') WHERE name = 'Mycobacterium intermedium'")
+
+#10251|ncbi/taxonomy/2993898|Mycobacterium ulcerans group|species_group||0.4474|1|1||2993898|
+#10375|ncbi/taxonomy/265949|Mycobacterium pseudoshottsii|species||0.0626|1|1|10251|265949|
+#10384|ncbi/taxonomy/1781|Mycobacterium marinum|species||0.1938|1|1|10251|1781|
+#10385|ncbi/taxonomy/1809|Mycobacterium ulcerans|species||0.0593|1|1|10251|1809|
+uuid_key = str(uuid.uuid4())
+database_connection.execute("INSERT INTO taxa (key, name, rank, description, distance_threshold,  report, genome_set_id, parent_id) VALUES (?, 'Mycobacterium ulcerans group', 'species group', '', 0.4474, 1, (SELECT id FROM genome_sets LIMIT 1), (SELECT id FROM taxa WHERE name = 'Mycobacterium'))", (uuid_key,))
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Mycobacterium ulcerans group') WHERE name = 'Mycobacterium pseudoshottsii'")
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Mycobacterium ulcerans group') WHERE name = 'Mycobacterium marinum'")
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Mycobacterium ulcerans group') WHERE name = 'Mycobacterium ulcerans'")
+
+#10252|ncbi/taxonomy/120793|Mycobacterium avium complex (MAC)|species_group||0.78489|1|1||120793|
+#10380|ncbi/taxonomy/560555|Mycobacterium mantenii|species||0.6879|1|1|10252|560555|
+#10383|ncbi/taxonomy/1764|Mycobacterium avium|species||0.4994|1|1|10252|1764|
+#10387|ncbi/taxonomy/1138383|Mycobacterium paraintracellulare|species||0.3195|1|1|10252|1138383|
+#10388|ncbi/taxonomy/701042|Mycobacterium marseillense|species||0.3008|1|1|10252|701042|
+uuid_key = str(uuid.uuid4())
+database_connection.execute("INSERT INTO taxa (key, name, rank, description, distance_threshold,  report, genome_set_id, parent_id) VALUES (?, 'Mycobacterium avium complex (MAC)', 'species group', '', 0.78489, 1, (SELECT id FROM genome_sets LIMIT 1), (SELECT id FROM taxa WHERE name = 'Mycobacterium'))", (uuid_key,))
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Mycobacterium avium complex (MAC)') WHERE name = 'Mycobacterium mantenii'")
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Mycobacterium avium complex (MAC)') WHERE name = 'Mycobacterium avium'")
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Mycobacterium avium complex (MAC)') WHERE name = 'Mycobacterium paraintracellulare'")
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Mycobacterium avium complex (MAC)') WHERE name = 'Mycobacterium marseillense'")
+
+#10253|ncbi/taxonomy/77643|Mycobacterium tuberculosis complex|species_group||0.1951|1|1||77643|
+#10386|ncbi/taxonomy/78331|Mycobacterium canettii|species||0.1163|1|1|10253|78331|
+#10399|ncbi/taxonomy/1773|Mycobacterium tuberculosis|species||0.0914|1|1|10253|1773|
+uuid_key = str(uuid.uuid4())
+database_connection.execute("INSERT INTO taxa (key, name, rank, description, distance_threshold,  report, genome_set_id, parent_id) VALUES (?, 'Mycobacterium tuberculosis complex', 'species group', '', 0.1951, 1, (SELECT id FROM genome_sets LIMIT 1), (SELECT id FROM taxa WHERE name = 'Mycobacterium'))", (uuid_key,))
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Mycobacterium tuberculosis complex') WHERE name = 'Mycobacterium canettii'")
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Mycobacterium tuberculosis complex') WHERE name = 'Mycobacterium tuberculosis'")
+
 database_connection.commit()
 database_connection.close()
 
