@@ -114,13 +114,13 @@ else:
 
 
 # Look for species with a subspecies. If the species has a subspecies, then the species should have a distance_threshold of 0
-species_with_subspecies = main_db_connection.execute("SELECT taxa.id, taxa.name FROM taxa WHERE taxa.rank = 'species' AND EXISTS (SELECT 1 FROM taxa AS subspecies WHERE subspecies.parent_id = taxa.id AND subspecies.rank = 'species' AND subspecies.name LIKE '" + '%subspecies%' +  "')")
+species_with_subspecies = main_db_connection.execute("SELECT taxa.id, taxa.name FROM taxa WHERE taxa.rank = 'species' AND EXISTS (SELECT 1 FROM taxa AS subspecies WHERE subspecies.parent_id = taxa.id AND subspecies.rank = 'species' AND subspecies.name LIKE ?)", ('%subspecies%',))
 for species_id, species_name in species_with_subspecies:
     logger.debug("Species " + species_name + " has subspecies, setting distance_threshold to 0")
     main_db_connection.execute("UPDATE taxa SET distance_threshold = 0 WHERE id = ?", (species_id,))
 
-# select all subspecies and set their rank to be null
-main_db_connection.execute("UPDATE taxa SET rank = NULL WHERE rank = 'species' AND name LIKE '" + '%subspecies%' +  "')")
+# select all subspecies and set their rank to be null and dont report them.
+main_db_connection.execute("UPDATE taxa SET rank = NULL, report = 0 WHERE rank = 'species' AND name LIKE ?", ('%subspecies%',))  
 
 # Get the distance thresholds of all species for a genus and set the distance threshold of the genus to be the maximum of the species
 genus_ids = main_db_connection.execute("SELECT id FROM taxa WHERE rank = 'genus'")
