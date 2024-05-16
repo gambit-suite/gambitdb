@@ -113,6 +113,27 @@ else:
     logger.debug("No orphaned genomes found")
 
 
+# Look for species with a subspecies. If the species has a subspecies, then the species should have a distance_threshold of 0
+species_with_subspecies = main_db_connection.execute("SELECT taxa.id, taxa.name FROM taxa WHERE taxa.rank = 'species' AND EXISTS (SELECT 1 FROM taxa AS subspecies WHERE subspecies.parent_id = taxa.id AND subspecies.rank = 'species' AND subspecies.name LIKE '" + '%subspecies%' +  "')")
+for species_id, species_name in species_with_subspecies:
+    logger.debug("Species " + species_name + " has subspecies, setting distance_threshold to 0")
+    main_db_connection.execute("UPDATE taxa SET distance_threshold = 0 WHERE id = ?", (species_id,))
+
+# select all subspecies and set their rank to be null
+main_db_connection.execute("UPDATE taxa SET rank = NULL WHERE rank = 'species' AND name LIKE '" + '%subspecies%' +  "')")
+
+# Get the distance thresholds of all species for a genus and set the distance threshold of the genus to be the maximum of the species
+genus_ids = main_db_connection.execute("SELECT id FROM taxa WHERE rank = 'genus'")
+for genus_id in genus_ids:
+    genus_id = genus_id[0]
+    species_distance_thresholds = main_db_connection.execute("SELECT distance_threshold FROM taxa WHERE parent_id = ? AND rank = 'species' and distance_threshold > 0", (genus_id,))
+    species_distance_thresholds = np.array(list(species_distance_thresholds))
+    if len(species_distance_thresholds) > 0:
+        max_distance_threshold = np.max(species_distance_thresholds)
+        logger.debug("Setting distance_threshold for genus id: " + str(genus_id) + " to " + str(max_distance_threshold))
+        main_db_connection.execute("UPDATE taxa SET distance_threshold = ? WHERE id = ?", (max_distance_threshold, genus_id))
+
+
 # Commit connection
 main_db_connection.commit()
 
