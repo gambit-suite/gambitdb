@@ -32,6 +32,20 @@ from gambit.sigs import  load_signatures, dump_signatures, AnnotatedSignatures
 
 with load_signatures(options.signatures_filename) as src:
     in_gidxs = np.flatnonzero(np.in1d(src.ids,all_genome_accessions_db))
+    # create a list of the genomes in all_genome_accessions_db that are not in in_gidxs
+    genomes_not_in_signatures = [genome for genome in all_genome_accessions_db if genome not in src.ids]
+    if len(genomes_not_in_signatures) > 0:
+        print("Genomes in Database but not in Signatures: ", genomes_not_in_signatures)
+
+        for genome in genomes_not_in_signatures:
+            main_db_connection = sqlite3.connect(options.database_main_filename)
+            genomes = main_db_connection.execute("SELECT taxa.name, genomes.refseq_acc FROM genome_annotations INNER JOIN genomes ON genome_annotations.genome_id = genomes.id INNER JOIN taxa on taxa.id = genome_annotations.taxon_id WHERE genomes.refseq_acc = ?", (genome,))
+            for taxon, accession in genomes:
+                print("Genomes in database but not in signatures file: ", accession, " Taxon: ", taxon)
+
+            main_db_connection.commit()
+            main_db_connection.close()
+
     filtered_src_ids = src.ids[in_gidxs]
     filtered_src = src[in_gidxs]
     out_sigs = AnnotatedSignatures(filtered_src, filtered_src_ids, src.meta)
