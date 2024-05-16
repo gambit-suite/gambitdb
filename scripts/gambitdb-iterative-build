@@ -9,6 +9,7 @@ import os
 import re
 import pandas as pd
 import numpy as np
+import shutil
 sys.path.append('../')
 sys.path.append('./')
 
@@ -46,9 +47,9 @@ parser.add_argument('--species_to_ignore', help='file containing a list of speci
 parser.add_argument('--cached_downloads', help='A directory with cached downloads of FASTA gzipped files', type=str)
 parser.add_argument('--interspecies_overlap', help='Maximum overlap between species to allow in to DB', default=0.7, type=float)
 parser.add_argument('--compress_max_distance', help='Maximum pairwise distance for a cluster (between 0.0001 and 0.9999) but ideally 0.1', type=float)
+parser.add_argument('--do_not_filter_existing_species', action='store_true', help='Do not filter existing species', default=False)
 
 parser.add_argument('--rank', '-r', help='taxonomic rank (genus/species)', default = 'species', type=str)
-
 parser.add_argument('--cpus',	 '-p', help='Number of cpus to use', type=int, default = 1)
 
 options = parser.parse_args()
@@ -71,22 +72,26 @@ with tempfile.TemporaryDirectory() as temp_dir:
     os.system('cp '+options.database_main_filename+' '+ temp_dir+'/input_db.gdb')
 
     # read in options.species_to_ignore which has one species per line
-    with open(options.species_to_ignore) as f:
-        taxa_to_ignore = f.readlines()
-    taxa_to_ignore = [x.strip() for x in taxa_to_ignore]
-    taxa = taxa + taxa_to_ignore
+    if options.species_to_ignore is not None:
+        with open(options.species_to_ignore) as f:
+            taxa_to_ignore = f.readlines()
+        taxa_to_ignore = [x.strip() for x in taxa_to_ignore]
+        taxa = taxa + taxa_to_ignore
 
-    # Loop over the spreadsheet and check if any taxa is in the row, if it is, ignore
-    patterns = [re.compile(t) for t in taxa]
-    # Open the input and output files
-    with open(spreadsheet, 'r') as f, open(filtered_spreadsheet, 'w') as o:
-        # Loop over each line in the input file
-        for line in f:
-            # Check if the line contains any of the patterns
-            if any(pattern.search(line) for pattern in patterns):
-                continue
-            # If the line does not contain any of the patterns, write it to the output file
-            o.write(line)
+    if options.do_not_filter_existing_species:
+        shutil.copyfile(spreadsheet, filtered_spreadsheet)
+    else:
+        # Loop over the spreadsheet and check if any taxa is in the row, if it is, ignore
+        patterns = [re.compile(t) for t in taxa]
+        # Open the input and output files
+        with open(spreadsheet, 'r') as f, open(filtered_spreadsheet, 'w') as o:
+            # Loop over each line in the input file
+            for line in f:
+                # Check if the line contains any of the patterns
+                if any(pattern.search(line) for pattern in patterns):
+                    continue
+                # If the line does not contain any of the patterns, write it to the output file
+                o.write(line)
 
     # now we have a spreadsheet with novel species
     g = GtdbSpreadsheetParser(filtered_spreadsheet, 
