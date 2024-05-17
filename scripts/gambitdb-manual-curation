@@ -108,7 +108,7 @@ database_connection.execute("UPDATE taxa SET rank = NULL, distance_threshold = 0
 uuid_key = str(uuid.uuid4())
 database_connection.execute("INSERT INTO taxa (key, name, rank, description, distance_threshold, parent_id, report, genome_set_id) VALUES (?, 'Lacticaseibacillus casei/paracasei', NULL, '', 0.68, (SELECT id FROM taxa WHERE name = 'Lacticaseibacillus'), 1, (SELECT id FROM genome_sets LIMIT 1))", (uuid_key,))
 # change the parent_id of Lacticaseibacillus paracasei to Lacticaseibacillus casei/paracasei and set distance_threshold to be zero
-database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Lacticaseibacillus casei/paracasei'), distance_threshold = 0 WHERE name = 'Lacticaseibacillus paracasei'")
+database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Lacticaseibacillus casei/paracasei'), distance_threshold = 0, report = 0 WHERE name = 'Lacticaseibacillus paracasei'")
 
 # Vibrio diabolicus or antiquarius or chemaguriensis
 #2127|gambit/refseq-curated/Vibrio diabolicus or antiquarius or chemaguriensis|Vibrio diabolicus or antiquarius or chemaguriensis|species group||0.0|1|1|1918||
@@ -117,17 +117,17 @@ database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WH
 #2132|ncbi/taxonomy/2527672|Vibrio chemaguriensis|species||0.1687|0|1|2127|2527672|
 uuid_key = str(uuid.uuid4())
 database_connection.execute("INSERT INTO taxa (key, name, rank, description, distance_threshold,  report, genome_set_id, parent_id) VALUES (?, 'Vibrio diabolicus or antiquarius or chemaguriensis', 'species group', '', 0.0, 1, (SELECT id FROM genome_sets LIMIT 1), (SELECT id FROM taxa WHERE name = 'Vibrio'))", (uuid_key,))
-database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Vibrio diabolicus or antiquarius or chemaguriensis') WHERE name = 'Vibrio diabolicus'")
-database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Vibrio diabolicus or antiquarius or chemaguriensis') WHERE name = 'Vibrio antiquarius'")
-database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Vibrio diabolicus or antiquarius or chemaguriensis') WHERE name = 'Vibrio chemaguriensis'")
+database_connection.execute("UPDATE taxa SET report = 0, parent_id = (SELECT id FROM taxa WHERE name = 'Vibrio diabolicus or antiquarius or chemaguriensis') WHERE name = 'Vibrio diabolicus'")
+database_connection.execute("UPDATE taxa SET report = 0, parent_id = (SELECT id FROM taxa WHERE name = 'Vibrio diabolicus or antiquarius or chemaguriensis') WHERE name = 'Vibrio antiquarius'")
+database_connection.execute("UPDATE taxa SET report = 0, parent_id = (SELECT id FROM taxa WHERE name = 'Vibrio diabolicus or antiquarius or chemaguriensis') WHERE name = 'Vibrio chemaguriensis'")
 
 #2128|gambit/refseq-curated/Vibrio ordalii or anguillarum|Vibrio ordalii or anguillarum|species group||0.0|1|1|1918||
 #2133|ncbi/taxonomy/28174|Vibrio ordalii|species||0.5013|0|1|2128|28174|
 #2134|ncbi/taxonomy/55601|Vibrio anguillarum|species||0.5958|0|1|2128|55601|
 uuid_key = str(uuid.uuid4())
 database_connection.execute("INSERT INTO taxa (key, name, rank, description, distance_threshold,  report, genome_set_id, parent_id) VALUES (?, 'Vibrio ordalii or anguillarum', 'species group', '', 0.0, 1, (SELECT id FROM genome_sets LIMIT 1), (SELECT id FROM taxa WHERE name = 'Vibrio'))", (uuid_key,))
-database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Vibrio ordalii or anguillarum') WHERE name = 'Vibrio ordalii'")
-database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Vibrio ordalii or anguillarum') WHERE name = 'Vibrio anguillarum'")
+database_connection.execute("UPDATE taxa SET report = 0, parent_id = (SELECT id FROM taxa WHERE name = 'Vibrio ordalii or anguillarum') WHERE name = 'Vibrio ordalii'")
+database_connection.execute("UPDATE taxa SET report = 0, parent_id = (SELECT id FROM taxa WHERE name = 'Vibrio ordalii or anguillarum') WHERE name = 'Vibrio anguillarum'")
 
 #Original 1.3.0 database
 #2129|gambit/refseq-curated/Enterobacter cloacae complex|Enterobacter cloacae complex|species group||0.0|1|1|1920||
