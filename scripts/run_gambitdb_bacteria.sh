@@ -39,4 +39,4 @@ find $BASEDIR/fasta -name "*fna.gz" | parallel -j $CORES 'gzip -t {} || echo {} 
 # classified.
 ls $BASEDIR/fasta/ | grep fna.gz > $BASEDIR/intermediate_files/assembly_filenames.txt
 gambit -d $BASEDIR/final query -c $CORES  -l $BASEDIR/intermediate_files/assembly_filenames.txt --ldir $BASEDIR/fasta  -o $BASEDIR/results.csv
-gambitdb-database-recall -o $BASEDIR/recall_results.txt $BASEDIR/intermediate_files/genome_assembly_metadata.csv $BASEDIR/results.csv
+gambit-database-recall -o $BASEDIR/recall_results.txt $BASEDIR/intermediate_files/genome_assembly_metadata.csv $BASEDIR/results.csv
