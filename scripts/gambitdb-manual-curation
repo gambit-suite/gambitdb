@@ -11,6 +11,8 @@
 # repair the database and sigs file.
 # output a new database and signatures file
 
+
+
 import argparse
 import numpy as np
 import sqlite3
@@ -242,6 +244,31 @@ database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WH
 
 database_connection.commit()
 database_connection.close()
+
+# Collapse novel genus with _X suffix
+# remove Underscore from novel genus names. In the taxa table identify genus with _X and the master genus name (without a suffix).
+# Have a hash table of taxonid (with suffix) to taxonid (without suffix). Lookup all species which have this taxonid as a parent_id,
+# and update the parent_id (without suffix), and rewrite the species name to remove the suffix.
+# Have a minimum genus name size.
+# output all the rewritten genus/species names.
+# output the database
+
+database_connection = sqlite3.connect(options.output_database_filename)
+# get top level genus
+top_level_genus = database_connection.execute("select name, id from taxa where name not like '%\_%' ESCAPE '\' and rank = 'genus';")
+for top_level_genus_name, top_level_genus_id in top_level_genus:
+    sub_genus = database_connection.execute("select name, id from taxa where name like ?  ESCAPE '\' and rank = 'genus';", (str(top_level_genus_name)+"\_%",))
+    for sub_genus_name, sub_genus_id in sub_genus:
+        print("Collapsing " + sub_genus_name + " into " + top_level_genus_name)
+        # update the parent_id of the species to the top level genus
+        species = database_connection.execute("select name, id from taxa where parent_id = ?;", (sub_genus_id,))
+        for species_name, species_id in species:
+            database_connection.execute("update taxa set parent_id = ? where id = ?;", (top_level_genus_id, species_id))
+            updated_species_name = species_name.replace(sub_genus_name + " ", top_level_genus_name + " ")
+            database_connection.execute("update taxa set name = ? where id = ?;", (updated_species_name, species_id))
+            print("Updated " + species_name + " to " + updated_species_name)
+        database_connection.execute("delete from taxa where id = ?;", (sub_genus_id,))
+
 
 # Make sure the signatures file only contains signatures that correspond to genomes in the database
 temp_signatures_filename = 'temp_signatures.gs'
