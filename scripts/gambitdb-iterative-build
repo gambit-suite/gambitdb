@@ -49,14 +49,19 @@ parser.add_argument('--interspecies_overlap', help='Maximum overlap between spec
 parser.add_argument('--compress_max_distance', help='Maximum pairwise distance for a cluster (between 0.0001 and 0.9999) but ideally 0.1', type=float)
 parser.add_argument('--do_not_filter_existing_species', action='store_true', help='Do not filter existing species', default=False)
 
+parser.add_argument('--checkm_completeness',  help='CheckM completness [0-100] minimum', type=int, default=97)
+parser.add_argument('--checkm_contamination',  help='CheckM contamination maximum', type=int, default=3)
+parser.add_argument('--num_contigs',  help='Maximum no. contigs', type=int, default=300)
+
+
 parser.add_argument('--rank', '-r', help='taxonomic rank (genus/species)', default = 'species', type=str)
 parser.add_argument('--cpus',	 '-p', help='Number of cpus to use', type=int, default = 1)
 
 options = parser.parse_args()
 
-checkm_completeness = 97
-checkm_contamination = 3
-num_contigs = 300
+checkm_completeness = options.checkm_completeness
+checkm_contamination = options.checkm_completeness
+num_contigs = options.num_contigs
 
 # Find the species in the existing database
 main_db_connection = sqlite3.connect(options.database_main_filename)
@@ -91,6 +96,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
         with open(spreadsheet, 'r') as f, open(filtered_spreadsheet, 'w') as o:
             # Read the first line to get the column headers
             headers = f.readline().strip().split('\t')
+            o.write('\t'.join(headers) + '\n')
             # Find the index of the gtdb_taxonomy column
             taxonomy_index = headers.index('gtdb_taxonomy')
     
@@ -105,7 +111,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
                 if any(pattern.search(taxonomy_value) for pattern in patterns):
                     continue
                 # If the line does not contain any of the patterns, write it to the output file
-                o.write(line)
+                o.write(line+'\n')
 
     # now we have a spreadsheet with novel species
     g = GtdbSpreadsheetParser(filtered_spreadsheet, 
