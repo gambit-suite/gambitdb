@@ -46,7 +46,7 @@ parser.add_argument('--debug', action='store_true', help='Turn on debugging', de
 parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
 options = parser.parse_args()
 
-def replace_species(gtdb_filename, species_filter, signatures_filename, output_signatures_filename, database_filename, output_database_filename, cpus, debug, verbose):
+def replace_species(gtdb_filename, species_filter, signatures_filename, output_signatures_filename, database_filename, output_database_filename, cpus, debug, verbose, checkm_completeness):
     spreadsheet_parser = GtdbSpreadsheetParser(gtdb_filename, 90, 10, 1000, False, False, 1, '', 'species_taxa.csv',  'assembly_metadata.csv',  'accessions_to_download.csv', 'representative_genomes.csv', debug, verbose )
     spreadsheet_df = spreadsheet_parser.read_in_gtdb_spreadsheet()
     # filter the spreadsheet to only include the species we are interested in
@@ -95,22 +95,26 @@ def replace_species(gtdb_filename, species_filter, signatures_filename, output_s
 
 # These are species where there are difficulties calling them and the accepted taxonomy in the community is not the same as the taxonomy in GTDB
 # Use the NCBI taxonomy and all reasonable genomes.
-replace_species(options.gtdb_filename, 'g__Shigella;s__',          options.signatures_filename, options.output_signatures_filename, options.database_filename, options.output_database_filename, options.cpus, options.debug, options.verbose)
+replace_species(options.gtdb_filename, 'g__Shigella;s__',          options.signatures_filename, options.output_signatures_filename, options.database_filename, options.output_database_filename, options.cpus, options.debug, options.verbose, 97)
 shutil.copy(options.output_signatures_filename, 'tmp.gs')
 shutil.copy(options.output_database_filename, 'tmp.gdb')
-replace_species(options.gtdb_filename, 'g__Mycolicibacterium;s__', 'tmp.gs', options.output_signatures_filename, 'tmp.gdb', options.output_database_filename, options.cpus, options.debug, options.verbose)
+replace_species(options.gtdb_filename, 'g__Mycolicibacterium;s__', 'tmp.gs', options.output_signatures_filename, 'tmp.gdb', options.output_database_filename, options.cpus, options.debug, options.verbose, 97)
 shutil.copy(options.output_signatures_filename, 'tmp.gs')
 shutil.copy(options.output_database_filename, 'tmp.gdb')
-replace_species(options.gtdb_filename, 'g__Mycolicibacter;s__',    'tmp.gs', options.output_signatures_filename, 'tmp.gdb', options.output_database_filename, options.cpus, options.debug, options.verbose)
+replace_species(options.gtdb_filename, 'g__Mycolicibacter;s__',    'tmp.gs', options.output_signatures_filename, 'tmp.gdb', options.output_database_filename, options.cpus, options.debug, options.verbose, 97)
 shutil.copy(options.output_signatures_filename, 'tmp.gs')
 shutil.copy(options.output_database_filename, 'tmp.gdb')
-replace_species(options.gtdb_filename, 'g__Mycolicibacillus;s__',  'tmp.gs', options.output_signatures_filename, 'tmp.gdb', options.output_database_filename, options.cpus, options.debug, options.verbose)
+replace_species(options.gtdb_filename, 'g__Mycolicibacillus;s__',  'tmp.gs', options.output_signatures_filename, 'tmp.gdb', options.output_database_filename, options.cpus, options.debug, options.verbose, 97)
 shutil.copy(options.output_signatures_filename, 'tmp.gs')
 shutil.copy(options.output_database_filename, 'tmp.gdb')
-replace_species(options.gtdb_filename, 'g__Mycobacteroides;s__',   'tmp.gs', options.output_signatures_filename, 'tmp.gdb', options.output_database_filename, options.cpus, options.debug, options.verbose)
+replace_species(options.gtdb_filename, 'g__Mycobacteroides;s__',   'tmp.gs', options.output_signatures_filename, 'tmp.gdb', options.output_database_filename, options.cpus, options.debug, options.verbose, 97)
 shutil.copy(options.output_signatures_filename, 'tmp.gs')
 shutil.copy(options.output_database_filename, 'tmp.gdb')
-replace_species(options.gtdb_filename, 'g__Mycobacterium;s__',     'tmp.gs', options.output_signatures_filename, 'tmp.gdb', options.output_database_filename, options.cpus, options.debug, options.verbose)
+replace_species(options.gtdb_filename, 'g__Mycobacterium;s__',     'tmp.gs', options.output_signatures_filename, 'tmp.gdb', options.output_database_filename, options.cpus, options.debug, options.verbose, 97)
+shutil.copy(options.output_signatures_filename, 'tmp.gs')
+shutil.copy(options.output_database_filename, 'tmp.gdb')
+# This species has a poor checkm (version 1) completeness
+replace_species(options.gtdb_filename, 'g__Tropheryma;s__Tropheryma whipplei',     'tmp.gs', options.output_signatures_filename, 'tmp.gdb', options.output_database_filename, options.cpus, options.debug, options.verbose, 70)
 
 # Add custom structure for Eschrechia/Shigella
 database_connection = sqlite3.connect(options.output_database_filename)
