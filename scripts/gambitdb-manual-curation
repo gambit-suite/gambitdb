@@ -47,7 +47,7 @@ parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbos
 options = parser.parse_args()
 
 os.system(' '.join(['gambitdb-repair-db',  '--database_output_filename', options.output_database_filename, options.database_filename]))
-os.system(' '.join(['gambitdb-sync-signatures-db', '--signatures_output_filename', options.output_signatures_filename, options.output_database_filename, options.output_signatures_filename])) 
+os.system(' '.join(['gambitdb-sync-signatures-db', '--signatures_output_filename', options.output_signatures_filename, options.output_database_filename, options.signatures_filename])) 
 
 def replace_species(gtdb_filename, species_filter, signatures_filename, output_signatures_filename, database_filename, output_database_filename, cpus, debug, verbose, checkm_completeness):
     spreadsheet_parser = GtdbSpreadsheetParser(gtdb_filename, 90, 10, 1000, False, False, 1, '', 'species_taxa.csv',  'assembly_metadata.csv',  'accessions_to_download.csv', 'representative_genomes.csv', debug, verbose )
@@ -83,11 +83,11 @@ def replace_species(gtdb_filename, species_filter, signatures_filename, output_s
     print("Removed " + str(shigella_genomes_counter) + " Species genomes from the database in preparation for adding them back in properly." )
     main_db_connection.commit()
     main_db_connection.close()
-
+    
     # Add the species to the database
     temp_database_filename = 'input_db.gdb'
     temp_signatures_filename = 'input_db.gs'
-    os.system(' '.join(['gambitdb-iterative-build', '-p', str(cpus), '--interspecies_overlap' , '0.00001', '--do_not_filter_existing_species', output_signatures_filename, output_database_filename,  temp_gtdb_filename]))
+    os.system(' '.join(['gambitdb-iterative-build', '-p', str(cpus), '--checkm_completeness', str(checkm_completeness),  '--interspecies_overlap' , '0.00001', '--do_not_filter_existing_species', output_signatures_filename, output_database_filename,  temp_gtdb_filename]))
     os.remove(temp_gtdb_filename)
     shutil.copy(temp_signatures_filename, output_signatures_filename)
 
@@ -202,6 +202,9 @@ uuid_key = str(uuid.uuid4())
 database_connection.execute("INSERT INTO taxa (key, name, rank, description, distance_threshold,  report, genome_set_id, parent_id) VALUES (?, 'Providencia stuartii or Providencia thailandensis', 'species group', '', 0.0, 1, (SELECT id FROM genome_sets LIMIT 1), (SELECT id FROM taxa WHERE name = 'Providencia'))", (uuid_key,))
 database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Providencia stuartii or Providencia thailandensis'), report = 0 WHERE name = 'Providencia stuartii'")
 database_connection.execute("UPDATE taxa SET parent_id = (SELECT id FROM taxa WHERE name = 'Providencia stuartii or Providencia thailandensis'), report = 0 WHERE name = 'Providencia thailandensis'")
+
+
+# may have to update this curation after taxonomic reorganisation
 
 #10250|ncbi/taxonomy/2249310|Mycobacterium simiae complex|species_group||0.78489|1|1||2249310|
 #10374|ncbi/taxonomy/1784|Mycobacterium simiae|species||0.5608|1|1|10250|1784|
