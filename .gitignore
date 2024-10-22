@@ -167,3 +167,10 @@ method
 correct_incorrect_predictions.txt
 results.csv
 output_logfile.txt
+
+#fungaldb
+2024-10-22-ncbi-fungi.tsv
+refseq_assembly_summary_fungi_22_10_2024.txt
+accessions_ncbi.txt
+accessions_refseq.txt
+comparison.txt
