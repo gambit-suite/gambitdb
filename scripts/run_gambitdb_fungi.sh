@@ -8,16 +8,12 @@ CORES=$2
 DATE=$(date +%Y-%m-%d)
 
 # Step 1 - Download accessions from ncbi with metadata using datasets
-datasets summary genome taxon 4751 --as-json-lines --assembly-source 'GenBank' --exclude-atypical | dataformat tsv genome --fields accession,assminfo-name,annotinfo-name,annotinfo-release-date,assmstats-number-of-contigs,assmstats-gc-percent,assmstats-contig-n50,organism-name,organism-tax-id | tee ${BASEDIR}/${DATE}-ncbi-fungi.tsv
+# datasets summary genome taxon 4751 --as-json-lines --assembly-source 'GenBank' --exclude-atypical | dataformat tsv genome --fields accession,assminfo-name,annotinfo-name,annotinfo-release-date,assmstats-number-of-contigs,assmstats-gc-percent,assmstats-contig-n50,organism-name,organism-tax-id | tee ${BASEDIR}/${DATE}-ncbi-fungi.tsv
 
 # Step 2 - Filter the genomes to remove the ones that are lower quality
- ~/code/gambitdb/scripts/gambitdb-fungi ${BASEDIR}/${DATE}-ncbi-fungi.tsv
-
-
-
-
-
-
+#  ~/code/gambitdb/scripts/gambitdb-fungi ${BASEDIR}/${DATE}-ncbi-fungi.tsv
+#For now let's pass in the file directly
+./scripts/gambitdb-fungi ~/Path/To/TSV
 
 
 # # Take the GTDB spreadsheet and filter the genomes to remove the ones that are lower quality

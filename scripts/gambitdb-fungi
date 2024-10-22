@@ -7,29 +7,34 @@ sys.path.append('./')
 from gambitdb.Fungi import FungiParser
 
 parser = argparse.ArgumentParser(
-    description = 'Given a NCBI metadata spreadsheet, output a list of accessions to download, a species taxonid file and a genome metadata file',
-    usage = 'gambitdb-fungi [options]',
+    description='Given a Fungi metadata spreadsheet, output a list of accessions to download, a species taxonid file and a genome metadata file',
+    usage='fungi-processor [options]',
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 # Required input files
-parser.add_argument('ncbi_metadata_spreadsheet',  help='NCBI metadata file', type=str)
+parser.add_argument('fungi_metadata_spreadsheet', help='Fungi metadata file', type=str)
 
 # Optional input parameters
-parser.add_argument('--max_contigs', '-d',  help='Maximum number of contigs. Please note some species systematically assemble poorly with short read data.', type=int, default=100)
-parser.add_argument('--minimum_genomes_per_species', '-i',  help='Minimum number of genomes in a species, otherwise exclude the species', type=float, default=2)
+parser.add_argument('--max_contigs', '-d', help='Maximum number of contigs', type=int, default=500)
+parser.add_argument('--minimum_genomes_per_species', '-i', help='Minimum number of genomes in a species', type=int, default=2)
 
 # Output files
-parser.add_argument('--species_taxon_output_filename', '-s', help='Output filename for with the taxonomy', default = 'species_taxa.csv', type=str)
-parser.add_argument('--genome_assembly_metadata_output_filename', '-g', help='Genome metadata', default = 'assembly_metadata.csv', type=str)
-parser.add_argument('--accessions_output_filename', '-a', help='Genome accessions for download', default = 'accessions_to_download.csv', type=str)
-parser.add_argument('--representative_genomes', '-r', help='Representative genome accessions', default = 'representative_genomes.csv', type=str)
+parser.add_argument('--genome_assembly_metadata_output_filename', '-g', help='Genome metadata', default='assembly_metadata.tsv', type=str)
+parser.add_argument('--accessions_output_filename', '-a', help='Genome accessions for download', default='accessions_to_download.tsv', type=str)
+
+# Debugging modes
+parser.add_argument('--debug', action='store_true', help='Turn on debugging', default=False)
+parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default=False)
 
 options = parser.parse_args()
+logging.basicConfig(filename='fungi_parser.log', level=logging.DEBUG)
 
-FungiParser(options.ncbi_metadata_spreadsheet, 
-    options.max_contigs,
-    options.minimum_genomes_per_species,
-    options.species_taxon_output_filename, 
-    options.genome_assembly_metadata_output_filename, 
-    options.accessions_output_filename, 
-    options.representative_genomes).generate_spreadsheets()
+FungiParser(
+    fungi_metadata_spreadsheet=options.fungi_metadata_spreadsheet,
+    max_contigs=options.max_contigs,
+    minimum_genomes_per_species=options.minimum_genomes_per_species,
+    genome_assembly_metadata_output_filename=options.genome_assembly_metadata_output_filename,
+    accessions_output_filename=options.accessions_output_filename,
+    debug=options.debug,
+    verbose=options.verbose
+).generate_spreadsheets()
