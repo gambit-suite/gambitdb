@@ -7,7 +7,7 @@ sys.path.append('./')
 from gambitdb.Fungi import FungiParser
 
 parser = argparse.ArgumentParser(
-    description='Given a Fungi metadata spreadsheet, output a list of accessions to download, a species taxonid file and a genome metadata file',
+    description='Given a Fungi RefSeq metadata spreadsheet, output a list of accessions to download, a species taxonid file and a genome metadata file',
     usage='fungi-processor [options]',
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 

@@ -2,6 +2,7 @@
 # run_gambitdb_fungi.sh ~/path/to/workin/dir 1
 # The file should be in the directory. Nothing else should be there as it creates/deletes folders.
 BASEDIR=$1
+INPUTFILE=$2
 CORES=$2
 
 # Set variables
@@ -13,7 +14,7 @@ DATE=$(date +%Y-%m-%d)
 # Step 2 - Filter the genomes to remove the ones that are lower quality
 #  ~/code/gambitdb/scripts/gambitdb-fungi ${BASEDIR}/${DATE}-ncbi-fungi.tsv
 #For now let's pass in the file directly
-./scripts/gambitdb-fungi ~/Path/To/TSV
+./scripts/gambitdb-fungi $INPUTFILE
 
 
 # # Take the GTDB spreadsheet and filter the genomes to remove the ones that are lower quality

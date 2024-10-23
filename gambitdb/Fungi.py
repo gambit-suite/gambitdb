@@ -1,4 +1,3 @@
-# a class which will read in a GTDB spreadsheet, parse each row and output a modified spreadsheet.
 import pandas as pd
 import requests
 import time
@@ -7,8 +6,6 @@ from dataclasses import dataclass
 import json
 import logging
 
-
-#might want to change what we scrape from ncbi datasets api
 @dataclass
 class GenomeMetadata:
     accession: str
@@ -49,6 +46,13 @@ class FungiParser:
             self.logger.setLevel(logging.DEBUG)
         else:
             self.logger.setLevel(logging.ERROR)
+        
+        # Add a console handler to the logger
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.DEBUG if self.verbose else logging.ERROR)
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        console_handler.setFormatter(formatter)
+        self.logger.addHandler(console_handler)
         
         self.max_contigs = max_contigs
         self.minimum_genomes_per_species = minimum_genomes_per_species

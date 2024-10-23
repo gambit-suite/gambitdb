@@ -174,3 +174,9 @@ refseq_assembly_summary_fungi_22_10_2024.txt
 accessions_ncbi.txt
 accessions_refseq.txt
 comparison.txt
+accessions_to_download.tsv
+assembly_metadata.tsv
+test_candida_albicans.json
+TEST_INPUT_REFSEQ_subset.tsv
+test.json
+gambitdb/GCA_019039435.json
