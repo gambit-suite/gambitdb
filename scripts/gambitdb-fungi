@@ -19,8 +19,8 @@ parser.add_argument('--max_contigs', '-d', help='Maximum number of contigs', typ
 parser.add_argument('--minimum_genomes_per_species', '-i', help='Minimum number of genomes in a species', type=int, default=2)
 
 # Output files
-parser.add_argument('--genome_assembly_metadata_output_filename', '-g', help='Genome metadata', default='assembly_metadata.tsv', type=str)
-parser.add_argument('--accessions_output_filename', '-a', help='Genome accessions for download', default='accessions_to_download.tsv', type=str)
+parser.add_argument('--genome_assembly_metadata_output_filename', '-g', help='Genome metadata', default='assembly_metadata.csv', type=str)
+parser.add_argument('--species_taxon_output_filename', '-a', help='Species data', default='species_taxon.csv', type=str)
 
 # Debugging modes
 parser.add_argument('--debug', action='store_true', help='Turn on debugging', default=False)
@@ -34,7 +34,7 @@ FungiParser(
     max_contigs=options.max_contigs,
     minimum_genomes_per_species=options.minimum_genomes_per_species,
     genome_assembly_metadata_output_filename=options.genome_assembly_metadata_output_filename,
-    accessions_output_filename=options.accessions_output_filename,
+    taxon_output_filename=options.species_taxon_output_filename,
     debug=options.debug,
     verbose=options.verbose
 ).generate_spreadsheets()

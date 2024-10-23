@@ -1,6 +1,7 @@
 import pandas as pd
 import requests
 import time
+import sys
 from typing import Dict, List, Set
 from dataclasses import dataclass
 import json
@@ -12,8 +13,8 @@ class GenomeMetadata:
     contig_count: int
     species_taxid: str
     organism_name: str
-    assembly_level: str
-    bioproject: str
+    parent_taxid: int
+    rank: str
     
 class FungiParser:
     """
@@ -24,7 +25,7 @@ class FungiParser:
                  max_contigs: int, 
                  minimum_genomes_per_species: int,
                  genome_assembly_metadata_output_filename: str, 
-                 accessions_output_filename: str,
+                 taxon_output_filename: str,
                  verbose: bool = False,
                  debug: bool = False):
         """
@@ -35,7 +36,7 @@ class FungiParser:
           minimum_genomes_per_species (int): The minimum number of genomes per species to include a species.
           species_taxon_output_filename (str): The path to the output file for species taxon information.
           genome_assembly_metadata_output_filename (str): The path to the output file for genome assembly metadata.
-          accessions_output_filename (str): The path to the output file for accessions.
+          taxon_output_filename (str): The path to the output file for accessions.
         """
         
         self.logger = logging.getLogger(__name__)
@@ -57,7 +58,7 @@ class FungiParser:
         self.max_contigs = max_contigs
         self.minimum_genomes_per_species = minimum_genomes_per_species
         self.genome_assembly_metadata_output_filename = genome_assembly_metadata_output_filename
-        self.accessions_output_filename = accessions_output_filename
+        self.taxon_output_filename = taxon_output_filename
         
         #Refseq file is weird so getting the column names from the header, can change this later
         with open(fungi_metadata_spreadsheet) as f:
@@ -81,11 +82,35 @@ class FungiParser:
         self.valid_genomes: List[GenomeMetadata] = []
         self.species_genome_counts: Dict[str, int] = {}
         
-    def process_genome_report(self, report: dict) -> GenomeMetadata:
+    def get_parent_taxon(self, taxon_id: str) -> str:
+        """
+        Get the parent taxon ID for a given taxon ID.
+        """
+        url = f"https://api.ncbi.nlm.nih.gov/datasets/v2/taxonomy/taxon/{taxon_id}"
+        
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            data = response.json()
+            parent_taxon = data['taxonomy_nodes'][0]['taxonomy']['lineage'][-1]
+            rank = data['taxonomy_nodes'][0]['taxonomy']['rank']
+        except requests.exceptions.RequestException as e:
+            self.logger.error(f"Error querying NCBI API for taxon {taxon_id}: {e}")
+            sys.exit(1)
+        except json.JSONDecodeError as e:
+            self.logger.error(f"Error parsing JSON response for taxon {taxon_id}: {e}")
+            sys.exit(1)
+        except Exception as e:
+            self.logger.error(f"Unexpected error processing taxon {taxon_id}: {e}")
+            sys.exit(1)
+        
+        return parent_taxon, rank.lower()
+        
+    def process_genome_report(self, report: dict, parent_taxid: int, rank: str) -> GenomeMetadata:
         """
         Process a single genome report into GenomeMetadata from NCBI API
         """
-        assembly_info = report.get('assembly_info', {})
+
         organism_info = report.get('organism', {})
         
         return GenomeMetadata(
@@ -93,70 +118,91 @@ class FungiParser:
             contig_count=report['assembly_stats']['number_of_contigs'],
             species_taxid=str(organism_info.get('tax_id', '')),
             organism_name=organism_info.get('organism_name', ''),
-            assembly_level=assembly_info.get('assembly_level', ''),
-            bioproject=assembly_info.get('bioproject_accession', ''),
+            parent_taxid=parent_taxid,
+            rank=rank
         )
 
-    def get_genome_data_for_taxon(self, taxon_id: str) -> List[GenomeMetadata]:
+    def get_genome_data_for_taxon(self, taxon_id: str, parent_taxid: int, rank: str) -> List[GenomeMetadata]:
         """
-        Query NCBI Datasets API for genome data for a given taxon ID
+        Query NCBI Datasets API for genome data for a given taxon ID.
+        Handles pagination for large result sets and performs validation of total genomes found.
         """
+        
         url = f"https://api.ncbi.nlm.nih.gov/datasets/v2/genome/taxon/{taxon_id}/dataset_report"
+        genome_list = []
+        page_token = None
         
         try:
+            
             response = requests.get(url)
             response.raise_for_status()
             data = response.json()
-            
             
             if 'reports' not in data:
                 self.logger.warning(f"No genomes found for taxon {taxon_id}")
                 return []
             
-            reports = data['reports']
-            total_genomes = len(reports)
-            
-            if total_genomes < self.minimum_genomes_per_species:
-                self.logger.debug(f"Taxon {taxon_id} only has {total_genomes} genomes (minimum required: {self.minimum_genomes_per_species})")
+            total_count = data.get('total_count', len(data['reports']))
+            if total_count < self.minimum_genomes_per_species:
+                self.logger.debug(f"Taxon {taxon_id} has {total_count} total genomes (minimum required: {self.minimum_genomes_per_species})")
                 return []
+                
+            self.logger.debug(f"Found {total_count} total genomes for taxon {taxon_id}, processing...")
             
-            self.logger.debug(f"Found {total_genomes} genomes for taxon {taxon_id}, processing...")
-            
-            genome_list = []
+            reports = data['reports']
             for report in reports:
                 if (report.get('accession') and 
                     report.get('assembly_stats', {}).get('number_of_contigs') is not None):
-                    
-                    genome = self.process_genome_report(report)
+                    genome = self.process_genome_report(report, parent_taxid, rank)
                     genome_list.append(genome)
-            
-            return genome_list
-            
-        #Errors I would expect to see, not all fields always present in responst from NCBI API
+                    
+            while True:
+                page_token = data.get('next_page_token')
+                if not page_token:
+                    break
+                    
+                self.logger.debug(f"Fetching next page for taxon {taxon_id}")
+                
+                paginated_url = f"{url}?page_token={page_token}"
+                response = requests.get(paginated_url)
+                response.raise_for_status()
+                data = response.json()
+                
+                reports = data['reports']
+                for report in reports:
+                    if (report.get('accession') and 
+                        report.get('assembly_stats', {}).get('number_of_contigs') is not None):
+                        genome = self.process_genome_report(report, parent_taxid, rank)
+                        genome_list.append(genome)
+                        
         except requests.exceptions.RequestException as e:
             self.logger.error(f"Error querying NCBI API for taxon {taxon_id}: {e}")
-            return []
+            return genome_list if len(genome_list) >= self.minimum_genomes_per_species else []
         except json.JSONDecodeError as e:
             self.logger.error(f"Error parsing JSON response for taxon {taxon_id}: {e}")
-            return []
+            return genome_list if len(genome_list) >= self.minimum_genomes_per_species else []
         except Exception as e:
             self.logger.error(f"Unexpected error processing taxon {taxon_id}: {e}")
-            return []
+            return genome_list if len(genome_list) >= self.minimum_genomes_per_species else []
+            
+        return genome_list
 
     def process_fungi_data(self):
         """
         Process each unique species taxid through the NCBI API
         """
         
-        #Grab unique species here
         unique_taxids = self.df['species_taxid'].unique()
         self.logger.debug(f"Processing {len(unique_taxids)} unique species taxids...")
 
         for taxon_id in unique_taxids:
             self.logger.debug(f"Processing taxon ID: {taxon_id}")
             
+            # Get parent taxon ID & rank
+            parent_taxon,rank = self.get_parent_taxon(taxon_id)
+            
             # Get genome data from NCBI API
-            genomes = self.get_genome_data_for_taxon(taxon_id)
+            genomes = self.get_genome_data_for_taxon(taxon_id, parent_taxon, rank)
             
             # Can probably handle this logic earlier
             if genomes:
@@ -182,27 +228,33 @@ class FungiParser:
         """
         self.logger.debug("Writing output files for FungiParser")
         
-        # Write genome assembly metadata
+        #uuid,assembly_filename,species_taxid,assembly_accession
         genome_data = pd.DataFrame([
             {
-                'accession': genome.accession,
-                'contig_count': genome.contig_count,
+                'uuid': genome.accession,
+                'assembly_filename': f'{genome.accession}_.fasta',
                 'species_taxid': genome.species_taxid,
-                'organism_name': genome.organism_name,
-                'assembly_level': genome.assembly_level,
-                'bioproject': genome.bioproject
+                'accession': genome.accession
             }
             for genome in self.valid_genomes
         ])
-        genome_data.to_csv(self.genome_assembly_metadata_output_filename, sep='\t', index=False)
+        genome_data.to_csv(self.genome_assembly_metadata_output_filename, index=False)
         self.logger.debug(f"Wrote {len(self.valid_genomes)} genomes to {self.genome_assembly_metadata_output_filename}")
         
-        # Write accessions output
-        accessions_data = pd.DataFrame({
-            'accession': [genome.accession for genome in self.valid_genomes]
-        })
-        accessions_data.to_csv(self.accessions_output_filename, sep='\t', index=False)
-        self.logger.debug(f"Wrote {len(self.valid_genomes)} accessions to {self.accessions_output_filename}")
+        #species_taxid,name,rank,parent_taxid,ncbi_taxid,gambit_taxid
+        taxon_data = pd.DataFrame([
+            {
+                'species_taxid': genome.species_taxid,
+                'name': genome.organism_name,
+                'rank': genome.rank,
+                'parent_taxid': genome.parent_taxid,
+                'ncbi_taxid': genome.species_taxid,
+                'gambit_taxid': genome.species_taxid
+            }
+            for genome in self.valid_genomes
+            ])
+        taxon_data.to_csv(self.taxon_output_filename, index=False)
+        self.logger.debug(f"Wrote {len(self.valid_genomes)} accessions to {self.taxon_output_filename}")
         
         
     def generate_spreadsheets(self):
