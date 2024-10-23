@@ -17,6 +17,8 @@ parser.add_argument('fungi_metadata_spreadsheet', help='Fungi metadata file', ty
 # Optional input parameters
 parser.add_argument('--max_contigs', '-d', help='Maximum number of contigs', type=int, default=500)
 parser.add_argument('--minimum_genomes_per_species', '-i', help='Minimum number of genomes in a species', type=int, default=2)
+parser.add_argument('--exclude_atypical', help='Exclude atypical genomes when searching NCBI', action='store_true', default=True)
+parser.add_argument('--is_metagenome_derived', help='Check if the genome metagenome derived (MAGs)', type=str, default='metagenome_derived_exclude')
 
 # Output files
 parser.add_argument('--genome_assembly_metadata_output_filename', '-g', help='Genome metadata', default='assembly_metadata.csv', type=str)
@@ -35,6 +37,8 @@ FungiParser(
     minimum_genomes_per_species=options.minimum_genomes_per_species,
     genome_assembly_metadata_output_filename=options.genome_assembly_metadata_output_filename,
     taxon_output_filename=options.species_taxon_output_filename,
+    exclude_atypical=options.exclude_atypical,
+    is_metagenome_derived=options.is_metagenome_derived,
     debug=options.debug,
     verbose=options.verbose
 ).generate_spreadsheets()

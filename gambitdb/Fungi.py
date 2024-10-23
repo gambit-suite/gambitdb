@@ -26,6 +26,8 @@ class FungiParser:
                  minimum_genomes_per_species: int,
                  genome_assembly_metadata_output_filename: str, 
                  taxon_output_filename: str,
+                 exclude_atypical: bool,
+                 is_metagenome_derived: str,
                  verbose: bool = False,
                  debug: bool = False):
         """
@@ -59,6 +61,11 @@ class FungiParser:
         self.minimum_genomes_per_species = minimum_genomes_per_species
         self.genome_assembly_metadata_output_filename = genome_assembly_metadata_output_filename
         self.taxon_output_filename = taxon_output_filename
+        
+        #Datasets API filters
+        self.exclude_atypical = str(exclude_atypical).lower() #necessary formattting for datasets API
+        self.is_metagenome_derived = is_metagenome_derived
+        
         
         #Refseq file is weird so getting the column names from the header, can change this later
         with open(fungi_metadata_spreadsheet) as f:
@@ -134,7 +141,12 @@ class FungiParser:
         
         try:
             
-            response = requests.get(url)
+            params = {
+            'filters.exclude_atypical': self.exclude_atypical,
+            'filters.is_metagenome_derived': self.is_metagenome_derived
+            }
+            
+            response = requests.get(url, params=params)
             response.raise_for_status()
             data = response.json()
             
