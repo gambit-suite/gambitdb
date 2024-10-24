@@ -7,8 +7,8 @@ from dataclasses import dataclass
 import json
 import logging
 from pathlib import Path
-from tqdm import tqdm
-import urllib
+import zipfile
+import shutil
 import os
 
 @dataclass
@@ -19,6 +19,7 @@ class GenomeMetadata:
     organism_name: str
     parent_taxid: int
     rank: str
+    assembly_filename: str = None
     
 class FungiParser:
     """
@@ -249,8 +250,8 @@ class FungiParser:
 
         for genome in self.valid_genomes:
             print(genome.accession)
-            file = outdir / Path(genome.accession + ".fna.gz")
-            if file.exists():
+            final_fasta = outdir / Path(genome.accession + ".fna")
+            if final_fasta.exists():
                 continue
                 
             url = f"https://api.ncbi.nlm.nih.gov/datasets/v2/genome/accession/{genome.accession}/download_summary"
@@ -264,10 +265,59 @@ class FungiParser:
                 response = requests.get(url, params=params)
                 response.raise_for_status()
                 data = response.json()
-                print(data)
+                
+                download_url = data['hydrated']['url']
+            
+                # Download the zip file to a temporary location
+                temp_zip = outdir / f"{genome.accession}_temp.zip"
+                #get the expected file size
+                expected_file_size = int(data['hydrated']['estimated_file_size_mb'] * 1024 * 1024)
+                
+                response = requests.get(download_url, stream=True)
+                response.raise_for_status()
+                
+                with open(temp_zip, 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=9000):
+                        f.write(chunk)
+                
+                actual_file_size = temp_zip.stat().st_size
+                
+                #allow 10% margin of error for compression
+                if actual_file_size < expected_file_size * 0.9:
+                    raise OSError(f"Downloaded file size ({actual_file_size} bytes) is significantly smaller than expected ({expected_file_size} bytes)")
+                
+                try:
+                    with zipfile.ZipFile(temp_zip) as zip_ref:    
+                        fasta_file = next(
+                            f for f in zip_ref.namelist() 
+                            if f.endswith('_genomic.fna')
+                        )
+                        zip_ref.extract(fasta_file)
+                        
+                    os.rename(
+                        os.path.join('ncbi_dataset', 'data', genome.accession, os.path.basename(fasta_file)),
+                        final_fasta
+                    )
+                    
+                    genome.assembly_filename = str(final_fasta.absolute())
 
-            except requests.exceptions.RequestException as e:
-                self.logger.error(f"Error querying NCBI API for genome {genome.accession}: {e}")
+                finally:
+                    try:
+                        if temp_zip.exists():
+                            temp_zip.unlink()
+                    except PermissionError:
+                        self.logger.warning(f"Could not delete temporary zip file for {genome.accession}")
+                        
+                    try:
+                        if os.path.exists('ncbi_dataset'):
+                            shutil.rmtree('ncbi_dataset', ignore_errors=True)
+                    except Exception as e:
+                        self.logger.warning(f"Could not delete ncbi_dataset directory for {genome.accession}: {e}")
+
+            except (requests.exceptions.RequestException, zipfile.BadZipFile, OSError) as e:
+                self.logger.error(f"Error downloading/extracting genome {genome.accession}: {e}")
+                self.logger.error(f"Removing genome {genome.accession} from valid genomes")
+                self.valid_genomes.remove(genome)
                 continue
         
         self.logger.debug(f"Downloaded {len(self.valid_genomes)} genome assemblies")
@@ -282,7 +332,7 @@ class FungiParser:
         genome_data = pd.DataFrame([
             {
                 'uuid': genome.accession,
-                'assembly_filename': f'{genome.accession}_.fasta',
+                'assembly_filename': genome.assembly_filename,
                 'species_taxid': genome.species_taxid,
                 'accession': genome.accession
             }

@@ -23,6 +23,7 @@ parser.add_argument('--is_metagenome_derived', help='Check if the genome metagen
 # Output files
 parser.add_argument('--genome_assembly_metadata_output_filename', '-g', help='Genome metadata', default='assembly_metadata.csv', type=str)
 parser.add_argument('--species_taxon_output_filename', '-a', help='Species data', default='species_taxon.csv', type=str)
+parser.add_argument('--output_fasta_directory', '-o', help='Output directory for fastas', default='.', type=str)
 
 # Debugging modes
 parser.add_argument('--debug', action='store_true', help='Turn on debugging', default=False)
@@ -36,6 +37,7 @@ FungiParser(
     max_contigs=options.max_contigs,
     minimum_genomes_per_species=options.minimum_genomes_per_species,
     genome_assembly_metadata_output_filename=options.genome_assembly_metadata_output_filename,
+    output_fasta_directory=options.output_fasta_directory,
     taxon_output_filename=options.species_taxon_output_filename,
     exclude_atypical=options.exclude_atypical,
     is_metagenome_derived=options.is_metagenome_derived,
