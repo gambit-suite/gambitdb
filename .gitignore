@@ -180,3 +180,5 @@ test_candida_albicans.json
 TEST_INPUT_REFSEQ_subset.tsv
 test.json
 gambitdb/GCA_019039435.json
+assembly_metadata.csv
+species_taxon.csv

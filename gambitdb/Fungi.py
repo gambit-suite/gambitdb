@@ -66,7 +66,6 @@ class FungiParser:
         self.exclude_atypical = str(exclude_atypical).lower() #necessary formattting for datasets API
         self.is_metagenome_derived = is_metagenome_derived
         
-        
         #Refseq file is weird so getting the column names from the header, can change this later
         with open(fungi_metadata_spreadsheet) as f:
             
@@ -93,14 +92,14 @@ class FungiParser:
         """
         Get the parent taxon ID for a given taxon ID.
         """
-        url = f"https://api.ncbi.nlm.nih.gov/datasets/v2/taxonomy/taxon/{taxon_id}"
+        url = f"https://api.ncbi.nlm.nih.gov/datasets/v2/taxonomy/taxon/{taxon_id}/dataset_report"
         
         try:
             response = requests.get(url)
             response.raise_for_status()
             data = response.json()
-            parent_taxon = data['taxonomy_nodes'][0]['taxonomy']['lineage'][-1]
-            rank = data['taxonomy_nodes'][0]['taxonomy']['rank']
+            parent_taxon = data['reports'][0]['taxonomy']['classification']['genus']['id']
+            rank = data['reports'][0]['taxonomy']['rank'].lower()
         except requests.exceptions.RequestException as e:
             self.logger.error(f"Error querying NCBI API for taxon {taxon_id}: {e}")
             sys.exit(1)
@@ -113,7 +112,7 @@ class FungiParser:
         
         return parent_taxon, rank.lower()
         
-    def process_genome_report(self, report: dict, parent_taxid: int, rank: str) -> GenomeMetadata:
+    def process_genome_report(self, report: dict, taxon_id: int, parent_taxid: int, rank: str) -> GenomeMetadata:
         """
         Process a single genome report into GenomeMetadata from NCBI API
         """
@@ -123,8 +122,8 @@ class FungiParser:
         return GenomeMetadata(
             accession=report['accession'],
             contig_count=report['assembly_stats']['number_of_contigs'],
-            species_taxid=str(organism_info.get('tax_id', '')),
-            organism_name=organism_info.get('organism_name', ''),
+            species_taxid=str(taxon_id),
+            organism_name=' '.join(organism_info.get('organism_name', '').split()[:2]),
             parent_taxid=parent_taxid,
             rank=rank
         )
@@ -165,7 +164,7 @@ class FungiParser:
             for report in reports:
                 if (report.get('accession') and 
                     report.get('assembly_stats', {}).get('number_of_contigs') is not None):
-                    genome = self.process_genome_report(report, parent_taxid, rank)
+                    genome = self.process_genome_report(report, taxon_id, parent_taxid, rank)
                     genome_list.append(genome)
                     
             while True:
@@ -184,7 +183,7 @@ class FungiParser:
                 for report in reports:
                     if (report.get('accession') and 
                         report.get('assembly_stats', {}).get('number_of_contigs') is not None):
-                        genome = self.process_genome_report(report, parent_taxid, rank)
+                        genome = self.process_genome_report(report, taxon_id, parent_taxid, rank)
                         genome_list.append(genome)
                         
         except requests.exceptions.RequestException as e:
@@ -265,6 +264,7 @@ class FungiParser:
             }
             for genome in self.valid_genomes
             ])
+        taxon_data = taxon_data.drop_duplicates() # Drop duplicate rows
         taxon_data.to_csv(self.taxon_output_filename, index=False)
         self.logger.debug(f"Wrote {len(self.valid_genomes)} accessions to {self.taxon_output_filename}")
         
