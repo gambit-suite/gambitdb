@@ -219,7 +219,7 @@ class FungiParser:
             if genomes:
                 valid_genomes = [
                     genome for genome in genomes 
-                    if genome.contig_count <= self.max_contigs
+                    if genome.contig_count <= self.max_contigs and 'sp.' not in genome.organism_name # could handle this better
                 ]
                 
                 if len(valid_genomes) >= self.minimum_genomes_per_species:
