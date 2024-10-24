@@ -10,6 +10,7 @@ from pathlib import Path
 import zipfile
 import shutil
 import os
+from tqdm import tqdm
 
 @dataclass
 class GenomeMetadata:
@@ -321,7 +322,100 @@ class FungiParser:
                 continue
         
         self.logger.debug(f"Downloaded {len(self.valid_genomes)} genome assemblies")
+        
+    def download_genomes_bulk(self):
+        """
+        Download genome assemblies in bulk groups by species_taxid
+        """
+        self.logger.debug("Downloading genome assemblies in bulk by species")
+        outdir = Path(os.getcwd() + self.output_fasta_directory)
+        outdir.mkdir(exist_ok=True)
 
+        species_groups = {}
+        for genome in self.valid_genomes:
+            final_fasta = outdir / Path(genome.accession + ".fna")
+            if final_fasta.exists():
+                genome.assembly_filename = str(final_fasta.absolute())
+            else:
+                species_groups.setdefault(genome.species_taxid, []).append(genome)
+
+        if not species_groups:
+            self.logger.debug("No new genomes to download")
+            return
+
+        # Process by unique species
+        for species_taxid, genomes in species_groups.items():
+            self.logger.debug(f"Downloading bulk group for species_taxid {species_taxid} ({len(genomes)} genomes)")
+            
+            request_body = {
+                "accessions": [genome.accession for genome in genomes],
+                "include_annotation_type": ["GENOME_FASTA"],
+                "hydrated": "FULLY_HYDRATED",
+                "include_tsv": False
+            }
+
+            try:
+                url = "https://api.ncbi.nlm.nih.gov/datasets/v2/genome/download"
+                response = requests.post(url, json=request_body, stream=True)
+                response.raise_for_status()
+                
+                total_size = int(response.headers.get('content-length', 0))
+
+                temp_zip = outdir / f"bulk_download_{species_taxid}_temp.zip"
+                with open(temp_zip, 'wb') as f, tqdm(
+                    desc=f"Downloading assembies for species {species_taxid}",
+                    total=total_size,
+                    unit='B',
+                    unit_scale=True,
+                    unit_divisor=1024,
+                ) as pbar:
+                    for chunk in response.iter_content(chunk_size=9000):
+                        size = f.write(chunk)
+                        pbar.update(size)
+                
+                with zipfile.ZipFile(temp_zip) as zip_ref:
+                    fasta_files = [f for f in zip_ref.namelist() if f.endswith('_genomic.fna')]
+                    
+                    for fasta_file in fasta_files:
+                        accession = fasta_file.split('/')[2] 
+                        final_fasta = outdir / Path(accession + ".fna")
+                        
+                        try:
+                            zip_ref.extract(fasta_file)
+                            os.rename(
+                                os.path.join('ncbi_dataset', 'data', accession, os.path.basename(fasta_file)),
+                                final_fasta
+                            )
+                            
+                            for genome in genomes:
+                                if genome.accession == accession:
+                                    genome.assembly_filename = str(final_fasta.absolute())
+                                    break
+                        
+                        except (FileNotFoundError, OSError) as e:
+                            self.logger.warning(f"Could not process file for {accession}: {e}")
+                            for genome in genomes:
+                                if genome.accession == accession and genome in self.valid_genomes:
+                                    self.valid_genomes.remove(genome)
+                                    break
+
+            except Exception as e:
+                self.logger.error(f"Error in bulk download for species {species_taxid}: {e}, removing genomes from valid list")
+                for genome in genomes:
+                    if genome in self.valid_genomes:
+                        self.valid_genomes.remove(genome)
+            
+            finally:
+                try:
+                    if temp_zip.exists():
+                        temp_zip.unlink()
+                    if os.path.exists('ncbi_dataset'):
+                        shutil.rmtree('ncbi_dataset', ignore_errors=True)
+                except Exception as e:
+                    self.logger.warning(f"Error during cleanup for species {species_taxid}: {e}")
+
+        self.logger.debug(f"Completed all bulk downloads. {len([g for g in self.valid_genomes if hasattr(g, 'assembly_filename')])} genomes successful")          
+                
     def write_outputs(self):
         """
         Write the filtered data to output files
@@ -359,7 +453,8 @@ class FungiParser:
         
         
     def generate_spreadsheets(self):
-      """Main method to process data and generate output files"""
-      self.process_fungi_data()
-      self.download_genomes()
-      self.write_outputs()
+        """Main method to process data and generate output files"""
+        self.process_fungi_data()
+    #   self.download_genomes()
+        self.download_genomes_bulk()
+        self.write_outputs()
