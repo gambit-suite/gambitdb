@@ -6,6 +6,10 @@ from typing import Dict, List, Set
 from dataclasses import dataclass
 import json
 import logging
+from pathlib import Path
+from tqdm import tqdm
+import urllib
+import os
 
 @dataclass
 class GenomeMetadata:
@@ -24,7 +28,8 @@ class FungiParser:
                  fungi_metadata_spreadsheet: str, 
                  max_contigs: int, 
                  minimum_genomes_per_species: int,
-                 genome_assembly_metadata_output_filename: str, 
+                 genome_assembly_metadata_output_filename: str,
+                 output_fasta_directory: str, 
                  taxon_output_filename: str,
                  exclude_atypical: bool,
                  is_metagenome_derived: str,
@@ -61,6 +66,7 @@ class FungiParser:
         self.minimum_genomes_per_species = minimum_genomes_per_species
         self.genome_assembly_metadata_output_filename = genome_assembly_metadata_output_filename
         self.taxon_output_filename = taxon_output_filename
+        self.output_fasta_directory = output_fasta_directory
         
         #Datasets API filters
         self.exclude_atypical = str(exclude_atypical).lower() #necessary formattting for datasets API
@@ -233,6 +239,39 @@ class FungiParser:
             # I added this sleep to avoid hitting the API too often
             time.sleep(0.1)
     
+    def download_genomes(self):
+        """
+        Download the genome assemblies for the valid genomes
+        """
+        self.logger.debug("Downloading genome assemblies for valid genomes")
+        outdir = Path(os.getcwd() + self.output_fasta_directory)
+        outdir.mkdir(exist_ok=True)
+
+        for genome in self.valid_genomes:
+            print(genome.accession)
+            file = outdir / Path(genome.accession + ".fna.gz")
+            if file.exists():
+                continue
+                
+            url = f"https://api.ncbi.nlm.nih.gov/datasets/v2/genome/accession/{genome.accession}/download_summary"
+            try:
+            
+                params = {
+                'include_annotation_type': 'GENOME_FASTA',
+                'filename': f'{genome.accession}.fna'
+                }
+                
+                response = requests.get(url, params=params)
+                response.raise_for_status()
+                data = response.json()
+                print(data)
+
+            except requests.exceptions.RequestException as e:
+                self.logger.error(f"Error querying NCBI API for genome {genome.accession}: {e}")
+                continue
+        
+        self.logger.debug(f"Downloaded {len(self.valid_genomes)} genome assemblies")
+
     def write_outputs(self):
         """
         Write the filtered data to output files
@@ -272,4 +311,5 @@ class FungiParser:
     def generate_spreadsheets(self):
       """Main method to process data and generate output files"""
       self.process_fungi_data()
+      self.download_genomes()
       self.write_outputs()
