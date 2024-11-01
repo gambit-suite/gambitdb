@@ -19,10 +19,13 @@ parser.add_argument('--max_contigs', '-d', help='Maximum number of contigs', typ
 parser.add_argument('--minimum_genomes_per_species', '-i', help='Minimum number of genomes in a species', type=int, default=2)
 parser.add_argument('--exclude_atypical', help='Exclude atypical genomes when searching NCBI', action='store_true', default=True)
 parser.add_argument('--is_metagenome_derived', help='Check if the genome metagenome derived (MAGs)', type=str, default='metagenome_derived_exclude')
+parser.add_argument('--parent_taxonomy', help='Parent taxonomy to search for related to input taxa', type=str,  
+                    choices=['genus', 'family', 'order', 'class', 'phylum', 'kingdom'], default='genus')
 
 # Output files
 parser.add_argument('--genome_assembly_metadata_output_filename', '-g', help='Genome metadata', default='assembly_metadata.csv', type=str)
 parser.add_argument('--species_taxon_output_filename', '-a', help='Species data', default='species_taxon.csv', type=str)
+parser.add_argument('--filtered_out_genomes_filename', help='Filtered out genomes', default='filtered_out_genomes.csv', type=str)
 parser.add_argument('--output_fasta_directory', '-o', help='Output directory for fastas', default='.', type=str)
 
 # Debugging modes
@@ -39,8 +42,10 @@ FungiParser(
     genome_assembly_metadata_output_filename=options.genome_assembly_metadata_output_filename,
     output_fasta_directory=options.output_fasta_directory,
     taxon_output_filename=options.species_taxon_output_filename,
+    filtered_out_genomes_filename=options.filtered_out_genomes_filename,
     exclude_atypical=options.exclude_atypical,
     is_metagenome_derived=options.is_metagenome_derived,
+    parent_taxonomic_level=options.parent_taxonomy,
     debug=options.debug,
     verbose=options.verbose
 ).generate_spreadsheets()

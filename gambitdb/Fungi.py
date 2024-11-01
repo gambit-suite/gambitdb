@@ -15,12 +15,21 @@ from tqdm import tqdm
 @dataclass
 class GenomeMetadata:
     accession: str
+    assembly_name: str
+    assembly_source: str
     contig_count: int
     species_taxid: str
     organism_name: str
     parent_taxid: int
     rank: str
     assembly_filename: str = None
+    
+@dataclass
+class FilteredOutGenome:
+    accession: str
+    species_taxid: str
+    reason: str
+    
     
 class FungiParser:
     """
@@ -33,8 +42,10 @@ class FungiParser:
                  genome_assembly_metadata_output_filename: str,
                  output_fasta_directory: str, 
                  taxon_output_filename: str,
+                 filtered_out_genomes_filename: str,
                  exclude_atypical: bool,
                  is_metagenome_derived: str,
+                 parent_taxonomic_level: str,
                  verbose: bool = False,
                  debug: bool = False):
         """
@@ -63,16 +74,21 @@ class FungiParser:
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         console_handler.setFormatter(formatter)
         self.logger.addHandler(console_handler)
+        # Keep track of filtered out genomes
+        self.filtered_genomes: List[FilteredOutGenome] = []
         
         self.max_contigs = max_contigs
         self.minimum_genomes_per_species = minimum_genomes_per_species
         self.genome_assembly_metadata_output_filename = genome_assembly_metadata_output_filename
         self.taxon_output_filename = taxon_output_filename
+        self.filtered_genomes_output = filtered_out_genomes_filename
         self.output_fasta_directory = output_fasta_directory
         
         #Datasets API filters
         self.exclude_atypical = str(exclude_atypical).lower() #necessary formattting for datasets API
         self.is_metagenome_derived = is_metagenome_derived
+        self.parent_taxonomic_level = str(parent_taxonomic_level).lower()
+        self.prefered_assembly_database = "SOURCE_DATABASE_REFSEQ"
         
         #Refseq file is weird so getting the column names from the header, can change this later
         with open(fungi_metadata_spreadsheet) as f:
@@ -106,19 +122,47 @@ class FungiParser:
             response = requests.get(url)
             response.raise_for_status()
             data = response.json()
-            parent_taxon = data['reports'][0]['taxonomy']['classification']['genus']['id']
+            parent_taxon = data['reports'][0]['taxonomy']['classification'][self.parent_taxonomic_level]['id']
             rank = data['reports'][0]['taxonomy']['rank'].lower()
         except requests.exceptions.RequestException as e:
             self.logger.error(f"Error querying NCBI API for taxon {taxon_id}: {e}")
-            sys.exit(1)
+            return None, None
         except json.JSONDecodeError as e:
             self.logger.error(f"Error parsing JSON response for taxon {taxon_id}: {e}")
-            sys.exit(1)
+            return None, None
         except Exception as e:
             self.logger.error(f"Unexpected error processing taxon {taxon_id}: {e}")
-            sys.exit(1)
+            return None, None
         
         return parent_taxon, rank.lower()
+    
+    def _handle_assembly_preferences(self, genomes):
+        """
+        Handle assembly source preferences by selecting preferred source when duplicates exist
+        """
+        
+        assembly_groups = {}
+        for genome in genomes:
+            if genome.assembly_name not in assembly_groups:
+                assembly_groups[genome.assembly_name] = []
+            assembly_groups[genome.assembly_name].append(genome)
+        
+        preferred_genomes = []
+        for assembly_name, group in assembly_groups.items():
+            if len(group) == 1:
+                preferred_genomes.append(group[0])
+            else:
+                refseq_assemblies = [g for g in group if g.assembly_source == self.prefered_assembly_database]
+                if refseq_assemblies:
+                    preferred_genomes.append(refseq_assemblies[0])
+                    self.logger.debug(f"Selected RefSeq assembly {refseq_assemblies[0].accession} "
+                                    f"over GenBank alternatives for {assembly_name}")
+                else:
+                    preferred_genomes.append(group[0])
+                    self.logger.debug(f"No RefSeq assembly available for {assembly_name}, "
+                                    f"using {group[0].accession}")
+        
+        return preferred_genomes
         
     def process_genome_report(self, report: dict, taxon_id: int, parent_taxid: int, rank: str) -> GenomeMetadata:
         """
@@ -129,6 +173,8 @@ class FungiParser:
         
         return GenomeMetadata(
             accession=report['accession'],
+            assembly_name=report['assembly_info']['assembly_name'],
+            assembly_source=report['source_database'],
             contig_count=report['assembly_stats']['number_of_contigs'],
             species_taxid=str(taxon_id),
             organism_name=' '.join(organism_info.get('organism_name', '').split()[:2]),
@@ -159,6 +205,7 @@ class FungiParser:
             
             if 'reports' not in data:
                 self.logger.warning(f"No genomes found for taxon {taxon_id}")
+                self.logger.error(f"No genomes found for taxon {taxon_id}")
                 return []
             
             total_count = data.get('total_count', len(data['reports']))
@@ -210,7 +257,6 @@ class FungiParser:
         """
         Process each unique species taxid through the NCBI API
         """
-        
         unique_taxids = self.df['species_taxid'].unique()
         self.logger.debug(f"Processing {len(unique_taxids)} unique species taxids...")
 
@@ -218,27 +264,54 @@ class FungiParser:
             self.logger.debug(f"Processing taxon ID: {taxon_id}")
             
             # Get parent taxon ID & rank
-            parent_taxon,rank = self.get_parent_taxon(taxon_id)
+            parent_taxon, rank = self.get_parent_taxon(taxon_id)
             
             # Get genome data from NCBI API
             genomes = self.get_genome_data_for_taxon(taxon_id, parent_taxon, rank)
             
-            # Can probably handle this logic earlier
             if genomes:
+                for genome in genomes:
+                    if genome.contig_count > self.max_contigs:
+                        self.filtered_genomes.append(
+                            FilteredOutGenome(genome.accession, genome.species_taxid, 
+                                         f"Contig count {genome.contig_count} exceeds maximum {self.max_contigs}")
+                        )
+                    elif 'sp.' in genome.organism_name:
+                        self.filtered_genomes.append(
+                            FilteredOutGenome(genome.accession, genome.species_taxid, 
+                                         "Contains 'sp.' in organism name")
+                        )
+
                 valid_genomes = [
                     genome for genome in genomes 
-                    if genome.contig_count <= self.max_contigs and 'sp.' not in genome.organism_name # could handle this better
+                    if genome.contig_count <= self.max_contigs and 'sp.' not in genome.organism_name
                 ]
                 
+                original_count = len(valid_genomes)
+                valid_genomes = self._handle_assembly_preferences(valid_genomes)
+                
+                if len(valid_genomes) < original_count:
+                    kept_accessions = {g.accession for g in valid_genomes}
+                    for genome in [g for g in genomes if g.accession not in kept_accessions]:
+                        self.filtered_genomes.append(
+                            FilteredOutGenome(genome.accession, genome.species_taxid,
+                                         f"Non-preferred assembly source: {genome.assembly_source}")
+                        )
+                
                 if len(valid_genomes) >= self.minimum_genomes_per_species:
-                    self.logger.debug(f"Taxon {taxon_id} has {len(valid_genomes)} valid genomes after contig filtering")
+                    self.logger.debug(f"Taxon {taxon_id} has {len(valid_genomes)} valid genomes after filtering")
                     self.valid_species.add(taxon_id)
                     self.valid_genomes.extend(valid_genomes)
                     self.species_genome_counts[taxon_id] = len(valid_genomes)
                 else:
-                    self.logger.debug(f"Taxon {taxon_id} only has {len(valid_genomes)} valid genomes after contig filtering")
+                    self.logger.debug(f"Taxon {taxon_id} only has {len(valid_genomes)} valid genomes after filtering")
+                    # Track genomes filtered due to minimum genome requirement
+                    for genome in valid_genomes:
+                        self.filtered_genomes.append(
+                            FilteredOutGenome(genome.accession, genome.species_taxid,
+                                         f"Species has fewer than {self.minimum_genomes_per_species} valid genomes")
+                        )
             
-            # I added this sleep to avoid hitting the API too often
             time.sleep(0.1)
     
     def download_genomes(self):
@@ -250,7 +323,6 @@ class FungiParser:
         outdir.mkdir(exist_ok=True)
 
         for genome in self.valid_genomes:
-            print(genome.accession)
             final_fasta = outdir / Path(genome.accession + ".fna")
             if final_fasta.exists():
                 continue
@@ -284,7 +356,7 @@ class FungiParser:
                 actual_file_size = temp_zip.stat().st_size
                 
                 #allow 10% margin of error for compression
-                if actual_file_size < expected_file_size * 0.9:
+                if actual_file_size < expected_file_size * 0.8:
                     raise OSError(f"Downloaded file size ({actual_file_size} bytes) is significantly smaller than expected ({expected_file_size} bytes)")
                 
                 try:
@@ -416,12 +488,31 @@ class FungiParser:
 
         self.logger.debug(f"Completed all bulk downloads. {len([g for g in self.valid_genomes if hasattr(g, 'assembly_filename')])} genomes successful")          
                 
+    def write_filtered_genomes(self):
+        """
+        Write information about filtered genomes to a CSV file
+        """
+        self.logger.debug(f"Writing filtered genomes information to {self.filtered_genomes_output}")
+        
+        filtered_data = pd.DataFrame([
+            {
+                'accession': genome.accession,
+                'species_taxid': genome.species_taxid,
+                'filter_reason': genome.reason
+            }
+            for genome in self.filtered_genomes
+        ])
+        
+        filtered_data = filtered_data.sort_values(['species_taxid', 'filter_reason'])
+        filtered_data.to_csv(self.filtered_genomes_output, index=False)
+        self.logger.debug(f"Wrote information about {len(self.filtered_genomes)} filtered genomes")
+        
     def write_outputs(self):
         """
         Write the filtered data to output files
         """
         self.logger.debug("Writing output files for FungiParser")
-        
+
         #uuid,assembly_filename,species_taxid,assembly_accession
         genome_data = pd.DataFrame([
             {
@@ -452,9 +543,11 @@ class FungiParser:
         self.logger.debug(f"Wrote {len(self.valid_genomes)} accessions to {self.taxon_output_filename}")
         
         
+        # Write filtered out genomes
+        self.write_filtered_genomes()
+        
     def generate_spreadsheets(self):
         """Main method to process data and generate output files"""
         self.process_fungi_data()
-    #   self.download_genomes()
         self.download_genomes_bulk()
         self.write_outputs()

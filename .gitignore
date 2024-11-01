@@ -182,3 +182,5 @@ test.json
 gambitdb/GCA_019039435.json
 assembly_metadata.csv
 species_taxon.csv
+data/
+fungi_outputs/
