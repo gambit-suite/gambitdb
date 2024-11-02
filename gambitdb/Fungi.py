@@ -544,6 +544,7 @@ class FungiParser:
             {
                 'uuid': genome.accession,
                 'assembly_filename': genome.assembly_filename,
+                'species': genome.organism_name,
                 'species_taxid': genome.species_taxid,
                 'assembly_accession': genome.accession
             }
