@@ -28,6 +28,7 @@ class GenomeMetadata:
 class FilteredOutGenome:
     accession: str
     species_taxid: str
+    organism_name: str
     reason: str
     
     
@@ -273,12 +274,12 @@ class FungiParser:
                 for genome in genomes:
                     if genome.contig_count > self.max_contigs:
                         self.filtered_genomes.append(
-                            FilteredOutGenome(genome.accession, genome.species_taxid, 
+                            FilteredOutGenome(genome.accession, genome.species_taxid, genome.organism_name,
                                          f"Contig count {genome.contig_count} exceeds maximum {self.max_contigs}")
                         )
                     elif 'sp.' in genome.organism_name:
                         self.filtered_genomes.append(
-                            FilteredOutGenome(genome.accession, genome.species_taxid, 
+                            FilteredOutGenome(genome.accession, genome.species_taxid, genome.organism_name,
                                          "Contains 'sp.' in organism name")
                         )
 
@@ -308,7 +309,7 @@ class FungiParser:
                     # Track genomes filtered due to minimum genome requirement
                     for genome in valid_genomes:
                         self.filtered_genomes.append(
-                            FilteredOutGenome(genome.accession, genome.species_taxid,
+                            FilteredOutGenome(genome.accession, genome.species_taxid, genome.organism_name,
                                          f"Species has fewer than {self.minimum_genomes_per_species} valid genomes")
                         )
             
@@ -490,14 +491,18 @@ class FungiParser:
                 
     def write_filtered_genomes(self):
         """
-        Write information about filtered genomes to a CSV file
+        Write information about filtered genomes to CSV files:
+        1. Detailed file with all filtered genomes
+        2. Summary file with unique species that were dropped
         """
+        
         self.logger.debug(f"Writing filtered genomes information to {self.filtered_genomes_output}")
         
         filtered_data = pd.DataFrame([
             {
                 'accession': genome.accession,
                 'species_taxid': genome.species_taxid,
+                'organism_name': genome.organism_name,
                 'filter_reason': genome.reason
             }
             for genome in self.filtered_genomes
@@ -506,6 +511,27 @@ class FungiParser:
         filtered_data = filtered_data.sort_values(['species_taxid', 'filter_reason'])
         filtered_data.to_csv(self.filtered_genomes_output, index=False)
         self.logger.debug(f"Wrote information about {len(self.filtered_genomes)} filtered genomes")
+        
+        # Species summary file
+        summary_file = self.filtered_genomes_output.replace('.csv', '_species_summary.csv')
+        
+        species_summary = (
+            filtered_data
+            .groupby(['species_taxid', 'organism_name'])
+            .agg({
+                'accession': 'count',
+                'filter_reason': lambda x: '; '.join(sorted(set(x)))
+            })
+            .reset_index()
+            .rename(columns={
+                'accession': 'number_of_genomes_filtered',
+                'filter_reason': 'filter_reasons'
+            })
+            .sort_values('number_of_genomes_filtered', ascending=False)
+        )
+        
+        species_summary.to_csv(summary_file, index=False)
+        self.logger.debug(f"Wrote summary of {len(species_summary)} unique species that were filtered out")
         
     def write_outputs(self):
         """
