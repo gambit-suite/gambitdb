@@ -500,7 +500,7 @@ class FungiParser:
         
         filtered_data = pd.DataFrame([
             {
-                'accession': genome.accession,
+                'assembly_accession': genome.accession,
                 'species_taxid': genome.species_taxid,
                 'organism_name': genome.organism_name,
                 'filter_reason': genome.reason
@@ -545,7 +545,7 @@ class FungiParser:
                 'uuid': genome.accession,
                 'assembly_filename': genome.assembly_filename,
                 'species_taxid': genome.species_taxid,
-                'accession': genome.accession
+                'assembly_accession': genome.accession
             }
             for genome in self.valid_genomes
         ])
