@@ -2,7 +2,7 @@ import pandas as pd
 import requests
 import time
 import sys
-from typing import Dict, List, Set
+from typing import Dict, List, Set, Optional
 from dataclasses import dataclass
 import json
 import logging
@@ -11,6 +11,7 @@ import zipfile
 import shutil
 import os
 from tqdm import tqdm
+from gambitdb.NCBIDatasets import NCBIDatasetClient
 
 @dataclass
 class GenomeMetadata:
@@ -85,9 +86,19 @@ class FungiParser:
         self.filtered_genomes_output = filtered_out_genomes_filename
         self.output_fasta_directory = output_fasta_directory
         
+        #Immediately set path
+        self.genome_assembly_outdir = Path(os.getcwd()) / self.output_fasta_directory.lstrip('/')
+        
+        #Set up the NCBI Datasets API client
+        self.api_client = NCBIDatasetClient(rate_limit=0.1)
+        
         #Datasets API filters
         self.exclude_atypical = str(exclude_atypical).lower() #necessary formattting for datasets API
         self.is_metagenome_derived = is_metagenome_derived
+        self.genome_report_params = {
+            'filters.exclude_atypical': self.exclude_atypical,
+            'filters.is_metagenome_derived': self.is_metagenome_derived
+            }
         self.parent_taxonomic_level = str(parent_taxonomic_level).lower()
         self.prefered_assembly_database = "SOURCE_DATABASE_REFSEQ"
         
@@ -120,50 +131,14 @@ class FungiParser:
         url = f"https://api.ncbi.nlm.nih.gov/datasets/v2/taxonomy/taxon/{taxon_id}/dataset_report"
         
         try:
-            response = requests.get(url)
-            response.raise_for_status()
-            data = response.json()
-            parent_taxon = data['reports'][0]['taxonomy']['classification'][self.parent_taxonomic_level]['id']
-            rank = data['reports'][0]['taxonomy']['rank'].lower()
-        except requests.exceptions.RequestException as e:
-            self.logger.error(f"Error querying NCBI API for taxon {taxon_id}: {e}")
-            return None, None
-        except json.JSONDecodeError as e:
-            self.logger.error(f"Error parsing JSON response for taxon {taxon_id}: {e}")
-            return None, None
+            taxon_data = self.api_client.get_json(url)
+            parent_taxon = taxon_data['reports'][0]['taxonomy']['classification'][self.parent_taxonomic_level]['id']
+            rank = taxon_data['reports'][0]['taxonomy']['rank'].lower()
         except Exception as e:
             self.logger.error(f"Unexpected error processing taxon {taxon_id}: {e}")
             return None, None
         
         return parent_taxon, rank.lower()
-    
-    def _handle_assembly_preferences(self, genomes):
-        """
-        Handle assembly source preferences by selecting preferred source when duplicates exist
-        """
-        
-        assembly_groups = {}
-        for genome in genomes:
-            if genome.assembly_name not in assembly_groups:
-                assembly_groups[genome.assembly_name] = []
-            assembly_groups[genome.assembly_name].append(genome)
-        
-        preferred_genomes = []
-        for assembly_name, group in assembly_groups.items():
-            if len(group) == 1:
-                preferred_genomes.append(group[0])
-            else:
-                refseq_assemblies = [g for g in group if g.assembly_source == self.prefered_assembly_database]
-                if refseq_assemblies:
-                    preferred_genomes.append(refseq_assemblies[0])
-                    self.logger.debug(f"Selected RefSeq assembly {refseq_assemblies[0].accession} "
-                                    f"over GenBank alternatives for {assembly_name}")
-                else:
-                    preferred_genomes.append(group[0])
-                    self.logger.debug(f"No RefSeq assembly available for {assembly_name}, "
-                                    f"using {group[0].accession}")
-        
-        return preferred_genomes
         
     def process_genome_report(self, report: dict, taxon_id: int, parent_taxid: int, rank: str) -> GenomeMetadata:
         """
@@ -195,28 +170,21 @@ class FungiParser:
         
         try:
             
-            params = {
-            'filters.exclude_atypical': self.exclude_atypical,
-            'filters.is_metagenome_derived': self.is_metagenome_derived
-            }
+            genome_data = self.api_client.get_json(url, params=self.genome_report_params)
             
-            response = requests.get(url, params=params)
-            response.raise_for_status()
-            data = response.json()
-            
-            if 'reports' not in data:
+            if 'reports' not in genome_data:
                 self.logger.warning(f"No genomes found for taxon {taxon_id}")
                 self.logger.error(f"No genomes found for taxon {taxon_id}")
                 return []
             
-            total_count = data.get('total_count', len(data['reports']))
+            total_count = genome_data.get('total_count', len(genome_data['reports']))
             if total_count < self.minimum_genomes_per_species:
                 self.logger.debug(f"Taxon {taxon_id} has {total_count} total genomes (minimum required: {self.minimum_genomes_per_species})")
                 return []
                 
             self.logger.debug(f"Found {total_count} total genomes for taxon {taxon_id}, processing...")
             
-            reports = data['reports']
+            reports = genome_data['reports']
             for report in reports:
                 if (report.get('accession') and 
                     report.get('assembly_stats', {}).get('number_of_contigs') is not None):
@@ -224,40 +192,29 @@ class FungiParser:
                     genome_list.append(genome)
                     
             while True:
-                page_token = data.get('next_page_token')
+                for report in genome_data.get('reports', []):
+                    if (report.get('accession') and 
+                        report.get('assembly_stats', {}).get('number_of_contigs') is not None):
+                        if genome := self.process_genome_report(report, taxon_id, parent_taxid, rank):
+                            genome_list.append(genome)
+                
+                # Handle pagination
+                page_token = genome_data.get('next_page_token')
                 if not page_token:
                     break
                     
                 self.logger.debug(f"Fetching next page for taxon {taxon_id}")
-                
-                paginated_url = f"{url}?page_token={page_token}"
-                response = requests.get(paginated_url)
-                response.raise_for_status()
-                data = response.json()
-                
-                reports = data['reports']
-                for report in reports:
-                    if (report.get('accession') and 
-                        report.get('assembly_stats', {}).get('number_of_contigs') is not None):
-                        genome = self.process_genome_report(report, taxon_id, parent_taxid, rank)
-                        genome_list.append(genome)
+                genome_data = self.api_client.get_json(url, params={**self.genome_report_params, 'page_token': page_token})
                         
-        except requests.exceptions.RequestException as e:
-            self.logger.error(f"Error querying NCBI API for taxon {taxon_id}: {e}")
-            return genome_list if len(genome_list) >= self.minimum_genomes_per_species else []
-        except json.JSONDecodeError as e:
-            self.logger.error(f"Error parsing JSON response for taxon {taxon_id}: {e}")
-            return genome_list if len(genome_list) >= self.minimum_genomes_per_species else []
         except Exception as e:
-            self.logger.error(f"Unexpected error processing taxon {taxon_id}: {e}")
+            self.logger.error(f"Unexpected error processing genome data for taxon {taxon_id}: {e}")
             return genome_list if len(genome_list) >= self.minimum_genomes_per_species else []
             
         return genome_list
+    
 
     def process_fungi_data(self):
-        """
-        Process each unique species taxid through the NCBI API
-        """
+        """Process each unique species taxid through the NCBI API"""
         unique_taxids = self.df['species_taxid'].unique()
         self.logger.debug(f"Processing {len(unique_taxids)} unique species taxids...")
 
@@ -265,229 +222,239 @@ class FungiParser:
             self.logger.debug(f"Processing taxon ID: {taxon_id}")
             
             # Get parent taxon ID & rank
-            parent_taxon, rank = self.get_parent_taxon(taxon_id)
+            parent_info = self.get_parent_taxon(taxon_id)
+            if not parent_info:
+                continue
+            parent_taxon, rank = parent_info
             
             # Get genome data from NCBI API
             genomes = self.get_genome_data_for_taxon(taxon_id, parent_taxon, rank)
-            
-            if genomes:
-                for genome in genomes:
-                    if genome.contig_count > self.max_contigs:
-                        self.filtered_genomes.append(
-                            FilteredOutGenome(genome.accession, genome.species_taxid, genome.organism_name,
-                                         f"Contig count {genome.contig_count} exceeds maximum {self.max_contigs}")
-                        )
-                    elif 'sp.' in genome.organism_name:
-                        self.filtered_genomes.append(
-                            FilteredOutGenome(genome.accession, genome.species_taxid, genome.organism_name,
-                                         "Contains 'sp.' in organism name")
-                        )
-
-                valid_genomes = [
-                    genome for genome in genomes 
-                    if genome.contig_count <= self.max_contigs and 'sp.' not in genome.organism_name
-                ]
-                
-                original_count = len(valid_genomes)
-                valid_genomes = self._handle_assembly_preferences(valid_genomes)
-                
-                if len(valid_genomes) < original_count:
-                    kept_accessions = {g.accession for g in valid_genomes}
-                    for genome in [g for g in genomes if g.accession not in kept_accessions]:
-                        self.filtered_genomes.append(
-                            FilteredOutGenome(genome.accession, genome.species_taxid,
-                                         f"Non-preferred assembly source: {genome.assembly_source}")
-                        )
-                
-                if len(valid_genomes) >= self.minimum_genomes_per_species:
-                    self.logger.debug(f"Taxon {taxon_id} has {len(valid_genomes)} valid genomes after filtering")
-                    self.valid_species.add(taxon_id)
-                    self.valid_genomes.extend(valid_genomes)
-                    self.species_genome_counts[taxon_id] = len(valid_genomes)
-                else:
-                    self.logger.debug(f"Taxon {taxon_id} only has {len(valid_genomes)} valid genomes after filtering")
-                    # Track genomes filtered due to minimum genome requirement
-                    for genome in valid_genomes:
-                        self.filtered_genomes.append(
-                            FilteredOutGenome(genome.accession, genome.species_taxid, genome.organism_name,
-                                         f"Species has fewer than {self.minimum_genomes_per_species} valid genomes")
-                        )
-            
-            time.sleep(0.1)
-    
-    def download_genomes(self):
-        """
-        Download the genome assemblies for the valid genomes
-        """
-        self.logger.debug("Downloading genome assemblies for valid genomes")
-        outdir = Path(os.getcwd() + self.output_fasta_directory)
-        outdir.mkdir(exist_ok=True)
-
-        for genome in self.valid_genomes:
-            final_fasta = outdir / Path(genome.accession + ".fna")
-            if final_fasta.exists():
+            if not genomes:
                 continue
-                
-            url = f"https://api.ncbi.nlm.nih.gov/datasets/v2/genome/accession/{genome.accession}/download_summary"
-            try:
             
-                params = {
-                'include_annotation_type': 'GENOME_FASTA',
-                'filename': f'{genome.accession}.fna'
-                }
-                
-                response = requests.get(url, params=params)
-                response.raise_for_status()
-                data = response.json()
-                
-                download_url = data['hydrated']['url']
-            
-                # Download the zip file to a temporary location
-                temp_zip = outdir / f"{genome.accession}_temp.zip"
-                #get the expected file size
-                expected_file_size = int(data['hydrated']['estimated_file_size_mb'] * 1024 * 1024)
-                
-                response = requests.get(download_url, stream=True)
-                response.raise_for_status()
-                
-                with open(temp_zip, 'wb') as f:
-                    for chunk in response.iter_content(chunk_size=9000):
-                        f.write(chunk)
-                
-                actual_file_size = temp_zip.stat().st_size
-                
-                #allow 10% margin of error for compression
-                if actual_file_size < expected_file_size * 0.8:
-                    raise OSError(f"Downloaded file size ({actual_file_size} bytes) is significantly smaller than expected ({expected_file_size} bytes)")
-                
-                try:
-                    with zipfile.ZipFile(temp_zip) as zip_ref:    
-                        fasta_file = next(
-                            f for f in zip_ref.namelist() 
-                            if f.endswith('_genomic.fna')
+            # Filter genomes
+            valid_genomes = []
+            for genome in genomes:
+                filter_reason = self._filter_genome(genome)
+                if filter_reason:
+                    self.filtered_genomes.append(
+                        FilteredOutGenome(
+                            genome.accession,
+                            genome.species_taxid,
+                            genome.organism_name,
+                            filter_reason
                         )
-                        zip_ref.extract(fasta_file)
-                        
-                    os.rename(
-                        os.path.join('ncbi_dataset', 'data', genome.accession, os.path.basename(fasta_file)),
-                        final_fasta
+                    )
+                else:
+                    valid_genomes.append(genome)
+            
+            # Apply assembly preferences
+            original_count = len(valid_genomes)
+            valid_genomes = self._handle_assembly_preferences(valid_genomes)
+            
+            # Track filtered assemblies
+            if len(valid_genomes) < original_count:
+                kept_accessions = {genome.accession for genome in valid_genomes}
+                filtered_assemblies = [genome for genome in genomes if genome.accession not in kept_accessions]
+                
+                for genome in filtered_assemblies:
+                    self.filtered_genomes.append(
+                        FilteredOutGenome(
+                            genome.accession,
+                            genome.species_taxid,
+                            genome.organism_name,
+                            f"Non-preferred assembly source: {genome.assembly_source}"
+                        )
+                    )
+            
+            # Process valid genomes for species
+            if len(valid_genomes) >= self.minimum_genomes_per_species:
+                self.logger.debug(
+                    f"Taxon {taxon_id} has {len(valid_genomes)} valid genomes after filtering"
+                )
+                self.valid_species.add(taxon_id)
+                self.valid_genomes.extend(valid_genomes)
+                self.species_genome_counts[taxon_id] = len(valid_genomes)
+            else:
+                self.logger.debug(
+                    f"Taxon {taxon_id} only has {len(valid_genomes)} valid genomes after filtering"
+                )
+                for genome in valid_genomes:
+                    self.filtered_genomes.append(
+                        FilteredOutGenome(
+                            genome.accession,
+                            genome.species_taxid,
+                            genome.organism_name,
+                            f"Species has fewer than {self.minimum_genomes_per_species} valid genomes"
+                        )
                     )
                     
-                    genome.assembly_filename = str(final_fasta.absolute())
-
-                finally:
-                    try:
-                        if temp_zip.exists():
-                            temp_zip.unlink()
-                    except PermissionError:
-                        self.logger.warning(f"Could not delete temporary zip file for {genome.accession}")
-                        
-                    try:
-                        if os.path.exists('ncbi_dataset'):
-                            shutil.rmtree('ncbi_dataset', ignore_errors=True)
-                    except Exception as e:
-                        self.logger.warning(f"Could not delete ncbi_dataset directory for {genome.accession}: {e}")
-
-            except (requests.exceptions.RequestException, zipfile.BadZipFile, OSError) as e:
-                self.logger.error(f"Error downloading/extracting genome {genome.accession}: {e}")
-                self.logger.error(f"Removing genome {genome.accession} from valid genomes")
-                self.valid_genomes.remove(genome)
-                continue
+    def _filter_genome(self, genome: GenomeMetadata) -> Optional[str]:
+        """Return filter reason if genome should be filtered, otherwise return None"""
         
-        self.logger.debug(f"Downloaded {len(self.valid_genomes)} genome assemblies")
+        if genome.parent_taxid is None:
+            return "Missing parent taxon information"
+        if genome.contig_count > self.max_contigs:
+            return f"Contig count {genome.contig_count} exceeds maximum {self.max_contigs}"
+        if 'sp.' in genome.organism_name:
+            return "Contains 'sp.' in organism name"
+        return None
+                    
+    def _handle_assembly_preferences(self, genomes):
+        """
+        Handle assembly source preferences by selecting preferred source when duplicates exist
+        """
         
+        assembly_groups = {}
+        for genome in genomes:
+            if genome.assembly_name not in assembly_groups:
+                assembly_groups[genome.assembly_name] = []
+            assembly_groups[genome.assembly_name].append(genome)
+        
+        preferred_genomes = []
+        for assembly_name, group in assembly_groups.items():
+            if len(group) == 1:
+                preferred_genomes.append(group[0])
+            else:
+                refseq_assemblies = [genome for genome in group if genome.assembly_source == self.prefered_assembly_database]
+                if refseq_assemblies:
+                    preferred_genomes.append(refseq_assemblies[0])
+                    self.logger.debug(f"Selected RefSeq assembly {refseq_assemblies[0].accession} "
+                                    f"over GenBank alternatives for {assembly_name}")
+                else:
+                    preferred_genomes.append(group[0])
+                    self.logger.debug(f"No RefSeq assembly available for {assembly_name}, "
+                                    f"using {group[0].accession}")
+        
+        return preferred_genomes
+                      
     def download_genomes_bulk(self):
-        """
-        Download genome assemblies in bulk groups by species_taxid
-        """
-        self.logger.debug("Downloading genome assemblies in bulk by species")
-        outdir = Path(os.getcwd() + self.output_fasta_directory)
-        outdir.mkdir(exist_ok=True)
-
+        """Download genome assemblies in bulk groups by species_taxid"""
+        
+        self.logger.debug(f"Starting bulk genome downloads by species")
+        self.genome_assembly_outdir.mkdir(exist_ok=True)
+        
+        # Group genomes by species, excluding already downloaded ones
+        species_groups = self._group_genomes_for_download()
+        if not species_groups:
+            self.logger.debug("No new genomes to download")
+            return
+        
+        # Process each species group
+        for species_taxid, genomes in species_groups.items():
+            self._download_species_group(species_taxid, genomes)
+            
+        successful_downloads = len([genome for genome in self.valid_genomes if hasattr(genome, 'assembly_filename')])
+        self.logger.debug(f"Completed all bulk downloads. {successful_downloads} genomes successful")
+    
+    def _group_genomes_for_download(self) -> Dict[str, List[GenomeMetadata]]:
+        """Group genomes by species_taxid, checking for existing files"""
         species_groups = {}
         for genome in self.valid_genomes:
-            final_fasta = outdir / Path(genome.accession + ".fna")
+            final_fasta = self.genome_assembly_outdir / f"{genome.accession}.fna"
             if final_fasta.exists():
                 genome.assembly_filename = str(final_fasta.absolute())
             else:
                 species_groups.setdefault(genome.species_taxid, []).append(genome)
-
-        if not species_groups:
-            self.logger.debug("No new genomes to download")
-            return
-
-        # Process by unique species
-        for species_taxid, genomes in species_groups.items():
-            self.logger.debug(f"Downloading bulk group for species_taxid {species_taxid} ({len(genomes)} genomes)")
+        return species_groups
+    
+    def _download_species_group(self, species_taxid: str, genomes: List[GenomeMetadata]):
+        """Download and process a group of genomes for a single species"""
+        self.logger.debug(f"Downloading bulk group for species_taxid {species_taxid} ({len(genomes)} genomes)")
+        
+        request_body = {
+            "accessions": [genome.accession for genome in genomes],
+            "include_annotation_type": ["GENOME_FASTA"],
+            "hydrated": "FULLY_HYDRATED",
+            "include_tsv": False
+        }
+        
+        temp_zip = self.genome_assembly_outdir / f"bulk_download_{species_taxid}_temp.zip"
+        try:
+            url = "https://api.ncbi.nlm.nih.gov/datasets/v2/genome/download"
+            self.api_client.download_file(
+                url=url,
+                output_path=temp_zip,
+                method='POST',
+                json=request_body
+            )
             
-            request_body = {
-                "accessions": [genome.accession for genome in genomes],
-                "include_annotation_type": ["GENOME_FASTA"],
-                "hydrated": "FULLY_HYDRATED",
-                "include_tsv": False
-            }
-
-            try:
-                url = "https://api.ncbi.nlm.nih.gov/datasets/v2/genome/download"
-                response = requests.post(url, json=request_body, stream=True)
-                response.raise_for_status()
-                
-                total_size = int(response.headers.get('content-length', 0))
-
-                temp_zip = outdir / f"bulk_download_{species_taxid}_temp.zip"
-                with open(temp_zip, 'wb') as f, tqdm(
-                    desc=f"Downloading assembies for species {species_taxid}",
-                    total=total_size,
-                    unit='B',
-                    unit_scale=True,
-                    unit_divisor=1024,
-                ) as pbar:
-                    for chunk in response.iter_content(chunk_size=9000):
-                        size = f.write(chunk)
-                        pbar.update(size)
-                
-                with zipfile.ZipFile(temp_zip) as zip_ref:
-                    fasta_files = [f for f in zip_ref.namelist() if f.endswith('_genomic.fna')]
-                    
-                    for fasta_file in fasta_files:
-                        accession = fasta_file.split('/')[2] 
-                        final_fasta = outdir / Path(accession + ".fna")
-                        
-                        try:
-                            zip_ref.extract(fasta_file)
-                            os.rename(
-                                os.path.join('ncbi_dataset', 'data', accession, os.path.basename(fasta_file)),
-                                final_fasta
-                            )
-                            
-                            for genome in genomes:
-                                if genome.accession == accession:
-                                    genome.assembly_filename = str(final_fasta.absolute())
-                                    break
-                        
-                        except (FileNotFoundError, OSError) as e:
-                            self.logger.warning(f"Could not process file for {accession}: {e}")
-                            for genome in genomes:
-                                if genome.accession == accession and genome in self.valid_genomes:
-                                    self.valid_genomes.remove(genome)
-                                    break
-
-            except Exception as e:
-                self.logger.error(f"Error in bulk download for species {species_taxid}: {e}, removing genomes from valid list")
-                for genome in genomes:
-                    if genome in self.valid_genomes:
-                        self.valid_genomes.remove(genome)
+            self._process_bulk_download(temp_zip, genomes)
             
-            finally:
+        except Exception as e:
+            self.logger.error(
+                f"Error in bulk download for species {species_taxid}: {e}, "
+                "removing genomes from valid list"
+            )
+            self._handle_failed_download(genomes)
+        
+        finally:
+            self._cleanup_download_files(temp_zip)
+    
+    def _process_bulk_download(self, zip_path: Path, genomes: List[GenomeMetadata]):
+        """Extract and process files from bulk download"""
+        with zipfile.ZipFile(zip_path) as zip_ref:
+            fasta_files = [f for f in zip_ref.namelist() if f.endswith('_genomic.fna')]
+            
+            for fasta_file in fasta_files:
+                accession = fasta_file.split('/')[2]
+                final_fasta = self.genome_assembly_outdir / f"{accession}.fna"
+                
                 try:
-                    if temp_zip.exists():
-                        temp_zip.unlink()
-                    if os.path.exists('ncbi_dataset'):
-                        shutil.rmtree('ncbi_dataset', ignore_errors=True)
-                except Exception as e:
-                    self.logger.warning(f"Error during cleanup for species {species_taxid}: {e}")
-
-        self.logger.debug(f"Completed all bulk downloads. {len([g for g in self.valid_genomes if hasattr(g, 'assembly_filename')])} genomes successful")          
+                    # Extract and move file
+                    zip_ref.extract(fasta_file)
+                    os.rename(
+                        os.path.join('ncbi_dataset', 'data', accession, os.path.basename(fasta_file)),
+                        final_fasta
+                    )
+                    
+                    for genome in genomes:
+                        if genome.accession == accession:
+                            genome.assembly_filename = str(final_fasta.absolute())
+                            break
+                
+                except (FileNotFoundError, OSError) as e:
+                    self.logger.warning(f"Could not process file for {accession}: {e}")
+                    self._remove_failed_genome(accession, genomes)
+    
+    def _handle_failed_download(self, genomes: List[GenomeMetadata]):
+        """Handle failed downloads by removing genomes from valid list"""
+        for genome in genomes:
+            if genome in self.valid_genomes:
+                self.valid_genomes.remove(genome)
+                self.filtered_genomes.append(
+                    FilteredOutGenome(
+                        genome.accession,
+                        genome.species_taxid,
+                        genome.organism_name,
+                        "Failed to download genome assembly"
+                    )
+                )
+    
+    def _remove_failed_genome(self, accession: str, genomes: List[GenomeMetadata]):
+        """Remove a single failed genome from valid genomes list"""
+        for genome in genomes:
+            if genome.accession == accession and genome in self.valid_genomes:
+                self.valid_genomes.remove(genome)
+                self.filtered_genomes.append(
+                    FilteredOutGenome(
+                        genome.accession,
+                        genome.species_taxid,
+                        genome.organism_name,
+                        "Failed to process downloaded genome assembly"
+                    )
+                )
+                break
+            
+    def _cleanup_download_files(self, temp_zip: Path):
+        """Clean up temporary download files"""
+        try:
+            if temp_zip.exists():
+                temp_zip.unlink()
+            if os.path.exists('ncbi_dataset'):
+                shutil.rmtree('ncbi_dataset', ignore_errors=True)
+        except Exception as e:
+            self.logger.warning(f"Error cleaning up temporary files: {e}")
                 
     def write_filtered_genomes(self):
         """
@@ -519,12 +486,12 @@ class FungiParser:
             filtered_data
             .groupby(['species_taxid', 'organism_name'])
             .agg({
-                'accession': 'count',
+                'assembly_accession': 'count',
                 'filter_reason': lambda x: '; '.join(sorted(set(x)))
             })
             .reset_index()
             .rename(columns={
-                'accession': 'number_of_genomes_filtered',
+                'assembly_accession': 'number_of_genomes_filtered',
                 'filter_reason': 'filter_reasons'
             })
             .sort_values('number_of_genomes_filtered', ascending=False)
