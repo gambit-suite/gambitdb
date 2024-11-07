@@ -185,3 +185,5 @@ species_taxon.csv
 data/
 fungi_outputs/
 intermediate_files/
+ignore/
+final/

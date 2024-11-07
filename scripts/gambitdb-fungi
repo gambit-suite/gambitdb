@@ -15,7 +15,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument('fungi_metadata_spreadsheet', help='Fungi metadata file', type=str)
 
 # Optional input parameters
-parser.add_argument('--max_contigs', '-d', help='Maximum number of contigs', type=int, default=500)
+parser.add_argument('--max_contigs', '-d', help='Maximum number of contigs', type=int, default=100000)
 parser.add_argument('--minimum_genomes_per_species', '-i', help='Minimum number of genomes in a species', type=int, default=2)
 parser.add_argument('--exclude_atypical', help='Exclude atypical genomes when searching NCBI', action='store_true', default=True)
 parser.add_argument('--is_metagenome_derived', help='Check if the genome metagenome derived (MAGs)', type=str, default='metagenome_derived_exclude')

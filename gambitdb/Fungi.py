@@ -1,7 +1,4 @@
 import pandas as pd
-import requests
-import time
-import sys
 from typing import Dict, List, Set, Optional
 from dataclasses import dataclass
 import json
@@ -10,7 +7,6 @@ from pathlib import Path
 import zipfile
 import shutil
 import os
-from tqdm import tqdm
 from gambitdb.NCBIDatasets import NCBIDatasetClient
 
 @dataclass
@@ -294,6 +290,8 @@ class FungiParser:
         
         if genome.parent_taxid is None:
             return "Missing parent taxon information"
+        # Fix this to calculate fractional genome (genome size of representative/contig count)
+        # 
         if genome.contig_count > self.max_contigs:
             return f"Contig count {genome.contig_count} exceeds maximum {self.max_contigs}"
         if 'sp.' in genome.organism_name:
@@ -465,21 +463,26 @@ class FungiParser:
         
         self.logger.debug(f"Writing filtered genomes information to {self.filtered_genomes_output}")
         
-        filtered_data = pd.DataFrame([
-            {
-                'assembly_accession': genome.accession,
-                'species_taxid': genome.species_taxid,
-                'organism_name': genome.organism_name,
-                'filter_reason': genome.reason
-            }
-            for genome in self.filtered_genomes
-        ])
+        unique_filtered = {}
+        for genome in self.filtered_genomes:
+            if genome.accession in unique_filtered:
+                existing = unique_filtered[genome.accession]
+                if genome.reason != existing['filter_reason']:
+                    existing['filter_reason'] = f"{existing['filter_reason']}; {genome.reason}"
+            else:
+                unique_filtered[genome.accession] = {
+                    'assembly_accession': genome.accession,
+                    'species_taxid': genome.species_taxid,
+                    'organism_name': genome.organism_name,
+                    'filter_reason': genome.reason
+                }
+        
+        filtered_data = pd.DataFrame(list(unique_filtered.values()))
         
         filtered_data = filtered_data.sort_values(['species_taxid', 'filter_reason'])
         filtered_data.to_csv(self.filtered_genomes_output, index=False)
-        self.logger.debug(f"Wrote information about {len(self.filtered_genomes)} filtered genomes")
+        self.logger.debug(f"Wrote information about {len(filtered_data)} filtered genomes (after removing duplicates)")
         
-        # Species summary file
         summary_file = self.filtered_genomes_output.replace('.csv', '_species_summary.csv')
         
         species_summary = (
@@ -487,7 +490,7 @@ class FungiParser:
             .groupby(['species_taxid', 'organism_name'])
             .agg({
                 'assembly_accession': 'count',
-                'filter_reason': lambda x: '; '.join(sorted(set(x)))
+                'filter_reason': lambda x: '; '.join(sorted(set(';'.join(x).split('; '))))
             })
             .reset_index()
             .rename(columns={
@@ -499,14 +502,14 @@ class FungiParser:
         
         species_summary.to_csv(summary_file, index=False)
         self.logger.debug(f"Wrote summary of {len(species_summary)} unique species that were filtered out")
-        
+            
     def write_outputs(self):
         """
         Write the filtered data to output files
         """
         self.logger.debug("Writing output files for FungiParser")
 
-        #uuid,assembly_filename,species_taxid,assembly_accession
+        #uuid,assembly_filename,species,species_taxid,assembly_accession
         genome_data = pd.DataFrame([
             {
                 'uuid': genome.accession,
