@@ -327,9 +327,9 @@ class FungiParser:
         return preferred_genomes
                       
     def download_genomes_bulk(self):
-        """Download genome assemblies in bulk groups by species_taxid"""
+        """Download genome assemblies in bulk groups by species_taxid, processing in batches of 100"""
         
-        self.logger.debug(f"Starting bulk genome downloads by species")
+        self.logger.debug("Starting bulk genome downloads by species")
         self.genome_assembly_outdir.mkdir(exist_ok=True)
         
         # Group genomes by species, excluding already downloaded ones
@@ -338,10 +338,15 @@ class FungiParser:
             self.logger.debug("No new genomes to download")
             return
         
+        total_species = len(species_groups)
+        self.logger.debug(f"Processing downloads for {total_species} species")
+        
         # Process each species group
-        for species_taxid, genomes in species_groups.items():
+        for species_num, (species_taxid, genomes) in enumerate(species_groups.items(), 1):
+            self.logger.debug(f"Processing species {species_num}/{total_species}: "
+                            f"{species_taxid} ({len(genomes)} genomes)")
             self._download_species_group(species_taxid, genomes)
-            
+        
         successful_downloads = len([genome for genome in self.valid_genomes if hasattr(genome, 'assembly_filename')])
         self.logger.debug(f"Completed all bulk downloads. {successful_downloads} genomes successful")
     
@@ -356,18 +361,18 @@ class FungiParser:
                 species_groups.setdefault(genome.species_taxid, []).append(genome)
         return species_groups
     
-    def _download_species_group(self, species_taxid: str, genomes: List[GenomeMetadata]):
-        """Download and process a group of genomes for a single species"""
-        self.logger.debug(f"Downloading bulk group for species_taxid {species_taxid} ({len(genomes)} genomes)")
+    def _process_genome_batch(self, batch: List[GenomeMetadata], species_taxid: str, batch_num: int):
+        """Process a single batch of genomes (up to 100 genomes)"""
+        self.logger.debug(f"Processing batch {batch_num} for species_taxid {species_taxid} ({len(batch)} genomes)")
         
         request_body = {
-            "accessions": [genome.accession for genome in genomes],
+            "accessions": [genome.accession for genome in batch],
             "include_annotation_type": ["GENOME_FASTA"],
             "hydrated": "FULLY_HYDRATED",
             "include_tsv": False
         }
         
-        temp_zip = self.genome_assembly_outdir / f"bulk_download_{species_taxid}_temp.zip"
+        temp_zip = self.genome_assembly_outdir / f"bulk_download_{species_taxid}_batch_{batch_num}_temp.zip"
         try:
             url = "https://api.ncbi.nlm.nih.gov/datasets/v2/genome/download"
             self.api_client.download_file(
@@ -377,43 +382,75 @@ class FungiParser:
                 json=request_body
             )
             
-            self._process_bulk_download(temp_zip, genomes)
+            self._process_bulk_download(temp_zip, batch)
             
         except Exception as e:
             self.logger.error(
-                f"Error in bulk download for species {species_taxid}: {e}, "
-                "removing genomes from valid list"
+                f"Download failed for batch {batch_num} of species {species_taxid}: {e}"
             )
-            self._handle_failed_download(genomes)
+            # Only remove genomes that weren't successfully processed
+            unprocessed_genomes = [
+                genome for genome in batch 
+                if not hasattr(genome, 'assembly_filename')
+            ]
+            for genome in unprocessed_genomes:
+                self._remove_failed_genome(genome.accession, batch)
         
         finally:
             self._cleanup_download_files(temp_zip)
+        
+    def _download_species_group(self, species_taxid: str, genomes: List[GenomeMetadata]):
+        """Download and process a group of genomes for a single species in batches of 100"""
+        
+        self.logger.debug(f"Starting batched downloads for species_taxid {species_taxid} ({len(genomes)} genomes)")
+        
+        batch_size = 100
+        batches = [genomes[i:i + batch_size] for i in range(0, len(genomes), batch_size)]
+        
+        for batch_num, batch in enumerate(batches, 1):
+            self.logger.debug(f"Processing batch {batch_num}/{len(batches)} "
+                            f"for species {species_taxid} ({len(batch)} genomes)")
+            self._process_genome_batch(batch, species_taxid, batch_num)
     
     def _process_bulk_download(self, zip_path: Path, genomes: List[GenomeMetadata]):
         """Extract and process files from bulk download"""
-        with zipfile.ZipFile(zip_path) as zip_ref:
-            fasta_files = [f for f in zip_ref.namelist() if f.endswith('_genomic.fna')]
-            
-            for fasta_file in fasta_files:
-                accession = fasta_file.split('/')[2]
-                final_fasta = self.genome_assembly_outdir / f"{accession}.fna"
+        failed_accessions = set()
+        
+        try:
+            with zipfile.ZipFile(zip_path) as zip_ref:
+                fasta_files = [f for f in zip_ref.namelist() if f.endswith('_genomic.fna')]
                 
-                try:
-                    # Extract and move file
-                    zip_ref.extract(fasta_file)
-                    os.rename(
-                        os.path.join('ncbi_dataset', 'data', accession, os.path.basename(fasta_file)),
-                        final_fasta
-                    )
+                for fasta_file in fasta_files:
+                    accession = fasta_file.split('/')[2]
+                    final_fasta = self.genome_assembly_outdir / f"{accession}.fna"
                     
-                    for genome in genomes:
-                        if genome.accession == accession:
-                            genome.assembly_filename = str(final_fasta.absolute())
-                            break
-                
-                except (FileNotFoundError, OSError) as e:
-                    self.logger.warning(f"Could not process file for {accession}: {e}")
-                    self._remove_failed_genome(accession, genomes)
+                    try:
+                        zip_ref.extract(fasta_file)
+                        os.rename(
+                            os.path.join('ncbi_dataset', 'data', accession, os.path.basename(fasta_file)),
+                            final_fasta
+                        )
+                        
+                        for genome in genomes:
+                            if genome.accession == accession:
+                                genome.assembly_filename = str(final_fasta.absolute())
+                                break
+                    
+                    except (zipfile.BadZipFile, zipfile.LargeZipFile, FileNotFoundError, OSError) as e:
+                        self.logger.warning(f"Could not process file for {accession}: {e}")
+                        failed_accessions.add(accession)
+                        
+        except (zipfile.BadZipFile, zipfile.LargeZipFile) as e:
+            self.logger.error(f"Error processing zip file: {e}")
+            # If the entire zip is corrupted, we need to mark all genomes as failed
+            failed_accessions.update(genome.accession for genome in genomes)
+        
+        # Remove failed genomes
+        for accession in failed_accessions:
+            self._remove_failed_genome(accession, genomes)
+            
+        successful = len(genomes) - len(failed_accessions)
+        self.logger.debug(f"Successfully processed {successful}/{len(genomes)} genomes from download")
     
     def _handle_failed_download(self, genomes: List[GenomeMetadata]):
         """Handle failed downloads by removing genomes from valid list"""
@@ -520,6 +557,9 @@ class FungiParser:
             }
             for genome in self.valid_genomes
         ])
+        
+        # Remove any duplicates that might have slipped through
+        genome_data = genome_data.drop_duplicates(subset=['assembly_accession'])
         genome_data.to_csv(self.genome_assembly_metadata_output_filename, index=False)
         self.logger.debug(f"Wrote {len(self.valid_genomes)} genomes to {self.genome_assembly_metadata_output_filename}")
         

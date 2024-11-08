@@ -187,3 +187,6 @@ fungi_outputs/
 intermediate_files/
 ignore/
 final/
+fungi_test/
+fungi_data/
+fungi_db_files/

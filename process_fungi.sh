@@ -104,7 +104,7 @@ echo "Running signature gambitdb-create..."
 ./scripts/gambitdb-create --database_output_filename ./final/database.gdb \ 
     --signatures_output_filename ./final/database.gs \ 
     fungi_db_files/genome_assembly_metadata.csv \ 
-    fungi_db_files/species_taxon.csv \
+    fungi_db_files/species_taxon_output.csv \
     ./fungi_db_files/database.gs
 
 
