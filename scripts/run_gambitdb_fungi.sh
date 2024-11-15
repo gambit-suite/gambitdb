@@ -80,6 +80,14 @@ for i in $(seq 1 $total_parts); do
     fi
 done
 
+echo "Concatenating filtered out genome summary files..."
+head -n 1 "filtered_out_genomes_1_species_summary.csv" > "final_filtered_out_genomes_summary.csv"
+for i in $(seq 1 $total_parts); do
+    if [ -f "filtered_out_genomes_${i}.csv" ]; then
+        tail -n +2 "filtered_out_genomes_${i}_species_summary.csv" >> "final_filtered_out_genomes_summary.csv"
+    fi
+done
+
 # Clean up intermediate files
 echo "Cleaning up intermediate files..."
 for i in $(seq 1 $total_parts); do
@@ -87,6 +95,7 @@ for i in $(seq 1 $total_parts); do
     rm -f "assembly_metadata_${i}.csv"
     rm -f "species_taxon_${i}.csv"
     rm -f "filtered_out_genomes_${i}.csv"
+    rm -f "filtered_out_genomes_${i}_species_summary.csv"
 done
 
 
