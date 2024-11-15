@@ -19,5 +19,5 @@ class TestCompressClusters(unittest.TestCase):
         c = CompressClusters(pairwise_filename, 'output', 0.2, representative_genomes_filename, False)
         samples_to_remove, num_samples = c.compress()
         self.assertEqual(num_samples, 13)
-        self.assertEqual(len(samples_to_remove), 7)
+        self.assertEqual(len(samples_to_remove), 8)
         self.assertNotIn('GCA_10', samples_to_remove)

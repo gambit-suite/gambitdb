@@ -586,6 +586,47 @@ options:
   --verbose, -v         Turn on verbose output (default: False)
 ```
 
+## gambitdb-fungi
+### Description
+The `gambitdb-fungi` script processes NCBI RefSeq fungal genome data to create a GAMBIT database. It takes a RefSeq assembly summary file as input, filters genomes based on quality criteria, downloads assemblies, and generates the necessary metadata files. The script provides extensive options for customization, including the ability to set contig limits, minimum genomes per species, taxonomic grouping levels, and handling of atypical or metagenome-derived genomes. Default max contigs set to 100,000 to not filter out refseq matches.
+
+### Usage
+To run this script, use the following command:
+```
+gambitdb-fungi [options] <fungi_metadata_spreadsheet>
+```
+
+```
+usage: gambitdb-fungi [options]
+
+Given a Fungi RefSeq metadata spreadsheet, output a list of accessions to download, a species taxonid file and a genome metadata file
+
+positional arguments:
+  fungi_metadata_spreadsheet    Fungi metadata file
+
+options:
+  -h, --help            show this help message and exit
+  --max_contigs MAX_CONTIGS, -d MAX_CONTIGS
+                        Maximum number of contigs (default: 100000)
+  --minimum_genomes_per_species MINIMUM_GENOMES_PER_SPECIES, -i MINIMUM_GENOMES_PER_SPECIES
+                        Minimum number of genomes in a species (default: 2)
+  --exclude_atypical    Exclude atypical genomes when searching NCBI (default: True)
+  --is_metagenome_derived IS_METAGENOME_DERIVED
+                        Check if the genome metagenome derived (MAGs) (default: metagenome_derived_exclude)
+  --parent_taxonomy PARENT_TAXONOMY
+                        Parent taxonomy to search for related to input taxa (choices: genus, family, order, class, phylum, kingdom) (default: genus)
+  --genome_assembly_metadata_output_filename GENOME_ASSEMBLY_METADATA_OUTPUT_FILENAME, -g GENOME_ASSEMBLY_METADATA_OUTPUT_FILENAME
+                        Genome metadata (default: assembly_metadata.csv)
+  --species_taxon_output_filename SPECIES_TAXON_OUTPUT_FILENAME, -a SPECIES_TAXON_OUTPUT_FILENAME
+                        Species data (default: species_taxon.csv)
+  --filtered_out_genomes_filename FILTERED_OUT_GENOMES_FILENAME
+                        Filtered out genomes (default: filtered_out_genomes.csv)
+  --output_fasta_directory OUTPUT_FASTA_DIRECTORY, -o OUTPUT_FASTA_DIRECTORY
+                        Output directory for fastas (default: .)
+  --debug              Turn on debugging (default: False)
+  --verbose, -v        Turn on verbose output (default: False)
+```
+
 ## Contributing
 
 Contributions to this project are welcome. To contribute, please fork the repository and submit a pull request.

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Check if input file is provided
+# This script is used to run the gambitdb-fungi script on a large input file
 if [ $# -ne 1 ]; then
     echo "Usage: $0 <input_file>"
     exit 1
@@ -12,17 +12,14 @@ prefix="fungi_part_"
 
 echo "Splitting input file..."
 
-# Get the headers (first two lines starting with #)
+# Get the headers (first two lines starting with # for refseq)
 header1=$(grep "^##" "$input_file")
 header2=$(grep "^#[^#]" "$input_file")
 
-# Count number of non-header lines
 total_lines=$(grep -v "^#" "$input_file" | wc -l)
 
-# Create a temporary file with non-header content
 grep -v "^#" "$input_file" > temp_content.txt
 
-# Split the content and create files with headers
 split_counter=1
 for i in $(seq 0 $lines_per_file $total_lines); do
     output_file="${prefix}${split_counter}.txt"
