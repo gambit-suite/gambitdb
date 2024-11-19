@@ -1,0 +1,51 @@
+#!/usr/bin/env python3
+
+import sys
+import argparse
+from pathlib import Path
+sys.path.append('../')
+sys.path.append('./')
+import logging
+
+from gambitdb.FungiAnalyze import AnalysisConfig,FungiAnalyzer
+
+parser = argparse.ArgumentParser(
+        description='Analyze species distances and identify overlaps',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    
+# Required arguments
+parser.add_argument('genomes_path', help='Path to curated genomes CSV')
+parser.add_argument('species_path', help='Path to curated taxa CSV')
+parser.add_argument('distances_path', help='Path to pairwise distances CSV')
+
+# Optional arguments
+parser.add_argument('--output-dir', '-o', 
+                    help='Output directory',
+                    default='species_analysis_output',
+                    type=str)
+parser.add_argument('--min-distance-threshold', '-t',
+                    help='Minimum distance threshold for clustering',
+                    default=0.7,
+                    type=float)
+parser.add_argument('--debug', 
+                    action='store_true',
+                    help='Enable debug logging')
+parser.add_argument('--verbose', '-v',
+                    action='store_true',
+                    help='Enable verbose output')
+
+args = parser.parse_args()
+
+config = AnalysisConfig(
+    genomes_path=Path(args.genomes_path),
+    species_path=Path(args.species_path),
+    distances_path=Path(args.distances_path),
+    output_dir=Path(args.output_dir),
+    min_distance_threshold=args.min_distance_threshold,
+    debug=args.debug,
+    verbose=args.verbose
+)
+
+analyzer = FungiAnalyzer(config)
+analyzer.run_analysis()

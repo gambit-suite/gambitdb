@@ -190,3 +190,7 @@ final/
 fungi_test/
 fungi_data/
 fungi_db_files/
+fungi_analysis/** */
+species_analysis_output/** */
+**/*.png
+**/*.csv
