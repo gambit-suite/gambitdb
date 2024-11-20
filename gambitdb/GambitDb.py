@@ -19,7 +19,8 @@ class GambitDb:
                  accession_removed_output_filename, species_removed_output_filename , 
                  signatures_output_filename, database_output_filename, species_taxon_output_filename, 
                  genome_assembly_metadata_output_filename, kmer, kmer_prefix, minimum_ngenomes, cpus, 
-                 small_cluster_ngenomes, small_cluster_diameter, maximum_diameter, minimum_cluster_size, compress_max_distance, representative_genomes, verbose):
+                 small_cluster_ngenomes, small_cluster_diameter, maximum_diameter, minimum_cluster_size, linkage_method,
+                 compress_max_distance, representative_genomes, verbose):
         """
     Initializes a GambitDb object.
     Args:
@@ -43,6 +44,7 @@ class GambitDb:
       small_cluster_diameter (int): The maximum diameter of a small cluster.
       maximum_diameter (int): The maximum diameter of a cluster.
       minimum_cluster_size (int): The minimum size of a cluster.
+      linkage_method (str): The linkage method.
       verbose (bool): Whether to print verbose output.
     Side Effects:
       Creates the output directory if it does not exist.
@@ -73,6 +75,7 @@ class GambitDb:
         self.small_cluster_diameter = small_cluster_diameter
         self.maximum_diameter = maximum_diameter
         self.minimum_cluster_size = minimum_cluster_size
+        self.linkage_method = linkage_method
         self.compress_max_distance = compress_max_distance
         self.representative_genomes = representative_genomes
         self.verbose = verbose
@@ -191,6 +194,7 @@ class GambitDb:
                 self.small_cluster_diameter,
                 self.maximum_diameter,
                 self.minimum_cluster_size,
+                self.linkage_method,
                 self.verbose,
                 self.verbose).filter_spreadsheets_and_output_new_files()
         

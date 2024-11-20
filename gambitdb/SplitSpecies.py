@@ -20,9 +20,10 @@ class SplitSpecies:
       accessions_removed (list): List of accessions removed.
       maximum_diameter (float): Maximum diameter of a species.
       minimum_cluster_size (int): Minimum size of a cluster.
+      linkage_method (str): The linkage method.
       verbose (bool): Verbosity of the logger.
     """
-    def __init__(self, species, genome_assembly_metadata, pairwise_distances_filename, accessions_removed, maximum_diameter, minimum_cluster_size, verbose):
+    def __init__(self, species, genome_assembly_metadata, pairwise_distances_filename, accessions_removed, maximum_diameter, minimum_cluster_size, linkage_method, verbose):
         """
     Initializes the SplitSpecies class.
     Args:
@@ -32,6 +33,7 @@ class SplitSpecies:
       accessions_removed (list): List of accessions removed.
       maximum_diameter (float): Maximum diameter of a species.
       minimum_cluster_size (int): Minimum size of a cluster.
+      linkage_method (str): The linkage method.
       verbose (bool): Verbosity of the logger.
     """
         self.logger = logging.getLogger(__name__)
@@ -41,6 +43,7 @@ class SplitSpecies:
         self.accessions_removed = accessions_removed
         self.maximum_diameter = maximum_diameter
         self.minimum_cluster_size = minimum_cluster_size
+        self.linkage_method = linkage_method
 
         self.verbose = verbose
         if self.verbose:
@@ -236,7 +239,7 @@ class SplitSpecies:
         # reindex pw-distance matrix
         data_mat = pairwise_distances.to_numpy()
         dists = squareform(data_mat)
-        linkage_matrix = linkage(dists, "average")
+        linkage_matrix = linkage(dists, self.linkage_method)
         return linkage_matrix
 
     def get_cluster_identity(self, linkage_matrix):
@@ -250,7 +253,7 @@ class SplitSpecies:
       >>> get_cluster_identity(linkage_matrix)
     """
         # get cluster list based on threshold
-        cluster_identity = fcluster(linkage_matrix,t=0.45,criterion='distance')
+        cluster_identity = fcluster(linkage_matrix,t=self.maximum_diameter,criterion='distance')
         return cluster_identity
     
     def get_clusters(self, cluster_identity, pairwise_distances_single):
