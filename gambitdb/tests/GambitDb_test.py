@@ -45,6 +45,7 @@ class TestGambitDb(unittest.TestCase):
                         1,
                         0.99,
                         0.7,
+                        'average',
                         1,
                         1,
                         None,
