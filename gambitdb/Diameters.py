@@ -97,6 +97,14 @@ class Diameters:
         # Take the min-inter values, add to a dataframe and write out to a new file
             mininter_df = pandas.DataFrame(min_inter, index=species.index, columns=species.index)
             mininter_df.to_csv(self.min_inter_output_filename)
+            
+            
+            # Write out the species taxon table to a new file
+            # Create and save name-based min-inter matrix
+            species_names = species['name'].values
+            mininter_named_df = pandas.DataFrame(min_inter, index=species_names, columns=species_names)
+            named_output = self.min_inter_output_filename.replace('.csv', '_with_names.csv')
+            mininter_named_df.to_csv(named_output)
 
         # The parent TaxonIDs (the genus) need to exist for the species
         species = self.create_mock_genus_rows(species)

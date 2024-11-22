@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-from tqdm import tqdm
 from scipy.cluster.hierarchy import dendrogram, linkage
 from scipy.spatial.distance import squareform
 
@@ -42,7 +41,7 @@ class FungiAnalyzer:
     def output_dir(self) -> Path:
         return self.config.output_dir
         
-    def load_data(self) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    def load_data(self) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         logging.info("Loading input data...")
         genomes = pd.read_csv(self.config.genomes_path)
         species = pd.read_csv(self.config.species_path).set_index('name')
@@ -55,24 +54,32 @@ class FungiAnalyzer:
     def process_taxonomy_data(self, species_df: pd.DataFrame, genomes_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame, set]:
         logging.info(f"Processing taxonomy data, initial species count: {len(species_df)}")
         parent_species = set()
-        subspecies_mapping = {}
         
+        # First identify all parent species that have subspecies
         for name in species_df.index:
             if "subspecies" in name:
                 base_name = name.split(" subspecies")[0]
                 parent_species.add(base_name)
-                subspecies_mapping[base_name] = name
-        
+                
+        # Filter out parent species from species_df
         filtered_species = species_df[
             species_df.index.str.contains('subspecies') |
             ~species_df.index.isin(parent_species)
         ]
         
         updated_genomes = genomes_df.copy()
-        for parent, subspecies in subspecies_mapping.items():
+        
+        # Remove any genomes that are assigned to parent species that have subspecies
+        for parent in parent_species:
+            # Remove all genomes assigned to parent species
             mask = updated_genomes['species'] == parent
             if mask.any():
-                updated_genomes.loc[mask, 'species'] = subspecies
+                logging.info(f"Removing {mask.sum()} genomes assigned to parent species {parent}")
+                updated_genomes = updated_genomes[~mask]
+        
+        # Write verification files
+        filtered_species.to_csv(self.output_dir / 'filtered_species.csv')
+        updated_genomes.to_csv(self.output_dir / 'updated_genomes.csv', index=False)
                 
         return filtered_species, updated_genomes, parent_species
     
@@ -80,77 +87,63 @@ class FungiAnalyzer:
         logging.info("Calculating species distances...")
         species, genomes, parent_species = self.process_taxonomy_data(species, genomes)
         
+        # Get common species between genomes and species df
         genome_species = set(genomes['species'].unique())
         species_names = set(species.index)
         common_species = sorted(genome_species.intersection(species_names))
         
-        logging.info(f"Species in genomes: {len(genome_species)}")
-        logging.info(f"Species in species df: {len(species_names)}")
-        logging.info(f"Common species: {len(common_species)}")
+        # Calculate new min_inter_matrix from dmat
+        min_inter_matrix = pd.DataFrame(index=common_species, columns=common_species, dtype=float)
         
-        genomes = genomes[genomes['species'].isin(common_species)]
-        species = species.loc[common_species]
+        # Debug file for distance calculations
+        for i, species1 in enumerate(common_species):
+            for j, species2 in enumerate(common_species):
+                # Diagonal doesn't matter
+                if species1 == species2:
+                    min_inter_matrix.loc[species1, species2] = 1.0
+                    continue
+                
+                # Get genomes for each species
+                species1_genomes = genomes[genomes['species'] == species1]['assembly_accession'].tolist()
+                species2_genomes = genomes[genomes['species'] == species2]['assembly_accession'].tolist()
+                
+                # Get the submatrix for these two species
+                species_dmat = dmat.loc[species1_genomes, species2_genomes]
+                
+                min_distance = float(species_dmat.min().min())
+                
+                min_inter_matrix.loc[species1, species2] = min_distance
         
-        gb = genomes.groupby('species')
-        species_inds = [gb.indices[sp] for sp in common_species]
-        nspecies = len(species_inds)
-        
-        diameters = np.zeros(nspecies)
-        min_inter = np.zeros((nspecies, nspecies))
         
         overlaps = []
         overlap_details = []
         overlap_counts = {}
         
-        for i, inds1 in tqdm(enumerate(species_inds)):
-            diameters[i] = dmat.values[np.ix_(inds1, inds1)].max()
-            
-            for j, inds2 in enumerate(species_inds[:i]):
-                mi = dmat.values[np.ix_(inds1, inds2)].min()
-                min_inter[i, j] = min_inter[j, i] = mi
-        
-        for i in range(nspecies):
-            for j in range(i):
-                d = min_inter[i, j]
-                if d <= diameters[i]:
+        for i, species1 in enumerate(common_species):
+            for j, species2 in enumerate(common_species[:i]):
+                min_dist = float(min_inter_matrix.loc[species1, species2])
+                diameter1 = float(species.loc[species1, 'diameter'])
+                diameter2 = float(species.loc[species2, 'diameter'])
+
+                # The core condition: if either diameter is greater than min_distance, it's an overlap
+                if diameter1 >= min_dist or diameter2 >= min_dist:
                     overlaps.append((i, j))
-                    species1 = common_species[i]
-                    species2 = common_species[j]
-                    overlap_details.append({
-                        'species1': species1,
-                        'species2': species2,
-                        'species1_diameter': diameters[i],
-                        'species2_diameter': diameters[j],
-                        'min_distance': d
-                    })
-                    overlap_counts[species1] = overlap_counts.get(species1, 0) + 1
-                
-                if d <= diameters[j]:
                     overlaps.append((j, i))
-                    species1 = common_species[j]
-                    species2 = common_species[i]
                     overlap_details.append({
                         'species1': species1,
                         'species2': species2,
-                        'species1_diameter': diameters[j],
-                        'species2_diameter': diameters[i],
-                        'min_distance': d
+                        'species1_diameter': diameter1,
+                        'species2_diameter': diameter2,
+                        'min_distance': min_dist
                     })
                     overlap_counts[species1] = overlap_counts.get(species1, 0) + 1
+                    overlap_counts[species2] = overlap_counts.get(species2, 0) + 1
         
-        overlap_df = pd.DataFrame(overlap_details)
-        if not overlap_df.empty:
-            overlap_df.to_csv(self.output_dir / 'overlap_details.csv', index=False)
+        # Save overlap details to CSV, reused later
+        if overlap_details:
+            pd.DataFrame(overlap_details).to_csv(self.output_dir / 'overlap_details.csv', index=False)
         
-        overlap_counts_df = pd.DataFrame.from_dict(overlap_counts, orient='index', columns=['overlap_count'])
-        overlap_counts_df.index.name = 'species'
-        overlap_counts_df.sort_values('overlap_count', ascending=False).to_csv(self.output_dir / 'overlap_counts.csv')
-        
-        mi_df = pd.DataFrame(min_inter, index=common_species, columns=common_species)
-        species['diameter'] = diameters
-        species['ngenomes'] = genomes.groupby('species').size()
-        
-        return overlaps, species, mi_df
+        return overlaps, species, min_inter_matrix
     
     def run_analysis(self):
         logging.info("Starting analysis...")
@@ -165,18 +158,31 @@ class FungiAnalyzer:
         results['overlap'] = results['min_inter'] - results['diameter']
         results.to_csv(self.output_dir / 'species-data.csv')
         
+        # Read the actual overlaps from the CSV
+        overlap_df = pd.read_csv(self.output_dir / 'overlap_details.csv')
+        
         vis_dir = self.output_dir / 'overlaps'
         vis_dir.mkdir(exist_ok=True)
         
         dmat['assembly_accession'] = dmat.index
         
-        for i in overlaps:
-            filt_species = species.iloc[list(i)]
-            genomes_filt = genomes[genomes['species'].isin(filt_species.index)]
+        # Use set to store processed pairs
+        processed_pairs = set()
+        
+        for _, row in overlap_df.iterrows():
+            
+            pair = frozenset([row['species1'], row['species2']])
+            if pair in processed_pairs:
+                continue
+            processed_pairs.add(pair)
+            
+            # Get genomes for both species
+            genomes_filt = genomes[genomes['species'].isin(pair)]
             accessions = genomes_filt['assembly_accession']
             species_data = dmat.loc[accessions, accessions]
+            species_names = list(pair)
             
-            species_str = '_'.join(str(e) for e in i)
+            species_str = '_vs_'.join(name.replace(' ', '_') for name in species_names)
             
             genomes_filt = genomes_filt[['assembly_accession', 'species_taxid', 'species']]
             merged_data = pd.merge(species_data, genomes_filt, left_index=True, right_on='assembly_accession', how='left')
@@ -191,7 +197,7 @@ class FungiAnalyzer:
             plt.figure(figsize=(12, 8))
             data_mat = species_data.to_numpy()
             dists = squareform(data_mat)
-            linkage_matrix = linkage(dists, "complete")
+            linkage_matrix = linkage(dists, "average")
             dendrogram(linkage_matrix, color_threshold=self.config.min_distance_threshold)
             plt.tight_layout()
             plt.savefig(vis_dir / f'{species_str}_dendrogram.png', dpi=300)
