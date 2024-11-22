@@ -168,7 +168,7 @@ correct_incorrect_predictions.txt
 results.csv
 output_logfile.txt
 
-#fungaldb
+#fungaldb - remove some later
 2024-10-22-ncbi-fungi.tsv
 refseq_assembly_summary_fungi_22_10_2024.txt
 accessions_ncbi.txt
@@ -194,3 +194,7 @@ fungi_analysis/** */
 species_analysis_output/** */
 **/*.png
 **/*.csv
+aspergillus_assemblies/
+aspergillus_only/
+aspergillus_analysis/
+fungal_db_**
