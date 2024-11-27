@@ -40,6 +40,12 @@ class FungiAnalyzer:
     @property
     def output_dir(self) -> Path:
         return self.config.output_dir
+    
+    def get_parent_species(self, name):
+        """Extract parent species name from a subspecies name"""
+        if "subspecies" in name:
+            return name.split(" subspecies")[0]
+        return name
         
     def load_data(self) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         logging.info("Loading input data...")
@@ -87,10 +93,15 @@ class FungiAnalyzer:
         logging.info("Calculating species distances...")
         species, genomes, parent_species = self.process_taxonomy_data(species, genomes)
         
+        species = species[~species.index.duplicated(keep='first')]
+        
         # Get common species between genomes and species df
         genome_species = set(genomes['species'].unique())
         species_names = set(species.index)
         common_species = sorted(genome_species.intersection(species_names))
+        
+        # Filter out species that are not in the common set
+        species = species.loc[common_species]
         
         # Calculate new min_inter_matrix from dmat
         min_inter_matrix = pd.DataFrame(index=common_species, columns=common_species, dtype=float)
@@ -121,10 +132,19 @@ class FungiAnalyzer:
         
         for i, species1 in enumerate(common_species):
             for j, species2 in enumerate(common_species[:i]):
+                # Get parent species for each so we don't compare subspecies from the same parent
+                parent1 = self.get_parent_species(species1)
+                parent2 = self.get_parent_species(species2)
+                # Skip if they are subspecies of the same parent
+                if parent1 == parent2:
+                    logging.debug(f"Skipping comparison between subspecies of {parent1}: {species1} vs {species2}")
+                    continue
+                #Get the minimum distance between the two species
                 min_dist = float(min_inter_matrix.loc[species1, species2])
-                diameter1 = float(species.loc[species1, 'diameter'])
-                diameter2 = float(species.loc[species2, 'diameter'])
-
+                # Get the diameters for each species
+                diameter1 = species.loc[species1, 'diameter']
+                diameter2 = species.loc[species2, 'diameter']
+                
                 # The core condition: if either diameter is greater than min_distance, it's an overlap
                 if diameter1 >= min_dist or diameter2 >= min_dist:
                     overlaps.append((i, j))
@@ -136,6 +156,7 @@ class FungiAnalyzer:
                         'species2_diameter': diameter2,
                         'min_distance': min_dist
                     })
+                    print(f"Species1: {species1}, Species2: {species2}, Min dist: {min_dist}, Diameter1: {diameter1}, Diameter2: {diameter2}")
                     overlap_counts[species1] = overlap_counts.get(species1, 0) + 1
                     overlap_counts[species2] = overlap_counts.get(species2, 0) + 1
         
@@ -144,10 +165,13 @@ class FungiAnalyzer:
             pd.DataFrame(overlap_details).to_csv(self.output_dir / 'overlap_details.csv', index=False)
         
         return overlaps, species, min_inter_matrix
-    
+
     def run_analysis(self):
         logging.info("Starting analysis...")
         genomes, species, dmat = self.load_data()
+        
+        # First get filtered data and overlaps
+        species, genomes, _ = self.process_taxonomy_data(species, genomes)  # Get filtered data first
         overlaps, species, min_inter = self.calculate_distances(genomes, species, dmat)
         
         min_inter.to_csv(self.output_dir / 'min-inter.csv')
@@ -158,31 +182,26 @@ class FungiAnalyzer:
         results['overlap'] = results['min_inter'] - results['diameter']
         results.to_csv(self.output_dir / 'species-data.csv')
         
-        # Read the actual overlaps from the CSV
+        # Read overlaps and create visualizations using the SAME filtered data
         overlap_df = pd.read_csv(self.output_dir / 'overlap_details.csv')
         
         vis_dir = self.output_dir / 'overlaps'
         vis_dir.mkdir(exist_ok=True)
         
-        dmat['assembly_accession'] = dmat.index
-        
-        # Use set to store processed pairs
         processed_pairs = set()
         
         for _, row in overlap_df.iterrows():
-            
             pair = frozenset([row['species1'], row['species2']])
             if pair in processed_pairs:
                 continue
             processed_pairs.add(pair)
             
-            # Get genomes for both species
+            # Use the SAME filtered genomes DataFrame to get accessions
             genomes_filt = genomes[genomes['species'].isin(pair)]
             accessions = genomes_filt['assembly_accession']
             species_data = dmat.loc[accessions, accessions]
-            species_names = list(pair)
             
-            species_str = '_vs_'.join(name.replace(' ', '_') for name in species_names)
+            species_str = '_vs_'.join(name.replace(' ', '_') for name in pair)
             
             genomes_filt = genomes_filt[['assembly_accession', 'species_taxid', 'species']]
             merged_data = pd.merge(species_data, genomes_filt, left_index=True, right_on='assembly_accession', how='left')
@@ -202,8 +221,7 @@ class FungiAnalyzer:
             plt.tight_layout()
             plt.savefig(vis_dir / f'{species_str}_dendrogram.png', dpi=300)
             plt.close()
-            
-            
+                    
 ## TODO: Can we update the calculate diameter to grab genomes responsible for the overlap?
 # overlaps = []
 #     overlap_details = []

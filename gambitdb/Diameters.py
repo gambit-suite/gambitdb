@@ -76,41 +76,68 @@ class Diameters:
         number_of_species = species.shape[0]
         self.logger.debug('calculate_diameters: species size: %s' % species.shape[0])
 
-        # a dictionary of species_taxid: [assembly_accessions]
+        # A dictionary of species_taxid: [assembly_accessions]
         species_genomes = {}
         # Loop over each species
-        for species_name in species['name'].tolist():
+        species_order = list(species['name']) 
+        for species_name in species_order:
             # get a list of the assembly_accessions for the species and add to the species_genomes dictionary
             #check to see if species_name is in genomes_grouped_by_species_name
             if species_name in genomes_grouped_by_species_name.groups:                
                 species_genomes[species_name] = genomes_grouped_by_species_name.get_group(species_name)['assembly_accession'].values
+                matches = species[species['name'] == species_name]
+                if len(matches) > 1:
+                    self.logger.error(f"\nWARNING: {species_name} appears {len(matches)} times in species table!")
+                    self.logger.error(f"Indices: {matches.index.tolist()}")
+                    self.logger.error(f"Current diameters: {matches['diameter'].tolist()}")
             else:
                 species_genomes[species_name] = []
 
-        diameters, min_inter, ngenomes = self.calculate_thresholds(number_of_species, species_genomes, pairwise_distances)
-        # Extend the species taxon table and add in the diameters and number of genomes
-        species['diameter'] = diameters
-        species['ngenomes'] = ngenomes
+        diameters, min_inter, ngenomes, species_data = self.calculate_thresholds(number_of_species, species_genomes, pairwise_distances)
+        
+        # Create mapping of species name to data for later verification
+        species_info_map = {info['name']: info for info in species_data}
+        
+        # Assign values using species_data
+        self.logger.debug("\nAssigning diameter values:")
+        for info in species_data:
+            name = info['name']
+            species.loc[species['name'] == name, 'diameter'] = info['diameter']
+            species.loc[species['name'] == name, 'ngenomes'] = info['ngenomes']
+            self.logger.debug(f"  {name}: diameter={info['diameter']}, ngenomes={info['ngenomes']}")
+
         species['ngenomes'] = species['ngenomes'].astype(int)
 
-        if number_of_species >0:
-        # Take the min-inter values, add to a dataframe and write out to a new file
-            mininter_df = pandas.DataFrame(min_inter, index=species.index, columns=species.index)
+        # Save min-inter matrices using consistent species order
+        if number_of_species > 0:
+            mininter_df = pandas.DataFrame(min_inter, 
+                                        index=species.index, 
+                                        columns=species.index)
             mininter_df.to_csv(self.min_inter_output_filename)
             
-            
-            # Write out the species taxon table to a new file
-            # Create and save name-based min-inter matrix
             species_names = species['name'].values
-            mininter_named_df = pandas.DataFrame(min_inter, index=species_names, columns=species_names)
+            mininter_named_df = pandas.DataFrame(min_inter, 
+                                            index=species_names, 
+                                            columns=species_names)
             named_output = self.min_inter_output_filename.replace('.csv', '_with_names.csv')
             mininter_named_df.to_csv(named_output)
 
-        # The parent TaxonIDs (the genus) need to exist for the species
+        # Add genus rows
         species = self.create_mock_genus_rows(species)
-        # Write out the species taxon table to a new file
+        
+        # Verify values weren't changed by genus addition
+        self.logger.debug("\nVerifying values after genus addition:")
+        for name, info in species_info_map.items():
+            actual_diameter = species.loc[species['name'] == name, 'diameter'].iloc[0]
+            if abs(actual_diameter - info['diameter']) > 1e-6:
+                self.logger.error(f"Diameter changed for {name} after genus addition!")
+                self.logger.error(f"Expected: {info['diameter']}")
+                self.logger.error(f"Got: {actual_diameter}")
+        
+        # Write final table
         species.to_csv(self.species_taxon_output_filename)
-
+        
+    
     def create_mock_genus_rows(self, species):
         """
     Creates mock genus rows for the species taxon table.
@@ -156,7 +183,7 @@ class Diameters:
         species = pandas.concat([species, df_extended])
 
         return species
-
+    
     # Calculate the diameters and minimums
     def calculate_thresholds(self, number_of_species, species_genomes, pairwise_distances):
         """
@@ -183,26 +210,38 @@ class Diameters:
         diameters = numpy.zeros(number_of_species)
         ngenomes = numpy.zeros(number_of_species)
         min_inter = numpy.zeros((number_of_species, number_of_species))
-
+        species_data = []
         # loop over the species_genomes dictionary, looking up the index of the genome in the pairwise_distances dataframe
-        for i, (species_taxid, assembly_accessions) in enumerate(species_genomes.items()):
+        for i, (species_name, assembly_accessions) in enumerate(species_genomes.items()):
+            species_info = {
+                'name': species_name,
+                'position': i,
+                'assemblies': assembly_accessions,
+                'diameter': 0.0,
+                'ngenomes': len(assembly_accessions)
+            }
             # if the accessbly accessions list is empty then continue
             if len(assembly_accessions) == 0:
                 continue
 
             inds1 = pairwise_distances.index.get_indexer(assembly_accessions)
+            # self.logger.debug(f"  Matrix indices: {inds1}")
             # Find the maximum diameters for each species. Basically look at the pairwise distances
             # and find the maximum distance between any two genomes in the species
             diameters[i] = pairwise_distances.values[numpy.ix_(inds1, inds1)].max()
             ngenomes[i] = len(assembly_accessions)
-            for j, (species_taxid2, assembly_accessions2) in enumerate(species_genomes.items()):
+            # Update species_info with diameter after Calculating
+            species_info['diameter'] = float(diameters[i])
+            for j, (species_name2, assembly_accessions2) in enumerate(species_genomes.items()):
                 if len(assembly_accessions2) == 0:
                     continue
                 inds2 = pairwise_distances.index.get_indexer(assembly_accessions2)
                 mi = pairwise_distances.values[numpy.ix_(inds1, inds2)].min()
                 min_inter[i, j] = min_inter[j, i] = mi
+            #Add Species data
+            species_data.append(species_info)
 
         self.logger.debug('calculate_thresholds: diameters: %s' % diameters.shape[0])
         self.logger.debug('calculate_thresholds: min_inter: %s' % min_inter.shape[0])
         # return the diameters and minimums
-        return diameters, min_inter, ngenomes
+        return diameters, min_inter, ngenomes, species_data

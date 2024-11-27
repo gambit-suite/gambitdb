@@ -197,4 +197,5 @@ species_analysis_output/** */
 aspergillus_assemblies/
 aspergillus_only/
 aspergillus_analysis/
+aspergillus_fix_order/
 fungal_db_**
