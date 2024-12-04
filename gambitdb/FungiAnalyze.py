@@ -106,7 +106,6 @@ class FungiAnalyzer:
         # Calculate new min_inter_matrix from dmat
         min_inter_matrix = pd.DataFrame(index=common_species, columns=common_species, dtype=float)
         
-        # Debug file for distance calculations
         for i, species1 in enumerate(common_species):
             for j, species2 in enumerate(common_species):
                 # Diagonal doesn't matter
