@@ -239,7 +239,7 @@ taxa_df['ngenomes'] = taxa_df['ngenomes'].fillna(0).astype(int)
 taxa_df = taxa_df.fillna('')
 
 
-# Create databawse
+# Create database
 output_dir = os.path.dirname(options.database_output_filename)
 if options.database_output_filename:  # If it's not in the current directory
     os.makedirs(output_dir, exist_ok=True)
