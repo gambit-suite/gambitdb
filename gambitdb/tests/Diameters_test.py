@@ -99,7 +99,7 @@ class TestDiameters(unittest.TestCase):
             else:
                 species_genomes[species_name] = []
 
-        diameters, min_inter, ngenomes = d.calculate_thresholds(number_of_species, species_genomes, pairwise_distances)
+        diameters, min_inter, ngenomes, species_data = d.calculate_thresholds(number_of_species, species_genomes, pairwise_distances)
         self.assertEqual(diameters.shape[0], 4)
         
     def cleanup(self):
