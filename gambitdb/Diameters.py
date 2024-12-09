@@ -190,8 +190,20 @@ class Diameters:
       number_of_species (int): The number of species in the dataset.
       species_genomes (dict): A dictionary of species taxon and assembly accessions.
       pairwise_distances (pandas.DataFrame): A dataframe of pairwise distances.
+    
     Returns:
-      tuple: A tuple containing the diameters, minimums, and number of genomes for each species.
+        tuple: Contains:
+            - diameters (numpy.ndarray): Maximum intra-species distances.
+            - min_inter (numpy.ndarray): Minimum inter-species distances matrix.
+            - ngenomes (numpy.ndarray): Number of genomes per species.
+            - species_data (list): List of dicts containing species info:
+                {
+                    'name': str,           # Species name
+                    'position': int,       # Index position
+                    'assemblies': list,    # Assembly accessions
+                    'diameter': float,     # Maximum intra-species distance
+                    'ngenomes': int        # Number of genomes
+                }
     Examples:
       >>> diameters, min_inter, ngenomes = Diameters.calculate_thresholds(number_of_species, species_genomes, pairwise_distances)
       >>> diameters
