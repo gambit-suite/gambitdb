@@ -194,8 +194,11 @@ fungi_analysis/** */
 species_analysis_output/** */
 **/*.png
 **/*.csv
+**/*.gs
 aspergillus_assemblies/
 aspergillus_only/
 aspergillus_analysis/
 aspergillus_fix_order/
 fungal_db_**
+removed_fungi_accessions/
+mismatched_genomes/

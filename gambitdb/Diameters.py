@@ -88,8 +88,6 @@ class Diameters:
                 matches = species[species['name'] == species_name]
                 if len(matches) > 1:
                     self.logger.error(f"\nWARNING: {species_name} appears {len(matches)} times in species table!")
-                    self.logger.error(f"Indices: {matches.index.tolist()}")
-                    self.logger.error(f"Current diameters: {matches['diameter'].tolist()}")
             else:
                 species_genomes[species_name] = []
 
