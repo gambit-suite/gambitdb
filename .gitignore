@@ -186,6 +186,7 @@ data/
 fungi_outputs/
 intermediate_files/
 ignore/
+fixed_final/
 final/
 fungi_test/
 fungi_data/

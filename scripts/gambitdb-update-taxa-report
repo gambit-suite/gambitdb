@@ -1,0 +1,65 @@
+#!/usr/bin/env python3
+
+import argparse
+import sqlite3
+import shutil
+import logging
+
+parser = argparse.ArgumentParser(
+    description = 'Update report flags in GAMBIT database',
+    usage = 'update-report-flags [options]',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+# Required input files
+parser.add_argument('database_filename', help='An SQLite database', type=str)
+
+# Output
+parser.add_argument('--database_output_filename', '-d', help='Output filename for database', default = 'updated_database.gdb', type=str)
+parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
+
+options = parser.parse_args()
+
+# setup logging
+if options.verbose:
+    logging.basicConfig(level=logging.DEBUG)
+else:
+    logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Copy the database so we dont modify the original
+logger.debug("Copying database to: " + options.database_output_filename)
+shutil.copy(options.database_filename, options.database_output_filename)
+
+# Connect to the database
+db_connection = sqlite3.connect(options.database_output_filename)
+
+# Get initial counts
+initial_report_count = db_connection.execute("SELECT COUNT(*) FROM taxa WHERE report = 1").fetchone()[0]
+logger.info(f"Initial number of taxa with report=1: {initial_report_count}")
+
+# Update report flags: set both species and genus to 1
+db_connection.execute("UPDATE taxa SET report = 1 WHERE rank = 'species' OR rank = 'genus'")
+# Set subspecies to not report if they exist
+db_connection.execute("UPDATE taxa SET report = 0 WHERE rank = 'subspecies'")
+
+# Get final counts by rank
+cursor = db_connection.execute("""
+    SELECT rank, report, COUNT(*) 
+    FROM taxa 
+    GROUP BY rank, report 
+    ORDER BY rank, report
+""")
+logger.info("\nFinal counts by rank and report status:")
+for row in cursor:
+    rank = row[0] if row[0] is not None else "NULL"
+    report = row[1]
+    count = row[2]
+    logger.info(f"Rank: {rank:10} Report: {report} Count: {count}")
+
+# Commit changes
+db_connection.commit()
+
+# Close the connection
+db_connection.close()
+
+logger.info(f"\nUpdated database saved to: {options.database_output_filename}")
