@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+
+import argparse
+import numpy as np
+import sqlite3
+import shutil
+import logging
+
+parser = argparse.ArgumentParser(
+    description = 'Apply gambit genus diameters from one database to another',
+    usage = 'gambitdb-transfer-db [options]',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+# Required input files
+parser.add_argument('source_database_filename', help='Source gambit database file containing genus diameters', type=str)
+
+# Output
+parser.add_argument('--output_filename', '-d', help='Output filename for database with genus diameters applied', default = 'fixed_database.gdb', type=str)
+options = parser.parse_args()
+
+# copy the database so we dont modify the original
+print("Copy database to: ", options.output_filename)
+shutil.copy(options.source_database_filename, options.output_filename)
+
+# Connect to the database
+source_db_connection = sqlite3.connect(options.source_database_filename)
+destination_db_connection = sqlite3.connect(options.output_filename)
+
+# query source database for genus diameters equal to 0.0, report those that are found
+source_distance_genus = source_db_connection.execute("SELECT distance_threshold, name FROM taxa WHERE rank = 'genus' AND distance_threshold = 0.0 ORDER BY distance_threshold ASC")
+for source_distance_threshold, source_genus in source_distance_genus:
+    print("Genus: ", source_genus, " has a distance_threshold of 0.0")
+    # Check if the species belonging to this genus have a distance_threshold of 0.0
+    species = source_db_connection.execute("SELECT name, distance_threshold FROM taxa WHERE rank = 'species' AND parent_id = (SELECT id FROM taxa WHERE name = ?)", (source_genus,))
+    for species_name, species_threshold in species:
+        print("Species: ", species_name, "has a distance_threshold of ", species_threshold)
+        # check if this species has subspecies, print out the diameter of the subspecies
+        subspecies = source_db_connection.execute("SELECT name, distance_threshold FROM taxa WHERE rank = 'subspecies' AND parent_id = (SELECT id FROM taxa WHERE name = ?)", (species_name,))
+
+        # get the subspecies name and diameter, replace the genus diameter with the larger subspecies diameter
+        largest_subspecies_threshold = 0.0
+        for subspecies_name, subspecies_threshold in subspecies:
+            print("Subspecies: ", subspecies_name, "has a distance_threshold of ", subspecies_threshold)
+            if subspecies_threshold > largest_subspecies_threshold:
+                print("Subspecies: ", subspecies_name, "has a larger diameter")
+                print("Replace genus diameter with subspecies: ", subspecies_name, "diameter")
+                largest_subspecies_threshold = subspecies_threshold
+        
+        # update the species diameter with the larger subspecies diameter
+        destination_db_connection.execute("UPDATE taxa SET distance_threshold = ? WHERE rank = 'genus' AND name = ?", (largest_subspecies_threshold, source_genus))
+        destination_db_connection.commit()
+        
+source_db_connection.close()
+destination_db_connection.close()
