@@ -8,7 +8,7 @@ import logging
 
 parser = argparse.ArgumentParser(
     description = 'Apply gambit genus diameters from one database to another',
-    usage = 'gambitdb-transfer-db [options]',
+    usage = 'gambitdb-fungi-fix-genera [options]',
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 # Required input files

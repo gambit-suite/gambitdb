@@ -7,7 +7,7 @@ import logging
 
 parser = argparse.ArgumentParser(
     description = 'Update report flags in GAMBIT database',
-    usage = 'update-report-flags [options]',
+    usage = 'gambditdb-update-taxa-report [options]',
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 # Required input files
