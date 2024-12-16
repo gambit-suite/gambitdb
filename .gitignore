@@ -191,6 +191,7 @@ final/
 fungi_test/
 fungi_data/
 fungi_db_files/
+final_fungal_db_merged_dupes/
 fungi_analysis/** */
 species_analysis_output/** */
 **/*.png
