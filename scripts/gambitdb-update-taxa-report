@@ -37,6 +37,14 @@ db_connection = sqlite3.connect(options.database_output_filename)
 initial_report_count = db_connection.execute("SELECT COUNT(*) FROM taxa WHERE report = 1").fetchone()[0]
 logger.info(f"Initial number of taxa with report=1: {initial_report_count}")
 
+# Update subspecies based on name
+logger.debug("Updating taxa with 'subspecies' in name")
+db_connection.execute("""
+    UPDATE taxa 
+    SET rank = 'subspecies', report = 0 
+    WHERE name LIKE '%subspecies%' OR name LIKE '%Subspecies%'
+""")
+
 # Update report flags: set both species and genus to 1
 db_connection.execute("UPDATE taxa SET report = 1 WHERE rank = 'species' OR rank = 'genus'")
 # Set subspecies to not report if they exist
@@ -55,6 +63,16 @@ for row in cursor:
     report = row[1]
     count = row[2]
     logger.info(f"Rank: {rank:10} Report: {report} Count: {count}")
+
+logger.info("\nTaxa modified to subspecies:")
+cursor = db_connection.execute("""
+    SELECT name, rank, report
+    FROM taxa 
+    WHERE rank = 'subspecies'
+    ORDER BY name
+""")
+for row in cursor:
+    logger.info(f"Name: {row[0]}, Rank: {row[1]}, Report: {row[2]}")
 
 # Commit changes
 db_connection.commit()
