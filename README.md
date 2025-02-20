@@ -588,7 +588,7 @@ options:
 
 ## gambitdb-update-taxa-report
 ### Description
-The `gambitdb-update-taxa-report` script updates report flags and taxonomic rankgins in a GAMBIT database. The script specifically handles subspeces designations and report flag settings for different taxonomic rankings. For our use cases, we set subspecies report to 0, and species & genus to 1. 
+The `gambitdb-update-taxa-report` script updates report flags and taxonomic rankgins in a GAMBIT database. The script specifically handles subspecies designations and report flag settings for different taxonomic rankings. For our use cases, we set subspecies report to 0, and species & genus to 1. 
 
 ### Usage
 To run this script, use the following command:

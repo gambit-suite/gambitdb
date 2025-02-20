@@ -266,14 +266,14 @@ class FungiParser:
             # Process valid genomes for species
             if len(valid_genomes) >= self.minimum_genomes_per_species:
                 self.logger.debug(
-                    f"Taxon {taxon_id} has {len(valid_genomes)} valid genomes after filtering"
+                    f"Taxon {taxon_id} has {len(valid_genomes)} valid genomes after filtering (minimum required: {self.minimum_genomes_per_species})"
                 )
                 self.valid_species.add(taxon_id)
                 self.valid_genomes.extend(valid_genomes)
                 self.species_genome_counts[taxon_id] = len(valid_genomes)
             else:
                 self.logger.debug(
-                    f"Taxon {taxon_id} only has {len(valid_genomes)} valid genomes after filtering"
+                    f"Taxon {taxon_id} only has {len(valid_genomes)} valid genomes after filtering (minimum required: {self.minimum_genomes_per_species})"
                 )
                 for genome in valid_genomes:
                     self.filtered_genomes.append(
@@ -291,7 +291,6 @@ class FungiParser:
         if genome.parent_taxid is None:
             return "Missing parent taxon information"
         # Fix this to calculate fractional genome (genome size of representative/contig count)
-        # 
         if genome.contig_count > self.max_contigs:
             return f"Contig count {genome.contig_count} exceeds maximum {self.max_contigs}"
         if 'sp.' in genome.organism_name:

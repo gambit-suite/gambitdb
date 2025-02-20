@@ -155,7 +155,6 @@ class FungiAnalyzer:
                         'species2_diameter': diameter2,
                         'min_distance': min_dist
                     })
-                    print(f"Species1: {species1}, Species2: {species2}, Min dist: {min_dist}, Diameter1: {diameter1}, Diameter2: {diameter2}")
                     overlap_counts[species1] = overlap_counts.get(species1, 0) + 1
                     overlap_counts[species2] = overlap_counts.get(species2, 0) + 1
         

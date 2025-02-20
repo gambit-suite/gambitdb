@@ -235,7 +235,6 @@ class Diameters:
                 continue
 
             inds1 = pairwise_distances.index.get_indexer(assembly_accessions)
-            # self.logger.debug(f"  Matrix indices: {inds1}")
             # Find the maximum diameters for each species. Basically look at the pairwise distances
             # and find the maximum distance between any two genomes in the species
             diameters[i] = pairwise_distances.values[numpy.ix_(inds1, inds1)].max()

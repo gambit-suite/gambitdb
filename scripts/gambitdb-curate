@@ -35,7 +35,11 @@ parser.add_argument('--small_cluster_diameter', help='Maximum diameter of a spec
 # Vary how subspecies splitting operates
 parser.add_argument('--maximum_diameter', help='The maximum diameter to allow before attempting to split a species into subspecies', default = 0.7, type=float)
 parser.add_argument('--minimum_cluster_size', help='After splitting a species into subspecies, this is the minimum number of genomes which must be present, otherwise the genome is removed.', default = 2, type=int)
-parser.add_argument('--linkage_method', help='Method to use for linkage clustering via scipy linkage', default = 'average', type=str)
+parser.add_argument('--linkage_method',
+                   help='Method to use for linkage clustering via scipy linkage',
+                   choices=['single', 'complete', 'average', 'weighted', 'centroid', 'median', 'ward'],
+                   default='average',
+                   type=str)
 
 parser.add_argument('--debug', action='store_true', help='Turn on debugging', default = False)
 parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default = False)
