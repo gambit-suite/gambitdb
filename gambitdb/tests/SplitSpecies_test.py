@@ -32,7 +32,7 @@ class TestSplitSpecies(unittest.TestCase):
                           os.path.join(data_dir, 'pairwise_distances.csv'),
                           [],
                           0.7,
-                          1, False)
+                          1, 'average', False)
         species, assemblies, pairwise = ss.read_input_files()
         self.assertEqual(species.shape[0], 3)
         self.assertEqual(assemblies.shape[0], 13)
@@ -59,7 +59,7 @@ class TestSplitSpecies(unittest.TestCase):
                           os.path.join(data_dir, 'pairwise_distances.csv'),
                           [],
                           0.7,
-                          1, False)
+                          1, 'average', False)
         species, a, p = ss.read_input_files()
         self.assertEqual(species.shape[0], 3)
         high_diameter_species  = ss.filter_high_diameter_species(species)
@@ -86,7 +86,7 @@ class TestSplitSpecies(unittest.TestCase):
                           os.path.join(data_dir, 'pairwise_distances.csv'),
                           [],
                           0.7,
-                          1, False)
+                          1, 'average', False)
         s, g, accessions_removed = ss.split_high_diameter_species()
         self.assertEqual(s.shape[0], 5)
         self.assertEqual(g.shape[0], 13)

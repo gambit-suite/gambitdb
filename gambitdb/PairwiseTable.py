@@ -111,11 +111,9 @@ class PairwiseTable:
         for assembly in sorted(os.listdir(self.assembly_directory)):
             # limit filenames to a list of prefixes for FASTA files and can include gz files
             if any(assembly.endswith(ext) for ext in self.valid_extensions):
-
-                for accession in accessions_to_ignore:
-                    if accession in assembly:
-                        self.logger.debug('Skipping assembly %s as it is in the accessions to ignore list' % assembly)
-                        continue
+                if any(accession in assembly for accession in accessions_to_ignore):
+                  self.logger.debug('Skipping assembly %s as it is in the accessions to ignore list' % assembly)
+                  continue
 
                 file_counter += 1
                 assembly_list.write('%s/%s\n' % (self.assembly_directory, assembly))

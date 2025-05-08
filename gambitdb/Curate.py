@@ -21,7 +21,7 @@ class Curate:
                  species_to_remove, accessions_to_remove, species_taxon_output_filename, 
                  genome_assembly_metadata_output_filename, accession_removed_output_filename, 
                  species_removed_output_filename, minimum_ngenomes,small_cluster_ngenomes,
-                 small_cluster_diameter, maximum_diameter, minimum_cluster_size,  debug, verbose):
+                 small_cluster_diameter, maximum_diameter, minimum_cluster_size, linkage_method,  debug, verbose):
         """
     Initializes the Curate class.
     Args:
@@ -40,6 +40,7 @@ class Curate:
       small_cluster_diameter (float): The maximum diameter for a small cluster to be included.
       maximum_diameter (float): The maximum diameter for a cluster to be included.
       minimum_cluster_size (int): The minimum size for a cluster to be included.
+      linkage_method (str): The linkage method for the clustering.
       debug (bool): Whether to enable debug logging.
       verbose (bool): Whether to enable verbose logging.
     Attributes:
@@ -70,6 +71,7 @@ class Curate:
         self.small_cluster_diameter = small_cluster_diameter
         self.maximum_diameter = maximum_diameter
         self.minimum_cluster_size = minimum_cluster_size
+        self.linkage_method = linkage_method
         
         self.debug = debug
         self.verbose = verbose
@@ -351,7 +353,7 @@ class Curate:
                                          genome_metadata, 
                                          self.pairwise_distances_filename,
                                          self.accessions_removed, 
-                                         self.maximum_diameter, self.minimum_cluster_size, self.verbose)
+                                         self.maximum_diameter, self.minimum_cluster_size, self.linkage_method, self.verbose)
         species, genome_metadata, self.accessions_removed = split_species_obj.split_high_diameter_species()
         self.write_output_files(species, genome_metadata)
 

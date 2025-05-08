@@ -586,6 +586,157 @@ options:
   --verbose, -v         Turn on verbose output (default: False)
 ```
 
+## gambitdb-update-taxa-report
+### Description
+The `gambitdb-update-taxa-report` script updates report flags and taxonomic rankgins in a GAMBIT database. The script specifically handles subspecies designations and report flag settings for different taxonomic rankings. For our use cases, we set subspecies report to 0, and species & genus to 1. 
+
+### Usage
+To run this script, use the following command:
+```
+gambitdb-update-flags [options] <database_filename>
+```
+
+The parameters for the script are:
+```
+usage: update-report-flags [options]
+
+Update report flags in GAMBIT database
+
+positional arguments:
+  database_filename     An SQLite database
+
+options:
+  -h, --help            show this help message and exit
+  --database_output_filename DATABASE_OUTPUT_FILENAME, -d DATABASE_OUTPUT_FILENAME
+                        Output filename for database (default: updated_database.gdb)
+  --verbose, -v         Turn on verbose output (default: False)
+```
+
+## gambitdb-merge-duplicates
+### Description
+The `gambitdb-merge-duplicates` script identifies and merges duplicate taxa entries in a gambit db. The script will preserve entries with assigned genomes and performs a safe merge operation by creating a copy of the database and will generate a summary of all merges. 
+
+To run this script:
+```
+gambitdb-merge-duplicates [options] <database_filename>
+```
+
+The parameters for the script are:
+```
+usage: merge-duplicate-taxa [options]
+
+Merge duplicate taxa entries in GAMBIT database, keeping entries with assigned genomes
+
+positional arguments:
+  database_filename     A GAMBIT SQLite database
+
+options:
+  -h, --help            show this help message and exit
+  --database_output_filename DATABASE_OUTPUT_FILENAME, -d DATABASE_OUTPUT_FILENAME
+                        Output filename for database (default: merged_duplicates_database.gdb)
+  --summary_filename SUMMARY_FILENAME, -s SUMMARY_FILENAME
+                        Output filename for merge summary (default: merged_duplicates_summary.csv)
+  --verbose, -v         Turn on verbose output (default: False)
+```
+
+## gambitdb-fungi
+### Description
+The `gambitdb-fungi` script processes NCBI RefSeq fungal genome data to create a GAMBIT database. It takes a RefSeq assembly summary file as input, filters genomes based on quality criteria, downloads assemblies, and generates the necessary metadata files. The script provides extensive options for customization, including the ability to set contig limits, minimum genomes per species, taxonomic grouping levels, and handling of atypical or metagenome-derived genomes. Default max contigs set to 100,000 to not filter out refseq matches.
+
+### Usage
+To run this script, use the following command:
+```
+gambitdb-fungi [options] <fungi_metadata_spreadsheet>
+```
+
+```
+usage: gambitdb-fungi [options]
+
+Given a Fungi RefSeq metadata spreadsheet, output a list of accessions to download, a species taxonid file and a genome metadata file
+
+positional arguments:
+  fungi_metadata_spreadsheet    Fungi metadata file
+
+options:
+  -h, --help            show this help message and exit
+  --max_contigs MAX_CONTIGS, -d MAX_CONTIGS
+                        Maximum number of contigs (default: 100000)
+  --minimum_genomes_per_species MINIMUM_GENOMES_PER_SPECIES, -i MINIMUM_GENOMES_PER_SPECIES
+                        Minimum number of genomes in a species (default: 2)
+  --exclude_atypical    Exclude atypical genomes when searching NCBI (default: True)
+  --is_metagenome_derived IS_METAGENOME_DERIVED
+                        Check if the genome metagenome derived (MAGs) (default: metagenome_derived_exclude)
+  --parent_taxonomy PARENT_TAXONOMY
+                        Parent taxonomy to search for related to input taxa (choices: genus, family, order, class, phylum, kingdom) (default: genus)
+  --genome_assembly_metadata_output_filename GENOME_ASSEMBLY_METADATA_OUTPUT_FILENAME, -g GENOME_ASSEMBLY_METADATA_OUTPUT_FILENAME
+                        Genome metadata (default: assembly_metadata.csv)
+  --species_taxon_output_filename SPECIES_TAXON_OUTPUT_FILENAME, -a SPECIES_TAXON_OUTPUT_FILENAME
+                        Species data (default: species_taxon.csv)
+  --filtered_out_genomes_filename FILTERED_OUT_GENOMES_FILENAME
+                        Filtered out genomes (default: filtered_out_genomes.csv)
+  --output_fasta_directory OUTPUT_FASTA_DIRECTORY, -o OUTPUT_FASTA_DIRECTORY
+                        Output directory for fastas (default: .)
+  --debug              Turn on debugging (default: False)
+  --verbose, -v        Turn on verbose output (default: False)
+```
+
+## gambitdb-fungi-analyze
+### Description
+This script analyzes species distances and identifies overlaps in genome data AFTER the gambitdb run. This tool is useful for understanding where overlaps exists even after the initial gambitdb end-end script to see where there are still fundamental red-flags with the data. 
+
+### Usage 
+To run this script use the following command:
+```
+gambitdb-fungi-analyze [options] <genomes_path> <species_path> <distances_path>
+```
+
+The parameters for the script are:
+
+```
+usage: gambitdb-fungi-analyze [options]
+
+Analyze species distances and identify overlaps
+
+positional arguments:
+  genomes_path          Path to curated genomes CSV
+  species_path          Path to curated taxa CSV  
+  distances_path        Path to pairwise distances CSV
+
+options:
+  -h, --help            show this help message and exit
+  --output-dir OUTPUT_DIR, -o OUTPUT_DIR
+                        Output directory (default: species_analysis_output)
+  --min-distance-threshold MIN_DISTANCE_THRESHOLD, -t MIN_DISTANCE_THRESHOLD
+                        Minimum distance threshold for clustering (default: 0.7)
+  --debug               Enable debug logging (default: False)
+  --verbose, -v         Enable verbose output (default: False)
+```
+
+## gambitdb-fungi-fix-genera
+### Description
+The `gambitdb-fungi-fix-genera` script fixes species diameters in a gambit db by examning and updating genera with zero-vaue distance thresholds that can be caused by subspeciation and genera introduction. This script will create a working copy with updated genus thresholds.
+
+### Usage
+To run this script, use the following command:
+
+```
+gambitdb-fungi-fix-genera [options] <source_database_filename>
+```
+
+The parameters for the script are:
+```
+usage: gambitdb-fungi-fix-genera [options]
+
+Apply gambit genus diameters from one database to another
+
+positional arguments:
+  source_database_filename     Source gambit database file containing genus diameters
+
+options:
+  -h, --help            show this help message and exit
+  --output_filename OUTPUT_FILENAME, -d OUTPUT_FILENAME
+                        Output filename for database with genus diameters applied (default: fixed_database.gdb)
+```
 ## Contributing
 
 Contributions to this project are welcome. To contribute, please fork the repository and submit a pull request.

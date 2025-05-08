@@ -24,7 +24,7 @@ class TestCurate(unittest.TestCase):
       >>> test_remove_species_with_zero_diameter()
       None
     """
-        c = Curate( None, None, None, None, None, None, None, None, None, None, None, 1, 0.99, 0.7, 1, False, False)
+        c = Curate( None, None, None, None, None, None, None, None, None, None, None, 1, 0.99, 0.7, 1, 'average', False, False)
         species = pandas.read_csv(os.path.join(data_dir, 'species.csv'), index_col=False)
         species = species.set_index('species_taxid')
 
@@ -51,7 +51,7 @@ class TestCurate(unittest.TestCase):
       >>> test_remove_species_with_fewer_than_n_genomes()
       None
     """
-        c = Curate( None, None, None, None, None, None, None, None, None, None, 1, 1, 0.99, 0.7, 1, False, False)
+        c = Curate( None, None, None, None, None, None, None, None, None, None, 1, 1, 0.99, 0.7, 1, 'average', False, False)
         species = pandas.read_csv(os.path.join(data_dir, 'species.csv'), index_col=False)
         species = species.set_index('species_taxid')
 
@@ -77,7 +77,7 @@ class TestCurate(unittest.TestCase):
       >>> test_remove_species_using_input_file()
       None
     """
-        c = Curate( None, None, None, None, os.path.join(data_dir, 'species_to_remove'), None, None, None, None, None, None, 1, 0.99, 0.7, 1, False, False)
+        c = Curate( None, None, None, None, os.path.join(data_dir, 'species_to_remove'), None, None, None, None, None, None, 1, 0.99, 0.7, 1, 'average', False, False)
         species = pandas.read_csv(os.path.join(data_dir, 'species.csv'), index_col=False)
         species = species.set_index('species_taxid')
 
@@ -100,7 +100,7 @@ class TestCurate(unittest.TestCase):
       >>> test_remove_accessions_using_input_file()
       None
     """
-        c = Curate( None, None, None, None, None, os.path.join(data_dir, 'accessions_to_remove'), None, None, None, None, None, 1, 0.99, 0.7, 1, False, False)
+        c = Curate( None, None, None, None, None, os.path.join(data_dir, 'accessions_to_remove'), None, None, None, None, None, 1, 0.99, 0.7, 1, 'average', False, False)
         accessions = pandas.read_csv(os.path.join(data_dir, 'assembly_metadata.csv'), index_col=False)
         accessions = accessions.set_index('assembly_accession')
 
@@ -135,7 +135,7 @@ class TestCurate(unittest.TestCase):
                     os.path.join(data_dir, 'assembly_metadata_output.csv'),
                     os.path.join(data_dir, 'accessions_removed'), 
                     os.path.join(data_dir, 'species_removed'), 
-                    1, 1, 0.99, 0.7, 1, False, False)
+                    1, 1, 0.99, 0.7, 1, 'average', False, False)
         c.filter_spreadsheets_and_output_new_files()
 
         # The input assembly metadata file shouldnt be equal to the output assembly metadata file because we have removed some rows
@@ -144,7 +144,7 @@ class TestCurate(unittest.TestCase):
 
         # The input species file shouldnt be equal to the output species file because we have removed some rows
         self.assertNotEqual(self.file_len(os.path.join(data_dir, 'ec_species')), self.file_len(os.path.join(data_dir, 'species_taxon_output.csv')))
-        self.assertEqual(self.file_len(os.path.join(data_dir, 'species_taxon_output.csv')), 18)
+        self.assertEqual(self.file_len(os.path.join(data_dir, 'species_taxon_output.csv')), 16)
         self.cleanup()
 
     def test_filter_files(self):
@@ -170,7 +170,7 @@ class TestCurate(unittest.TestCase):
                     os.path.join(data_dir, 'assembly_metadata_output.csv'),
                     os.path.join(data_dir, 'accessions_removed'), 
                     os.path.join(data_dir, 'species_removed'), 
-                    1, 1, 0.99, 0.7, 1, False, False)
+                    1, 1, 0.99, 0.7, 1, 'average', False, False)
         c.filter_spreadsheets_and_output_new_files()
 
         self.assertTrue(os.path.exists(os.path.join(data_dir, 'species_taxon_output.csv')))

@@ -1,0 +1,134 @@
+#!/usr/bin/env python3
+import argparse
+import sqlite3
+import shutil
+import logging
+import pandas as pd
+
+parser = argparse.ArgumentParser(
+    description = 'Merge duplicate taxa entries in GAMBIT database, keeping entries with assigned genomes',
+    usage = 'merge-duplicate-taxa [options]',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+# Required input files
+parser.add_argument('database_filename', help='A GAMBIT SQLite database', type=str)
+
+# Output
+parser.add_argument('--database_output_filename', '-d', help='Output filename for database', default='merged_duplicates_database.gdb', type=str)
+parser.add_argument('--summary_filename', '-s', help='Output filename for merge summary', default='merged_duplicates_summary.csv', type=str)
+parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default=False)
+
+options = parser.parse_args()
+
+# setup logging
+if options.verbose:
+    logging.basicConfig(level=logging.DEBUG)
+else:
+    logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Copy the database so we dont modify the original
+logger.debug(f"Copying database to: {options.database_output_filename}")
+shutil.copy(options.database_filename, options.database_output_filename)
+
+# Connect to the database
+db_connection = sqlite3.connect(options.database_output_filename)
+
+# Find all duplicates with their genome counts
+query = """
+WITH DuplicateNames AS (
+    SELECT name 
+    FROM taxa 
+    GROUP BY name 
+    HAVING COUNT(*) > 1
+),
+TaxaWithCounts AS (
+    SELECT 
+        t1.id,
+        t1.name,
+        t1.rank,
+        t1.parent_id,
+        (SELECT COUNT(*) FROM genome_annotations WHERE taxon_id = t1.id) as genome_count
+    FROM taxa t1
+    WHERE t1.name IN (SELECT name FROM DuplicateNames)
+)
+SELECT *
+FROM TaxaWithCounts
+ORDER BY name, genome_count DESC
+"""
+
+df = pd.read_sql_query(query, db_connection)
+merge_summary = []
+
+# Process each group of duplicates
+for name, group in df.groupby('name'):
+    logger.debug(f"\nProcessing duplicates for: {name}")
+    
+    # Keep the entry with most genomes
+    keep_id = group.iloc[0]['id']
+    remove_ids = group.iloc[1:]['id'].tolist()
+    
+    logger.debug(f"Keeping ID: {keep_id} with {group.iloc[0]['genome_count']} genomes")
+    
+    for remove_id in remove_ids:
+        remove_genome_count = group[group['id'] == remove_id]['genome_count'].iloc[0]
+        logger.debug(f"Removing ID: {remove_id} with {remove_genome_count} genomes")
+        
+        # Update any child taxa to have the parent of the kept entry
+        db_connection.execute("""
+            UPDATE taxa 
+            SET parent_id = ? 
+            WHERE parent_id = ?
+        """, (keep_id, remove_id))
+        
+        # Record the merge in the summary, so we can output it
+        merge_summary.append({
+            'name': name,
+            'kept_id': keep_id,
+            'kept_genomes': group.iloc[0]['genome_count'],
+            'removed_id': remove_id,
+            'removed_genomes': remove_genome_count
+        })
+        
+        # Delete the duplicate entry directly from the copied database
+        db_connection.execute("DELETE FROM taxa WHERE id = ?", (remove_id,))
+
+# Save merge summary as csv 
+if merge_summary:
+    summary_df = pd.DataFrame(merge_summary)
+    summary_df.to_csv(options.summary_filename, index=False)
+    logger.info(f"\nMerged {len(merge_summary)} duplicate entries")
+else:
+    logger.info("\nNo duplicates found to merge")
+
+# Log final counts
+final_counts = db_connection.execute("""
+    SELECT rank, COUNT(*) 
+    FROM taxa 
+    GROUP BY rank 
+    ORDER BY rank
+""").fetchall()
+
+logger.info("\nFinal taxa counts by rank:")
+for rank, count in final_counts:
+    rank_str = rank if rank else "NULL"
+    logger.info(f"{rank_str}: {count}")
+
+# Verify no orphaned references remain
+orphaned_refs = db_connection.execute("""
+    SELECT COUNT(*) 
+    FROM taxa 
+    WHERE parent_id NOT IN (SELECT id FROM taxa) 
+    AND parent_id IS NOT NULL
+""").fetchone()[0]
+
+if orphaned_refs > 0:
+    logger.warning(f"WARNING: Found {orphaned_refs} taxa with invalid parent_id references")
+
+db_connection.commit()
+db_connection.close()
+
+logger.info(f"\nMerge complete.")
+logger.info(f"Updated database saved to: {options.database_output_filename}")
+if merge_summary:
+    logger.info(f"Summary saved to: {options.summary_filename}")

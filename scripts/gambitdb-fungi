@@ -1,0 +1,51 @@
+#!/usr/bin/env python3
+import sys
+import argparse
+import logging
+sys.path.append('../')
+sys.path.append('./')
+from gambitdb.Fungi import FungiParser
+
+parser = argparse.ArgumentParser(
+    description='Given a Fungi RefSeq metadata spreadsheet, output a list of accessions to download, a species taxonid file and a genome metadata file',
+    usage='fungi-processor [options]',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+# Required input files
+parser.add_argument('fungi_metadata_spreadsheet', help='Fungi metadata file', type=str)
+
+# Optional input parameters
+parser.add_argument('--max_contigs', '-d', help='Maximum number of contigs', type=int, default=100000)
+parser.add_argument('--minimum_genomes_per_species', '-i', help='Minimum number of genomes in a species', type=int, default=2)
+parser.add_argument('--exclude_atypical', help='Exclude atypical genomes when searching NCBI', action='store_true', default=True)
+parser.add_argument('--is_metagenome_derived', help='Check if the genome metagenome derived (MAGs)', type=str, default='metagenome_derived_exclude')
+parser.add_argument('--parent_taxonomy', help='Parent taxonomy to search for related to input taxa', type=str,  
+                    choices=['genus', 'family', 'order', 'class', 'phylum', 'kingdom'], default='genus')
+
+# Output files
+parser.add_argument('--genome_assembly_metadata_output_filename', '-g', help='Genome metadata', default='assembly_metadata.csv', type=str)
+parser.add_argument('--species_taxon_output_filename', '-a', help='Species data', default='species_taxon.csv', type=str)
+parser.add_argument('--filtered_out_genomes_filename', help='Filtered out genomes', default='filtered_out_genomes.csv', type=str)
+parser.add_argument('--output_fasta_directory', '-o', help='Output directory for fastas', default='.', type=str)
+
+# Debugging modes
+parser.add_argument('--debug', action='store_true', help='Turn on debugging', default=False)
+parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default=False)
+
+options = parser.parse_args()
+logging.basicConfig(filename='fungi_parser.log', level=logging.DEBUG)
+
+FungiParser(
+    fungi_metadata_spreadsheet=options.fungi_metadata_spreadsheet,
+    max_contigs=options.max_contigs,
+    minimum_genomes_per_species=options.minimum_genomes_per_species,
+    genome_assembly_metadata_output_filename=options.genome_assembly_metadata_output_filename,
+    output_fasta_directory=options.output_fasta_directory,
+    taxon_output_filename=options.species_taxon_output_filename,
+    filtered_out_genomes_filename=options.filtered_out_genomes_filename,
+    exclude_atypical=options.exclude_atypical,
+    is_metagenome_derived=options.is_metagenome_derived,
+    parent_taxonomic_level=options.parent_taxonomy,
+    debug=options.debug,
+    verbose=options.verbose
+).generate_spreadsheets()
