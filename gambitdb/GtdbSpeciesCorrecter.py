@@ -1,3 +1,4 @@
+from typing import Optional
 import pandas as pd
 import logging
 import sys
@@ -12,15 +13,15 @@ class GtdbSpeciesCorrector:
     This is meant to be run after gambitdb-gtdb but before database creation.
     """
     def __init__(self, 
-                 gtdb_metadata_spreadsheet,
-                 assembly_metadata_file,
-                 species_taxa_file,
-                 genus_file=None,
-                 output_assembly_metadata_file=None,
-                 output_species_taxa_file=None,
-                 collapse_genera=True,
-                 debug=False, 
-                 verbose=False):
+                 gtdb_metadata_spreadsheet: str,
+                 assembly_metadata_file: str,
+                 species_taxa_file: str,
+                 genus_file: Optional[str] = None,
+                 output_assembly_metadata_file: Optional[str] = None,
+                 output_species_taxa_file: Optional[str] = None,
+                 collapse_genera: Optional[bool] = True,
+                 debug: Optional[bool] = False, 
+                 verbose: Optional[bool] = False):
         """
         Initializes the GtdbSpeciesCorrector class.
         Args:
@@ -63,7 +64,7 @@ class GtdbSpeciesCorrector:
         if self.genus_file and os.path.exists(self.genus_file):
             self._process_genus_file()
 
-    def _get_corrected_filename(self, filename):
+    def _get_corrected_filename(self, filename: str) -> str:
         """
         Generate a corrected filename by inserting '_corrected' before the extension.
         """
@@ -89,8 +90,8 @@ class GtdbSpeciesCorrector:
                     self.logger.debug(f"Added genus to correct: {genus} -> {formatted_genus}")
             
             self.logger.info(f"Loaded {len(self.species_to_correct)} genera to correct from file")
-        except Exception as e:
-            self.logger.error(f"Error processing genus file: {str(e)}")
+        except Exception as exc:
+            self.logger.error(f"Error processing genus file: {str(exc)}")
             raise
 
     def read_files(self):
@@ -211,8 +212,8 @@ class GtdbSpeciesCorrector:
                     'name': ncbi_species,
                     'rank': 'species',
                     'parent_taxid': template_row['parent_taxid'],
-                    'ncbi_taxid': template_row['ncbi_taxid'],
-                    'gambit_taxid': template_row['gambit_taxid'],
+                    'ncbi_taxid': new_taxid,
+                    'gambit_taxid': new_taxid,
                     'report': template_row['report'],
                     'ngenomes': len(accessions)
                 })
@@ -266,7 +267,7 @@ class GtdbSpeciesCorrector:
         all_genera = set(self.species_taxa_df['genus'])
         
         # Identify novel genera with '_X' suffix
-        novel_genera = {g for g in all_genera if '_' in g}
+        novel_genera = {genus for genus in all_genera if '_' in genus}
         if not novel_genera:
             self.logger.info("No novel genera with '_X' suffix found")
             # Remove the temporary genus column
@@ -278,7 +279,7 @@ class GtdbSpeciesCorrector:
         # Create a mapping from novel genus to parent genus
         genus_mapping = {}
         for novel_genus in novel_genera:
-            # Get the parent genus (everything before the underscore)
+            # Get the parent genus
             parent_genus = novel_genus.split('_')[0]
             if parent_genus in all_genera:
                 genus_mapping[novel_genus] = parent_genus
