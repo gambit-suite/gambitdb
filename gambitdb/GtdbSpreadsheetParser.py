@@ -153,7 +153,7 @@ class GtdbSpreadsheetParser:
         # filter spreadsheet so that if the gtdb_taxonomy column ends with ' sp' followed by digits, then remove the row
         # These are novel species that GTDB has made up that dont exist in NCBI.
         if not self.include_novel_species:
-            input_spreadsheet_df = input_spreadsheet_df[~input_spreadsheet_df['gtdb_taxonomy'].str.contains(' sp\d+$')]
+            input_spreadsheet_df = input_spreadsheet_df[~input_spreadsheet_df['gtdb_taxonomy'].str.contains(r' sp\d+$')]
         self.stats_include_novel_species =  len(input_spreadsheet_df.index)
 
         # if include_derived_samples is False then only include rows with 'none' from ncbi_genome_category
