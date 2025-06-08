@@ -12,7 +12,7 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 # Required input files
-parser.add_argument('pairwise_distances_filename',  help='A pairwise distance file', type=str)
+parser.add_argument('pairwise_distances_filename',  help='A pairwise distance file (CSV or .npy format with corresponding .idx file)', type=str)
 
 # Output files
 parser.add_argument('--output_pairwise_filename', '-p', help='Output filename for compressed pairwise distance table', default = 'pw-dists-compressed.csv', type=str)
@@ -33,21 +33,24 @@ if options.debug:
     pr.enable()
     options.verbose = True
     
-    CompressClusters(options.pairwise_distances_filename, 
-                     options.output_pairwise_filename,
-                     options.max_distance,
-                     options.representative_genomes,
-                  options.verbose).compress()
+    samples_to_remove, num_samples = CompressClusters(options.pairwise_distances_filename, 
+                                                      options.output_pairwise_filename,
+                                                      options.max_distance,
+                                                      options.representative_genomes,
+                                                      options.verbose).compress()
     
     pr.disable()
+    print(f'Compression complete: {len(samples_to_remove)} samples removed out of {num_samples} total samples')
     s = io.StringIO()
     sortby = 'cumulative'
     ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
     ps.print_stats()
     print(s.getvalue())
 else:
-    CompressClusters(options.pairwise_distances_filename, 
-                     options.output_pairwise_filename,
-                     options.max_distance,
-                     options.representative_genomes,
-                  options.verbose).compress()
+    samples_to_remove, num_samples = CompressClusters(options.pairwise_distances_filename, 
+                                                      options.output_pairwise_filename,
+                                                      options.max_distance,
+                                                      options.representative_genomes,
+                                                      options.verbose).compress()
+    
+    print(f'Compression complete: {len(samples_to_remove)} samples removed out of {num_samples} total samples')

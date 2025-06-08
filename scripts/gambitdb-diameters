@@ -13,7 +13,7 @@ parser = argparse.ArgumentParser(
 
 # Required input files
 parser.add_argument('genome_assembly_metadata',  help='A CSV containing the assembly file and path, and the species taxon ID', type=str)
-parser.add_argument('pairwise_distances_filename',  help='A pairwise distance file between each assembly', type=str)
+parser.add_argument('pairwise_distances_filename',  help='A pairwise distance file (.npy format) between each assembly. An associated .index.txt file is also expected.', type=str)
 parser.add_argument('species_taxon_filename',  help='A CSV containing species taxon IDs', type=str)
 
 # Output files
@@ -33,7 +33,7 @@ if options.debug:
     pr.enable()
     options.verbose = True
 
-    Diameters(options.genome_assebmly_metadata, 
+    Diameters(options.genome_assembly_metadata, 
               options.pairwise_distances_filename, 
               options.species_taxon_filename, 
               options.species_taxon_output_filename, 
@@ -47,7 +47,7 @@ if options.debug:
     ps.print_stats()
     print(s.getvalue())
 else:
-    Diameters(options.genome_assebmly_metadata, 
+    Diameters(options.genome_assembly_metadata, 
               options.pairwise_distances_filename, 
               options.species_taxon_filename, 
               options.species_taxon_output_filename, 
