@@ -2,8 +2,11 @@
 import pandas
 import numpy
 import argparse
+import h5py
+import sys
+import os
 
-def convert_matrix(csv_path, npy_path, index_path):
+def convert_csv_matrix(csv_path, npy_path, index_path):
     """
     Converts a large pairwise distance matrix from CSV format to a NumPy .npy file
     and a separate index file, processing the CSV in chunks to conserve memory.
@@ -94,15 +97,136 @@ def convert_matrix(csv_path, npy_path, index_path):
     print("\nConversion complete.")
     print(f"NumPy matrix saved to: {npy_path}")
     print(f"Index labels saved to: {index_path}")
+    
+    
+def convert_hdf5_matrix(hdf5_path, npy_path, index_path, distances_key='distances', genome_ids_key='genome_ids'):
+    """
+    Converts a pairwise distance matrix from HDF5 format to a NumPy .npy file
+    and a separate index file for memory mapping.
+    
+    Parameters:
+    -----------
+    hdf5_path : str
+        Path to the input HDF5 file
+    npy_path : str
+        Path for the output .npy matrix file
+    index_path : str
+        Path for the output index text file
+    distances_key : str
+        Key name for the distance matrix in the HDF5 file (default: 'distances')
+    genome_ids_key : str
+        Key name for the genome IDs in the HDF5 file (default: 'genome_ids')
+    """
+    print(f"Reading HDF5 file: {hdf5_path}")
+    
+    with h5py.File(hdf5_path, 'r') as matrix_file:
+        print("Available keys in HDF5 file:", list(matrix_file.keys()))
+        # Crash out if the keys are not found -- come directly from jaccard rs
+        if distances_key not in matrix_file:
+            print(f"ERROR: Key '{distances_key}' not found in HDF5 file.")
+            print(f"Available keys: {list(matrix_file.keys())}")
+            sys.exit(1)
+
+        if genome_ids_key not in matrix_file:
+            print(f"ERROR: Key '{genome_ids_key}' not found in HDF5 file.")
+            print(f"Available keys: {list(matrix_file.keys())}")
+            sys.exit(1)
+        
+        distances_dataset = matrix_file[distances_key]
+        genome_ids_dataset = matrix_file[genome_ids_key]
+        
+        print(f"Distance matrix shape: {distances_dataset.shape}, dtype: {distances_dataset.dtype}")
+        print(f"Genome IDs shape: {genome_ids_dataset.shape}, dtype: {genome_ids_dataset.dtype}")
+        
+        # Load genome IDs, just string IDs
+        genome_ids = genome_ids_dataset[:]
+        
+        # Wrapping this in try/except if for some reason the genome IDs are not strings
+        try :
+            # Ensure genome IDs are strings
+            genome_ids = [str(id) for id in genome_ids]
+        except Exception as e:
+            print(f"ERROR: Could not convert genome IDs to strings. {e}")
+            print("Please check the genome IDs in the HDF5 file.")
+            sys.exit(1)
+        
+        # Validate matrix dimensions
+        num_genomes = len(genome_ids)
+        expected_shape = (num_genomes, num_genomes)
+        
+        if distances_dataset.shape != expected_shape:
+            print(f"WARNING: Distance matrix shape {distances_dataset.shape} doesn't match expected square matrix {expected_shape}")
+            print("Proceeding anyway...")
+        
+        print(f"Matrix dimensions: {distances_dataset.shape}")
+        print(f"Number of genome IDs: {num_genomes}")
+        
+        print(f"Saving index to {index_path}...")
+        with open(index_path, 'w') as idx_file:
+            for genome_id in genome_ids:
+                idx_file.write(f"{genome_id}\n")
+        
+        # Create memory-mapped file and copy data
+        print(f"Creating memory-mapped file at {npy_path}...")
+        fp = numpy.memmap(npy_path, dtype='float32', mode='w+', shape=distances_dataset.shape)
+        
+        # Copy data in chunks to manage memory usage
+        chunk_size = 1000
+        num_rows = distances_dataset.shape[0]
+        
+        for start_idx in range(0, num_rows, chunk_size):
+            end_idx = min(start_idx + chunk_size, num_rows)
+            print(f"  ... copying rows {start_idx} to {end_idx-1}")
+            
+            # Read chunk from HDF5 and write to memmap
+            chunk_data = distances_dataset[start_idx:end_idx, :]
+            fp[start_idx:end_idx, :] = chunk_data.astype(numpy.float32)
+        
+        # Ensure all data is written to disk
+        fp.flush()
+        del fp
+    
+    print("\nHDF5 conversion complete.")
+    print(f"NumPy matrix saved to: {npy_path}")
+    print(f"Index labels saved to: {index_path}")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description="Convert a large CSV distance matrix to a memory-mappable .npy format and a separate index file.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    parser.add_argument("csv_file", help="Path to the input CSV distance matrix.")
-    parser.add_argument("npy_file", help="Path for the output .npy matrix file.")
-    parser.add_argument("index_file", help="Path for the output index text file.")
+    
+    
+    parser.add_argument("--format", choices=['csv', 'hdf5'], required=True,
+                        help="Input file format")
+    
+    parser.add_argument("input_file", help="Path to the input matrix file (CSV or HDF5)")
+    parser.add_argument("npy_file", help="Path for the output .npy matrix file")
+    parser.add_argument("index_file", help="Path for the output index text file")
+    
+    # These args are specific to HDF5 input format, given we need to know the keys
+    parser.add_argument("--distances-key", default='distances',
+                        help="Key name for distance matrix in HDF5 file (default: 'distances')")
+    parser.add_argument("--genome-ids-key", default='genome_ids',
+                        help="Key name for genome IDs in HDF5 file (default: 'genome_ids')")
+    
     args = parser.parse_args()
     
-    convert_matrix(args.csv_file, args.npy_file, args.index_file)
+    if not os.path.exists(args.input_file):
+        print(f"ERROR: Input file not found: {args.input_file}")
+        sys.exit(1)
+    
+    npy_dir = os.path.dirname(args.npy_file)
+    if npy_dir and not os.path.exists(npy_dir):
+        os.makedirs(npy_dir)
+    
+    idx_dir = os.path.dirname(args.index_file)
+    if idx_dir and not os.path.exists(idx_dir):
+        os.makedirs(idx_dir)
+    
+    # This way we can support original csv format, and also add hdf5 support
+    if args.format == 'csv':
+        convert_csv_matrix(args.input_file, args.npy_file, args.index_file)
+    elif args.format == 'hdf5':
+        convert_hdf5_matrix(args.input_file, args.npy_file, args.index_file, 
+                           args.distances_key, args.genome_ids_key)
