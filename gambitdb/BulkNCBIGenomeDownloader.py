@@ -11,10 +11,12 @@ from pathlib import Path
 from typing import List, Optional
 from dataclasses import dataclass, asdict
 import psutil
+import shutil
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from gambitdb.NCBIDatasets import NCBIDatasetClient
 
+# Added for tracking downloads
 @dataclass
 class GenomeMetadata:
     uuid: str
@@ -123,7 +125,7 @@ class BulkNCBIGenomeDownloader:
         self._load_data()
         self._restore_checkpoint()
         
-    def _handle_exit_signal(self, signum):
+    def _handle_exit_signal(self, signum, frame):
         """Handle termination signals gracefully"""
         
         self.logger.warning(f"Received signal {signum}. Initiating graceful shutdown...")
@@ -288,7 +290,7 @@ class BulkNCBIGenomeDownloader:
                 self.logger.error("Insufficient disk space. Pausing downloads.")
                 break
                 
-            batch_hash = self._hash_batch(batch)
+            _ = self._hash_batch(batch)
             self.logger.info(
                 f"Processing batch {batch_epoch}/{total_batches} ({len(batch)} genomes) "
                 f"[{self.successful_count} success, {self.failed_count} failed]"
@@ -339,14 +341,16 @@ class BulkNCBIGenomeDownloader:
                 # File exists, mark as completed
                 file_size = os.path.getsize(final_fasta)
                 genome.assembly_filename = str(final_fasta.absolute())
-                genome.download_status = 'completed'
-                genome.file_size = file_size
-                self.successful_count += 1
-                self.processed_count += 1
-                self.logger.debug(f"Genome {genome.assembly_accession} already exists ({file_size/1024/1024:.2f}MB)")
+                if genome.download_status != 'completed':
+                    genome.download_status = 'completed'
+                    genome.file_size = file_size
+                    self.successful_count += 1
+                    self.processed_count += 1
+                    self.logger.debug(f"Genome {genome.assembly_accession} already exists ({file_size/1024/1024:.2f}MB)")
+                else:
+                    genome.file_size = file_size
             elif genome.download_status == 'pending' or (
                   genome.download_status == 'failed' and genome.download_attempts < self.max_retries):
-                # Needs to be downloaded
                 pending_genomes.append(genome)
                 
         return pending_genomes
@@ -461,7 +465,6 @@ class BulkNCBIGenomeDownloader:
                 return False, None, f"Source file not found: {source_path}"
                 
             # Copy the file to destination
-            import shutil
             shutil.copy2(source_path, dest_path)
             
             # Verify file size
@@ -479,21 +482,36 @@ class BulkNCBIGenomeDownloader:
         
     
     def _cleanup_download_files(self, temp_zip: Path, temp_dir: Path = None):
-        """Clean up temporary download files"""
+        """Clean up temporary download files and directories completely"""
         
         try:
-            # Remove the zip file
-            if temp_zip and temp_zip.exists():
-                temp_zip.unlink()
-                
-            # Remove the temporary directory
+            # Remove the entire temporary directory and all its contents
+            # This includes the zip file, extracted files, and any subdirectories
             if temp_dir and temp_dir.exists():
-                import shutil
+                self.logger.debug(f"Removing temporary directory: {temp_dir}")
                 shutil.rmtree(temp_dir, ignore_errors=True)
                 
-            # Remove any ncbi_dataset directory (legacy)
+                # Double-check that temp_dir is completely gone
+                if temp_dir.exists():
+                    self.logger.warning(f"Temporary directory still exists after cleanup: {temp_dir}")
+            
+            # Fallback: if temp_zip was passed separately and still exists
+            elif temp_zip and temp_zip.exists():
+                self.logger.debug(f"Removing temporary zip file: {temp_zip}")
+                temp_zip.unlink()
+                
+                # Clean up extracted files in the same directory as the zip
+                if temp_zip.parent.exists():
+                    extract_dir = temp_zip.parent
+                    # Remove ncbi_dataset directory that gets created during extraction
+                    ncbi_dataset_dir = extract_dir / 'ncbi_dataset'
+                    if ncbi_dataset_dir.exists():
+                        self.logger.debug(f"Removing extracted ncbi_dataset directory: {ncbi_dataset_dir}")
+                        shutil.rmtree(ncbi_dataset_dir, ignore_errors=True)
+                    
+            # Remove any ncbi_dataset directory in current working directory (legacy cleanup)
             if os.path.exists('ncbi_dataset'):
-                import shutil
+                self.logger.debug("Removing legacy ncbi_dataset directory from working directory")
                 shutil.rmtree('ncbi_dataset', ignore_errors=True)
                 
         except Exception as exc:
@@ -589,6 +607,8 @@ class BulkNCBIGenomeDownloader:
         except Exception as exc:
             self.logger.error(f"Error processing bulk download: {exc}")
             return False
+
+        return True    
     
     def write_output(self):
         """Write the updated data to the output assembly metadtada csv file"""
