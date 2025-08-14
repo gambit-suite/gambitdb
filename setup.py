@@ -35,7 +35,9 @@ setup(
            'biopython >= 1.68',
            'pandas',
            'numpy',
-           'tqdm'
+           'tqdm',
+           'h5py',
+           'networkx'
 
        ],
     license='GPLv3',

@@ -15,7 +15,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument('species_taxon_filename', help='CSV containing species taxonomy and diameters, ngenomes - output from gambitdb-diameters', type=str)
 parser.add_argument('genome_assembly_metadata',  help='A CSV containing the assembly file and path, and the species taxon ID - output from gambitdb-gtdb', type=str)
 parser.add_argument('assembly_directory',  help='A directory containing assemblies in FASTA format', type=str)
-parser.add_argument('pairwise_distances_filename',  help='A pairwise distance file between each assembly', type=str)
+parser.add_argument('pairwise_distances_filename',  help='A pairwise distance file (.npy format) between each assembly. An associated .idx file is also expected.', type=str)
 
 # optional input files
 parser.add_argument('--species_to_remove', '-s', help='Optional file containing a list of species to remove (1 per line)', type=str)
