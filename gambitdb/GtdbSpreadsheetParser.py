@@ -22,7 +22,8 @@ class GtdbSpreadsheetParser:
                  accessions_output_filename, 
                  representative_genomes_filename,
                  debug, 
-                 verbose):
+                 verbose,
+                 ncbi_whitelist=None):
         """
     Initializes the GtdbSpreadsheetParser class.
     Args:
@@ -38,6 +39,7 @@ class GtdbSpreadsheetParser:
       accessions_output_filename (str): The path to the output file for accessions.
       debug (bool): Whether to enable debugging mode.
       verbose (bool): Whether to enable verbose mode.
+      ncbi_whitelist (list): Optional list of species names to use NCBI taxonomy for instead of GTDB taxonomy.
     Side Effects:
       Sets the following attributes:
         gtdb_metadata_spreadsheet
@@ -93,6 +95,7 @@ class GtdbSpreadsheetParser:
         self.representative_genomes_filename = representative_genomes_filename
         self.debug = debug
         self.verbose = verbose
+        self.ncbi_whitelist = ncbi_whitelist or []
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)
         self.logger.addHandler(logging.StreamHandler(sys.stdout))
@@ -153,7 +156,7 @@ class GtdbSpreadsheetParser:
         # filter spreadsheet so that if the gtdb_taxonomy column ends with ' sp' followed by digits, then remove the row
         # These are novel species that GTDB has made up that dont exist in NCBI.
         if not self.include_novel_species:
-            input_spreadsheet_df = input_spreadsheet_df[~input_spreadsheet_df['gtdb_taxonomy'].str.contains(' sp\d+$')]
+            input_spreadsheet_df = input_spreadsheet_df[~input_spreadsheet_df['gtdb_taxonomy'].str.contains(r' sp\d+$')]
         self.stats_include_novel_species =  len(input_spreadsheet_df.index)
 
         # if include_derived_samples is False then only include rows with 'none' from ncbi_genome_category
@@ -381,6 +384,21 @@ class GtdbSpreadsheetParser:
 
         # create a new column called species which will be formed from the gtdb_taxonomy column where the text after s__ is the species
         spreadsheet['species'] = spreadsheet['gtdb_taxonomy'].str.extract(r's__([a-zA-Z0-9_\-\s]+)', expand=False)
+        
+        # If ncbi_whitelist is provided, use NCBI taxonomy for whitelisted species
+        if self.ncbi_whitelist:
+            ncbi_species = spreadsheet['ncbi_taxonomy'].str.extract(r's__([a-zA-Z0-9_\-\s]+)', expand=False)
+            whitelist_mask = spreadsheet['species'].isin(self.ncbi_whitelist)
+            
+            # Only use NCBI taxonomy if it has species-level information, otherwise remove the entry as decided with team
+            has_ncbi_species = ncbi_species.notna() & (ncbi_species != '')
+            valid_whitelist_entries = whitelist_mask & has_ncbi_species
+            invalid_whitelist_entries = whitelist_mask & ~has_ncbi_species
+            
+            spreadsheet.loc[valid_whitelist_entries, 'species'] = ncbi_species.loc[valid_whitelist_entries]
+            self.logger.info(f"Updated species for {valid_whitelist_entries.sum()} entries using NCBI taxonomy")
+            # Remove invalid entries so we don't consider them downstream
+            spreadsheet = spreadsheet[~invalid_whitelist_entries]
 
         self.starting_assemblies = len(spreadsheet.index)
         return spreadsheet
