@@ -35,7 +35,8 @@ setup(
            'biopython >= 1.68',
            'pandas',
            'numpy',
-           'tqdm'
+           'tqdm',
+           'psutil'
 
        ],
     license='GPLv3',
