@@ -368,7 +368,18 @@ class SplitSpecies:
         self.logger.debug(f"Reading distance matrix index from {self.pairwise_distances_filename}")
         with open(self.pairwise_distances_filename.replace('.npy', '.idx'), 'r') as f:
             dist_matrix_index_labels = [line.strip() for line in f]
-        pairwise_distances_index = pd.Index(dist_matrix_index_labels)
+        
+        # Handle case where index labels are stored as byte string representations due to memmap
+        # Convert "b'GCF_014932875.1'" to "GCF_014932875.1"
+        processed_labels = []
+        for label in dist_matrix_index_labels:
+            if label.startswith("b'") and label.endswith("'"):
+                # Remove b' prefix and ' suffix
+                processed_labels.append(label[2:-1])
+            else:
+                processed_labels.append(label)
+        
+        pairwise_distances_index = pd.Index(processed_labels)
 
         # Memory-map the pairwise distances file instead of loading it
         self.logger.debug(f"Memory-mapping distance matrix from {self.pairwise_distances_filename}")
