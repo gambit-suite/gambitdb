@@ -156,6 +156,12 @@ class SplitSpecies:
         # remove clusters with <2 genomes per cluster
         small_clusters, clusters = self.remove_clusters_with_too_few_genomes(clusters)
 
+        # Check if we have at least 2 viable clusters, otherwise keep as single species, after talking to Zach this is more conservative
+        num_clusters = clusters['cluster_identity'].nunique()
+        if num_clusters < 2:
+            self.logger.debug(f"Only {num_clusters} viable cluster(s) found, keeping as single species")
+            return None, genome_metadata, single_species
+
         self.save_small_clusters_accessions_removed(small_clusters, single_species)
         subspecies, genome_metadata, single_species = (
             self.create_subspecies_from_clusters(
