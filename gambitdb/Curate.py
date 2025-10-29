@@ -60,6 +60,7 @@ class Curate:
         self.genome_assembly_metadata = genome_assembly_metadata
         self.assembly_directory = assembly_directory
         self.pairwise_distances_filename = pairwise_distances_filename
+        self.pairwise_distances_index_filename = self.pairwise_distances_filename.replace('.npy', '.idx')
         self.species_to_remove = species_to_remove
         self.accessions_to_remove = accessions_to_remove
         self.species_taxon_output_filename = species_taxon_output_filename

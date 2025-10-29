@@ -36,6 +36,8 @@ setup(
            'pandas',
            'numpy',
            'tqdm',
+           'h5py',
+           'networkx'
            'psutil'
 
        ],

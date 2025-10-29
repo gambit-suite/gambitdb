@@ -25,6 +25,9 @@ class Diameters:
         # input files
         self.genome_assembly_metadata = genome_assembly_metadata
         self.pairwise_distances_filename = pairwise_distances_filename
+        # The pairwise_distances_filename is now expected to be a .npy file.
+        # We can infer the index filename from it.
+        self.pairwise_distances_index_filename = self.pairwise_distances_filename.replace('.npy', '.idx')
         self.species_taxon_filename = species_taxon_filename
 
         # output files
@@ -41,7 +44,7 @@ class Diameters:
         """
     Reads in the genome assembly filenames with path, species taxon file, and pairwise distances file.
     Returns:
-      tuple: A tuple containing the genome metadata, species, and pairwise distances dataframes.
+      tuple: A tuple containing the genome metadata, species, and a tuple of (pairwise distances matrix, pairwise distances index).
     """
         # Read in the genome assembly filenames with path
         genome_metadata = pandas.read_csv(self.genome_assembly_metadata)
@@ -53,13 +56,40 @@ class Diameters:
         species = pandas.read_csv(self.species_taxon_filename, index_col=False)
         species = species.set_index('species_taxid')
 
-        # Read in the pairwise distances file
-        pairwise_distances = pandas.read_csv(self.pairwise_distances_filename, index_col=0)
-        # sort the pairwise_distances dataframe by the index column
-        pairwise_distances = pairwise_distances.sort_index()
-        self.logger.debug('calculate_diameters: pairwise_distances size: %s' % pairwise_distances.shape[0])
+        # Read in the pairwise distances index
+        self.logger.debug(f"Reading distance matrix index from {self.pairwise_distances_index_filename}")
+        with open(self.pairwise_distances_index_filename, 'r') as f:
+            dist_matrix_index_labels = [line.strip() for line in f]
+        
+        # Handle case where index labels are stored as byte string representations due to memmap
+        # Convert "b'GCF_014932875.1'" to "GCF_014932875.1"
+        processed_labels = []
+        for label in dist_matrix_index_labels:
+            if label.startswith("b'") and label.endswith("'"):
+                # Remove b' prefix and ' suffix
+                processed_labels.append(label[2:-1])
+            else:
+                processed_labels.append(label)
+        
+        pairwise_distances_index = pandas.Index(processed_labels)
 
-        return genome_metadata, species, pairwise_distances
+        # Memory-map the pairwise distances file instead of loading it.
+        self.logger.debug(f"Memory-mapping distance matrix from {self.pairwise_distances_filename}")
+        # Use mode='r' for read-only access.
+        # Ensure the dtype matches what was used during conversion (e.g., 'float32').
+        pairwise_distances_matrix = numpy.memmap(self.pairwise_distances_filename, dtype='float32', mode='r')
+        
+        # The shape of the matrix on disk must be inferred or known.
+        # Assuming it's a square matrix based on the index length.
+        n_genomes = len(pairwise_distances_index)
+        if pairwise_distances_matrix.size == n_genomes * n_genomes:
+            pairwise_distances_matrix = pairwise_distances_matrix.reshape((n_genomes, n_genomes))
+        else:
+            raise ValueError("The size of the .npy file does not match the index size for a square matrix.")
+
+        self.logger.debug('calculate_diameters: pairwise_distances size: %s' % pairwise_distances_matrix.shape[0])
+
+        return genome_metadata, species, (pairwise_distances_matrix, pairwise_distances_index)
 
     def calculate_diameters(self):
         """
@@ -68,7 +98,7 @@ class Diameters:
       Writes out the species taxon table and min inter output files.
     """
         self.logger.debug('calculate_diameters')
-        genome_metadata, species, pairwise_distances = self.read_files()
+        genome_metadata, species, (pairwise_distances_matrix, pairwise_distances_index) = self.read_files()
 
         genomes_grouped_by_species_name = genome_metadata.groupby('species')
         self.logger.debug('calculate_diameters: genomes_grouped_by_species_name size: %s' % genomes_grouped_by_species_name.size())
@@ -91,7 +121,7 @@ class Diameters:
             else:
                 species_genomes[species_name] = []
 
-        diameters, min_inter, ngenomes, species_data = self.calculate_thresholds(number_of_species, species_genomes, pairwise_distances)
+        diameters, min_inter, ngenomes, species_data = self.calculate_thresholds(number_of_species, species_genomes, pairwise_distances_matrix, pairwise_distances_index)
         
         # Create mapping of species name to data for later verification
         species_info_map = {info['name']: info for info in species_data}
@@ -104,7 +134,9 @@ class Diameters:
             species.loc[species['name'] == name, 'ngenomes'] = info['ngenomes']
             self.logger.debug(f"  {name}: diameter={info['diameter']}, ngenomes={info['ngenomes']}")
 
-        species['ngenomes'] = species['ngenomes'].astype(int)
+        # Fill any potential NaN values with 0 before casting to integer.
+        # This makes the script more robust against unexpected missing values.
+        species['ngenomes'] = species['ngenomes'].fillna(0).astype(int)
 
         # Save min-inter matrices using consistent species order
         if number_of_species > 0:
@@ -183,13 +215,14 @@ class Diameters:
         return species
     
     # Calculate the diameters and minimums
-    def calculate_thresholds(self, number_of_species, species_genomes, pairwise_distances):
+    def calculate_thresholds(self, number_of_species, species_genomes, pairwise_distances_matrix, pairwise_distances_index):
         """
     Calculates the diameters and minimums for a given set of species.
     Args:
       number_of_species (int): The number of species in the dataset.
       species_genomes (dict): A dictionary of species taxon and assembly accessions.
-      pairwise_distances (pandas.DataFrame): A dataframe of pairwise distances.
+      pairwise_distances_matrix (numpy.memmap): A memory-mapped array of pairwise distances.
+      pairwise_distances_index (pandas.Index): An index of genome accessions for the matrix.
     
     Returns:
         tuple: Contains:
@@ -205,7 +238,7 @@ class Diameters:
                     'ngenomes': int        # Number of genomes
                 }
     Examples:
-      >>> diameters, min_inter, ngenomes = Diameters.calculate_thresholds(number_of_species, species_genomes, pairwise_distances)
+      >>> diameters, min_inter, ngenomes = Diameters.calculate_thresholds(number_of_species, species_genomes, pairwise_distances_matrix, pairwise_distances_index)
       >>> diameters
       array([0.1, 0.2, 0.3])
       >>> min_inter
@@ -230,24 +263,24 @@ class Diameters:
                 'diameter': 0.0,
                 'ngenomes': len(assembly_accessions)
             }
-            # if the accessbly accessions list is empty then continue
-            if len(assembly_accessions) == 0:
-                continue
-
-            inds1 = pairwise_distances.index.get_indexer(assembly_accessions)
-            # Find the maximum diameters for each species. Basically look at the pairwise distances
-            # and find the maximum distance between any two genomes in the species
-            diameters[i] = pairwise_distances.values[numpy.ix_(inds1, inds1)].max()
-            ngenomes[i] = len(assembly_accessions)
-            # Update species_info with diameter after Calculating
-            species_info['diameter'] = float(diameters[i])
-            for j, (species_name2, assembly_accessions2) in enumerate(species_genomes.items()):
-                if len(assembly_accessions2) == 0:
-                    continue
-                inds2 = pairwise_distances.index.get_indexer(assembly_accessions2)
-                mi = pairwise_distances.values[numpy.ix_(inds1, inds2)].min()
-                min_inter[i, j] = min_inter[j, i] = mi
-            #Add Species data
+            
+            # If the assembly accessions list is not empty, calculate diameter and min_inter
+            if len(assembly_accessions) > 0:
+                inds1 = pairwise_distances_index.get_indexer(assembly_accessions)
+                # Find the maximum diameters for each species. Basically look at the pairwise distances
+                # and find the maximum distance between any two genomes in the species
+                diameters[i] = pairwise_distances_matrix[numpy.ix_(inds1, inds1)].max()
+                ngenomes[i] = len(assembly_accessions)
+                # Update species_info with diameter after Calculating
+                species_info['diameter'] = float(diameters[i])
+                for j, (species_name2, assembly_accessions2) in enumerate(species_genomes.items()):
+                    if len(assembly_accessions2) == 0:
+                        continue
+                    inds2 = pairwise_distances_index.get_indexer(assembly_accessions2)
+                    mi = pairwise_distances_matrix[numpy.ix_(inds1, inds2)].min()
+                    min_inter[i, j] = min_inter[j, i] = mi
+            
+            # Always add species data, even for species with 0 genomes.
             species_data.append(species_info)
 
         self.logger.debug('calculate_thresholds: diameters: %s' % diameters.shape[0])

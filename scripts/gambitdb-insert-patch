@@ -1,0 +1,361 @@
+#!/usr/bin/env python3
+
+"""
+This file, and only this file, is licensed under the GNU Lesser General Public License v3.0.
+All other files in this repository are licenced under the GNU General Public License v3.0.
+
+                   GNU LESSER GENERAL PUBLIC LICENSE
+                       Version 3, 29 June 2007
+
+ Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>
+ Everyone is permitted to copy and distribute verbatim copies
+ of this license document, but changing it is not allowed.
+
+
+  This version of the GNU Lesser General Public License incorporates
+the terms and conditions of version 3 of the GNU General Public
+License, supplemented by the additional permissions listed below.
+
+  0. Additional Definitions.
+
+  As used herein, "this License" refers to version 3 of the GNU Lesser
+General Public License, and the "GNU GPL" refers to version 3 of the GNU
+General Public License.
+
+  "The Library" refers to a covered work governed by this License,
+other than an Application or a Combined Work as defined below.
+
+  An "Application" is any work that makes use of an interface provided
+by the Library, but which is not otherwise based on the Library.
+Defining a subclass of a class defined by the Library is deemed a mode
+of using an interface provided by the Library.
+
+  A "Combined Work" is a work produced by combining or linking an
+Application with the Library.  The particular version of the Library
+with which the Combined Work was made is also called the "Linked
+Version".
+
+  The "Minimal Corresponding Source" for a Combined Work means the
+Corresponding Source for the Combined Work, excluding any source code
+for portions of the Combined Work that, considered in isolation, are
+based on the Application, and not on the Linked Version.
+
+  The "Corresponding Application Code" for a Combined Work means the
+object code and/or source code for the Application, including any data
+and utility programs needed for reproducing the Combined Work from the
+Application, but excluding the System Libraries of the Combined Work.
+
+  1. Exception to Section 3 of the GNU GPL.
+
+  You may convey a covered work under sections 3 and 4 of this License
+without being bound by section 3 of the GNU GPL.
+
+  2. Conveying Modified Versions.
+
+  If you modify a copy of the Library, and, in your modifications, a
+facility refers to a function or data to be supplied by an Application
+that uses the facility (other than as an argument passed when the
+facility is invoked), then you may convey a copy of the modified
+version:
+
+   a) under this License, provided that you make a good faith effort to
+   ensure that, in the event an Application does not supply the
+   function or data, the facility still operates, and performs
+   whatever part of its purpose remains meaningful, or
+
+   b) under the GNU GPL, with none of the additional permissions of
+   this License applicable to that copy.
+
+  3. Object Code Incorporating Material from Library Header Files.
+
+  The object code form of an Application may incorporate material from
+a header file that is part of the Library.  You may convey such object
+code under terms of your choice, provided that, if the incorporated
+material is not limited to numerical parameters, data structure
+layouts and accessors, or small macros, inline functions and templates
+(ten or fewer lines in length), you do both of the following:
+
+   a) Give prominent notice with each copy of the object code that the
+   Library is used in it and that the Library and its use are
+   covered by this License.
+
+   b) Accompany the object code with a copy of the GNU GPL and this license
+   document.
+
+  4. Combined Works.
+
+  You may convey a Combined Work under terms of your choice that,
+taken together, effectively do not restrict modification of the
+portions of the Library contained in the Combined Work and reverse
+engineering for debugging such modifications, if you also do each of
+the following:
+
+   a) Give prominent notice with each copy of the Combined Work that
+   the Library is used in it and that the Library and its use are
+   covered by this License.
+
+   b) Accompany the Combined Work with a copy of the GNU GPL and this license
+   document.
+
+   c) For a Combined Work that displays copyright notices during
+   execution, include the copyright notice for the Library among
+   these notices, as well as a reference directing the user to the
+   copies of the GNU GPL and this license document.
+
+   d) Do one of the following:
+
+       0) Convey the Minimal Corresponding Source under the terms of this
+       License, and the Corresponding Application Code in a form
+       suitable for, and under terms that permit, the user to
+       recombine or relink the Application with a modified version of
+       the Linked Version to produce a modified Combined Work, in the
+       manner specified by section 6 of the GNU GPL for conveying
+       Corresponding Source.
+
+       1) Use a suitable shared library mechanism for linking with the
+       Library.  A suitable mechanism is one that (a) uses at run time
+       a copy of the Library already present on the user's computer
+       system, and (b) will operate properly with a modified version
+       of the Library that is interface-compatible with the Linked
+       Version.
+
+   e) Provide Installation Information, but only if you would otherwise
+   be required to provide such information under section 6 of the
+   GNU GPL, and only to the extent that such information is
+   necessary to install and execute a modified version of the
+   Combined Work produced by recombining or relinking the
+   Application with a modified version of the Linked Version. (If
+   you use option 4d0, the Installation Information must accompany
+   the Minimal Corresponding Source and Corresponding Application
+   Code. If you use option 4d1, you must provide the Installation
+   Information in the manner specified by section 6 of the GNU GPL
+   for conveying Corresponding Source.)
+
+  5. Combined Libraries.
+
+  You may place library facilities that are a work based on the
+Library side by side in a single library together with other library
+facilities that are not Applications and are not covered by this
+License, and convey such a combined library under terms of your
+choice, if you do both of the following:
+
+   a) Accompany the combined library with a copy of the same work based
+   on the Library, uncombined with any other library facilities,
+   conveyed under the terms of this License.
+
+   b) Give prominent notice with the combined library that part of it
+   is a work based on the Library, and explaining where to find the
+   accompanying uncombined form of the same work.
+
+  6. Revised Versions of the GNU Lesser General Public License.
+
+  The Free Software Foundation may publish revised and/or new versions
+of the GNU Lesser General Public License from time to time. Such new
+versions will be similar in spirit to the present version, but may
+differ in detail to address new problems or concerns.
+
+  Each version is given a distinguishing version number. If the
+Library as you received it specifies that a certain numbered version
+of the GNU Lesser General Public License "or any later version"
+applies to it, you have the option of following the terms and
+conditions either of that published version or of any later version
+published by the Free Software Foundation. If the Library as you
+received it does not specify a version number of the GNU Lesser
+General Public License, you may choose any version of the GNU Lesser
+General Public License ever published by the Free Software Foundation.
+
+  If the Library as you received it specifies that a proxy can decide
+whether future versions of the GNU Lesser General Public License shall
+apply, that proxy's public statement of acceptance of any version is
+permanent authorization for you to choose that version for the
+Library.
+"""
+
+import argparse
+import numpy as np
+import sqlite3
+import shutil
+import logging
+import os
+from gambit.sigs import load_signatures, dump_signatures, AnnotatedSignatures, SignatureList
+
+def execute_in_batches(connection, query_template, values_list, batch_size=900):
+    """
+    Execute a query with a large list of values by batching them into smaller chunks.
+    Returns a list of all results.
+    """
+    results = []
+    for i in range(0, len(values_list), batch_size):
+        batch = values_list[i:i + batch_size]
+        if not batch:  # Skip empty batches
+            continue
+        query = query_template.format(','.join(['?' for _ in batch]))
+        batch_results = connection.execute(query, batch).fetchall()
+        results.extend(batch_results)
+    return results
+
+parser = argparse.ArgumentParser(
+    description='Insert patch GAMBIT signatures and database into main database, renaming duplicate taxa with prefix.',
+    usage='gambitdb-insert-patch [options]',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+# Required input files
+parser.add_argument('signatures_main_filename', help='A signatures .h5(.gs) file created by gambit signatures', type=str)
+parser.add_argument('database_main_filename', help='An SQLite database', type=str)
+parser.add_argument('signatures_patch_filename', help='A signatures .h5(.gs) file created by gambit signatures', type=str)
+parser.add_argument('database_patch_filename', help='An SQLite database', type=str)
+
+# Output
+parser.add_argument('--signatures_output_filename', '-s', help='Output filename for genome signatures', default='merged_database.gs', type=str)
+parser.add_argument('--database_output_filename', '-d', help='Output filename for database', default='merged_database.gdb', type=str)
+parser.add_argument('--prefix', '-p', help='Prefix to add to duplicate taxa names', default='r226', type=str)
+
+parser.add_argument('--verbose', '-v', action='store_true', help='Turn on verbose output', default=False)
+options = parser.parse_args()
+
+# setup logging
+if options.verbose:
+    logging.basicConfig(level=logging.DEBUG)
+else:
+    logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger('InsertPatch')
+
+# copy the main database so we don't modify the original
+logger.debug("Copy main database to: " + options.database_output_filename)
+shutil.copy(options.database_main_filename, options.database_output_filename)
+
+# Connect to the databases
+main_db_connection = sqlite3.connect(options.database_output_filename)
+patch_db_connection = sqlite3.connect(options.database_patch_filename)
+
+# Get existing taxa names from main database
+main_taxa_names = set(row[0] for row in main_db_connection.execute("SELECT name FROM taxa"))
+logger.debug(f"Main database contains {len(main_taxa_names)} unique taxa names")
+
+# Get patch taxa and identify duplicates
+patch_taxa_data = list(patch_db_connection.execute("SELECT * FROM taxa"))
+patch_taxa_names = set(row[2] for row in patch_taxa_data)  # row[2] is the 'name' column
+logger.debug(f"Patch database contains {len(patch_taxa_names)} unique taxa names")
+
+# Find duplicates
+duplicate_taxa = main_taxa_names.intersection(patch_taxa_names)
+logger.info(f"Found {len(duplicate_taxa)} duplicate taxa names that will be renamed with prefix '{options.prefix}'")
+
+if options.verbose:
+    for taxa_name in sorted(duplicate_taxa):
+        logger.debug(f"  Duplicate taxa: {taxa_name}")
+
+# Create a mapping of old names to new names for duplicates
+taxa_name_mapping = {}
+for taxa_name in duplicate_taxa:
+    new_name = f"{options.prefix}_{taxa_name}"
+    taxa_name_mapping[taxa_name] = new_name
+    logger.debug(f"Will rename '{taxa_name}' to '{new_name}'")
+
+# Output initial counts
+start_num_genomes = main_db_connection.execute("SELECT count(id) FROM genomes;").fetchone()[0]
+start_num_taxa = main_db_connection.execute("SELECT count(id) FROM taxa;").fetchone()[0]
+logger.debug(f"Main database initial counts - Genomes: {start_num_genomes}, Taxa: {start_num_taxa}")
+
+patch_num_genomes = patch_db_connection.execute("SELECT count(id) FROM genomes;").fetchone()[0]
+patch_num_taxa = patch_db_connection.execute("SELECT count(id) FROM taxa;").fetchone()[0]
+logger.debug(f"Patch database counts - Genomes: {patch_num_genomes}, Taxa: {patch_num_taxa}")
+
+# Get the maximum IDs from main database to use as offsets
+taxa_id_offset = main_db_connection.execute("SELECT COALESCE(MAX(id), 0) FROM taxa").fetchone()[0]
+genomes_id_offset = main_db_connection.execute("SELECT COALESCE(MAX(id), 0) FROM genomes").fetchone()[0]
+logger.debug(f"ID offsets - Taxa: {taxa_id_offset}, Genomes: {genomes_id_offset}")
+
+# Insert patch taxa with renamed duplicates
+logger.info("Inserting patch taxa into main database...")
+taxa_id_mapping = {}  # old_id -> new_id mapping for patch taxa
+for row in patch_taxa_data:
+    old_id = row[0]
+    new_id = old_id + taxa_id_offset
+    taxa_id_mapping[old_id] = new_id
+    
+    # Check if this taxa name needs to be renamed
+    original_name = row[2]  # 'name' column
+    new_name = taxa_name_mapping.get(original_name, original_name)
+    
+    # Handle parent_taxon_id
+    parent_taxon_id = '' if row[8] == '' or row[8] is None else int(row[8]) + taxa_id_offset
+    
+    # Insert with potentially renamed taxa name
+    main_db_connection.execute(
+        "INSERT INTO taxa VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (new_id, row[1], new_name, row[3], row[4], row[5], row[6], row[7], parent_taxon_id, row[9], '')
+    )
+    
+    if original_name != new_name:
+        logger.debug(f"Renamed taxa '{original_name}' to '{new_name}' (ID: {old_id} -> {new_id})")
+
+# Insert patch genomes
+logger.info("Inserting patch genomes into main database...")
+genome_id_mapping = {}  # old_id -> new_id mapping for patch genomes
+patch_genomes_data = list(patch_db_connection.execute("SELECT * FROM genomes"))
+
+for row in patch_genomes_data:
+    old_id = row[0]
+    new_id = old_id + genomes_id_offset
+    genome_id_mapping[old_id] = new_id
+    
+    # Check if genome with same genbank_acc already exists
+    existing_row = main_db_connection.execute("SELECT * FROM genomes WHERE genbank_acc=?", (str(row[5]),)).fetchone()
+    
+    if existing_row is not None:
+        logger.debug(f"Skipping genome with genbank_acc {row[5]} because it already exists in main database")
+        continue
+    
+    # Insert genome with new ID
+    main_db_connection.execute(
+        "INSERT INTO genomes VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (new_id, row[1], row[2], row[3], row[4], row[5], row[6], None)
+    )
+
+# Insert patch genome_annotations
+logger.info("Inserting patch genome_annotations into main database...")
+for row in patch_db_connection.execute("SELECT * FROM genome_annotations"):
+    old_genome_id = row[0]
+    old_taxon_id = row[2]
+    
+    # Map to new IDs
+    new_genome_id = genome_id_mapping.get(old_genome_id, old_genome_id + genomes_id_offset)
+    new_taxon_id = taxa_id_mapping.get(old_taxon_id, old_taxon_id + taxa_id_offset)
+    
+    # Get the potentially renamed organism name
+    original_organism = row[1]
+    new_organism = taxa_name_mapping.get(original_organism, original_organism)
+    
+    main_db_connection.execute(
+        "INSERT INTO genome_annotations VALUES (?, ?, ?, ?)",
+        (new_genome_id, new_organism, new_taxon_id, row[3])
+    )
+
+# Commit database changes
+main_db_connection.commit()
+
+# Output final counts
+final_num_genomes = main_db_connection.execute("SELECT count(id) FROM genomes;").fetchone()[0]
+final_num_taxa = main_db_connection.execute("SELECT count(id) FROM taxa;").fetchone()[0]
+logger.info(f"Final database counts - Genomes: {final_num_genomes}, Taxa: {final_num_taxa}")
+logger.info(f"Added {final_num_genomes - start_num_genomes} genomes and {final_num_taxa - start_num_taxa} taxa")
+
+# Merge signatures files
+logger.info("Merging signature files...")
+with load_signatures(options.signatures_main_filename) as main_sig, load_signatures(options.signatures_patch_filename) as patch_sig:
+    # Concatenate signatures
+    merged_src_ids = np.concatenate((main_sig.ids, patch_sig.ids))
+    merged_src = SignatureList(main_sig)
+    merged_src.extend(patch_sig)
+    out_sigs = AnnotatedSignatures(merged_src, merged_src_ids, main_sig.meta)
+    dump_signatures(options.signatures_output_filename, out_sigs)
+
+# Close connections
+main_db_connection.close()
+patch_db_connection.close()
+
+logger.info(f"Successfully merged databases and signatures")
+logger.info(f"Output database: {options.database_output_filename}")
+logger.info(f"Output signatures: {options.signatures_output_filename}")
+logger.info(f"Renamed {len(duplicate_taxa)} duplicate taxa with prefix '{options.prefix}'") 

@@ -3,6 +3,7 @@ import csv
 import numpy as np
 import logging
 import networkx as nx
+import os
 
 class CompressClusters:
     """
@@ -32,16 +33,114 @@ class CompressClusters:
 
     def compress(self):
         representative_accessions = self.generate_representative_genomes()
-        return self.identify_samples_to_remove(representative_accessions)
+        samples_to_remove, num_samples = self.identify_samples_to_remove(representative_accessions)
+        
+        # Write the compressed pairwise distances to output file
+        self.write_compressed_pairwise_distances(samples_to_remove)
+        
+        return samples_to_remove, num_samples
+    
+    def write_compressed_pairwise_distances(self, samples_to_remove):
+        """Write the compressed pairwise distances to output file."""
+        self.logger.debug('CompressClusters.write_compressed_pairwise_distances')
+        
+        # Read the full pairwise distances
+        pw = self.read_pairwise_distances()
+        
+        # Remove samples that were identified for removal
+        pw_compressed = pw.drop(index=samples_to_remove, errors='ignore')
+        pw_compressed = pw_compressed.drop(columns=samples_to_remove, errors='ignore')
+        
+        # Determine output format based on input format
+        if self.pairwise_distances_filename.endswith('.npy'):
+            self._write_compressed_npy(pw_compressed)
+        else:
+            self._write_compressed_csv(pw_compressed)
+    
+    def _write_compressed_csv(self, pw_compressed):
+        """Write compressed pairwise distances to CSV format."""
+        self.logger.debug('CompressClusters._write_compressed_csv')
+        pw_compressed.to_csv(self.output_pairwise_filename)
+        if self.verbose:
+            print(f'Compressed pairwise distances written to {self.output_pairwise_filename}')
+    
+    def _write_compressed_npy(self, pw_compressed):
+        """Write compressed pairwise distances to npy format."""
+        self.logger.debug('CompressClusters._write_compressed_npy')
+        
+        # Ensure output filename has .npy extension
+        if not self.output_pairwise_filename.endswith('.npy'):
+            output_npy_filename = self.output_pairwise_filename.replace('.csv', '.npy')
+        else:
+            output_npy_filename = self.output_pairwise_filename
+        
+        # Write the numpy array
+        pw_compressed_array = pw_compressed.values.astype('float32')
+        np.save(output_npy_filename, pw_compressed_array)
+        
+        # Write the index file
+        index_filename = output_npy_filename.replace('.npy', '.idx')
+        with open(index_filename, 'w') as f:
+            for label in pw_compressed.index:
+                f.write(f'{label}\n')
+        
+        if self.verbose:
+            print(f'Compressed pairwise distances written to {output_npy_filename}')
+            print(f'Index written to {index_filename}')
 
     #  Gives array([[0.1, 0.2, 0.3],
     #         [0.2, 0.1, 0.4],
     #         [0.3, 0.4, 0.1]])
     def read_pairwise_distances(self):
         self.logger.debug('CompressClusters.read_pairwise_distances')
+        
+        # Check if file is npy format or csv format
+        if self.pairwise_distances_filename.endswith('.npy'):
+            return self._read_pairwise_distances_npy()
+        else:
+            return self._read_pairwise_distances_csv()
+    
+    def _read_pairwise_distances_csv(self):
+        """Read pairwise distances from CSV format."""
+        self.logger.debug('CompressClusters._read_pairwise_distances_csv')
         pairwise_distances = pandas.read_csv(self.pairwise_distances_filename, index_col=0)
         # sort the pairwise_distances dataframe by the index column
         pairwise_distances = pairwise_distances.sort_index()
+        return pairwise_distances
+    
+    def _read_pairwise_distances_npy(self):
+        """Read pairwise distances from npy format using memory mapping."""
+        self.logger.debug('CompressClusters._read_pairwise_distances_npy')
+        
+        # Read in the pairwise distances index
+        index_filename = self.pairwise_distances_filename.replace('.npy', '.idx')
+        if not os.path.exists(index_filename):
+            raise FileNotFoundError(f"Index file not found: {index_filename}")
+        
+        self.logger.debug(f"Reading distance matrix index from {index_filename}")
+        with open(index_filename, 'r') as f:
+            dist_matrix_index_labels = [line.strip() for line in f]
+        pairwise_distances_index = pandas.Index(dist_matrix_index_labels)
+
+        # Memory-map the pairwise distances file instead of loading it
+        self.logger.debug(f"Memory-mapping distance matrix from {self.pairwise_distances_filename}")
+        pairwise_distances_matrix = np.memmap(self.pairwise_distances_filename, dtype='float32', mode='r')
+        
+        # The shape of the matrix on disk must be inferred from the index length
+        n_genomes = len(pairwise_distances_index)
+        if pairwise_distances_matrix.size == n_genomes * n_genomes:
+            pairwise_distances_matrix = pairwise_distances_matrix.reshape((n_genomes, n_genomes))
+        else:
+            raise ValueError("The size of the .npy file does not match the index size for a square matrix.")
+
+        # Create DataFrame from memmap with proper index and columns
+        pairwise_distances = pandas.DataFrame(pairwise_distances_matrix, 
+                                            index=pairwise_distances_index, 
+                                            columns=pairwise_distances_index)
+        
+        # sort the pairwise_distances dataframe by the index column
+        pairwise_distances = pairwise_distances.sort_index()
+        self.logger.debug('_read_pairwise_distances_npy: pairwise_distances size: %s' % pairwise_distances.shape[0])
         return pairwise_distances
 
     def identify_samples_to_remove(self, representative_accessions):

@@ -1,0 +1,300 @@
+#!/usr/bin/env python3
+"""
+Script to extract rows from file2 that don't exist in file1, apply quality filters,
+and optionally filter against SQLite database based on accession field.
+Uses DuckDB for efficient processing of TSV files.
+"""
+
+import duckdb
+import sys
+import argparse
+from pathlib import Path
+
+def extract_unique_rows(file1_path, file2_path, output_path=None, 
+                       checkm_completeness=None, checkm_contamination=None, max_contigs=None,
+                       sqlite_db=None):
+    """
+    Extract rows from file2 that don't exist in file1, apply quality filters, 
+    and optionally filter against SQLite database.
+    
+    Process:
+    1. Find rows in file2 that don't exist in file1 (based on accession)
+    2. Apply quality filters to those unique rows
+    3. If SQLite DB provided, further filter out any that exist in the database
+    
+    Args:
+        file1_path (str): Path to the first TSV file
+        file2_path (str): Path to the second TSV file  
+        output_path (str, optional): Path for output file. If None, prints to stdout.
+        checkm_completeness (float, optional): Minimum CheckM completeness threshold
+        checkm_contamination (float, optional): Maximum CheckM contamination threshold
+        max_contigs (int, optional): Maximum number of contigs allowed
+        sqlite_db (str, optional): Path to SQLite database for additional filtering
+    """
+    
+    # Validate input files exist
+    if file1_path and not Path(file1_path).exists():
+        raise FileNotFoundError(f"File1 not found: {file1_path}")
+    if not Path(file2_path).exists():
+        raise FileNotFoundError(f"File2 not found: {file2_path}")
+    
+    if sqlite_db and not Path(sqlite_db).exists():
+        raise FileNotFoundError(f"SQLite database not found: {sqlite_db}")
+    
+    # Connect to DuckDB (in-memory database)
+    conn = duckdb.connect()
+    
+    try:
+        # Load file2 (always required)
+        conn.execute(f"""
+            CREATE VIEW file2 AS 
+            SELECT * FROM read_csv('{file2_path}', sep='\t', header=true)
+        """)
+        
+        file2_name = Path(file2_path).name
+        
+        if file1_path:
+            # Load file1 if provided
+            conn.execute(f"""
+                CREATE VIEW file1 AS 
+                SELECT * FROM read_csv('{file1_path}', sep='\t', header=true)
+            """)
+            
+            # Step 1: Find rows in file2 that don't exist in file1
+            file1_name = Path(file1_path).name
+            print(f"Step 1: Finding rows in {file2_name} not in {file1_name}...")
+            conn.execute("""
+                CREATE VIEW unique_in_file2 AS
+                SELECT f2.*
+                FROM file2 f2
+                LEFT JOIN file1 f1 ON f2.accession = f1.accession
+                WHERE f1.accession IS NULL
+            """)
+            
+            # Count after step 1
+            count_step1 = conn.execute("SELECT COUNT(*) FROM unique_in_file2").fetchone()[0]
+            print(f"Found {count_step1} rows in {file2_name} not in {file1_name}")
+            
+            # Use unique_in_file2 as starting point for quality filtering
+            source_view = "unique_in_file2"
+            
+        else:
+            # No file1 provided, use all of file2
+            print(f"Step 1: No reference file provided, using all rows from {file2_name}...")
+            conn.execute("""
+                CREATE VIEW unique_in_file2 AS
+                SELECT * FROM file2
+            """)
+            
+            count_step1 = conn.execute("SELECT COUNT(*) FROM unique_in_file2").fetchone()[0]
+            print(f"Starting with all {count_step1} rows from {file2_name}")
+            
+            source_view = "unique_in_file2"
+        
+        # Step 2: Apply quality filters
+        print("\nStep 2: Applying quality filters...")
+        quality_conditions = []
+        
+        if checkm_completeness is not None:
+            quality_conditions.append(f"checkm_completeness >= {checkm_completeness}")
+        
+        if checkm_contamination is not None:
+            quality_conditions.append(f"checkm_contamination <= {checkm_contamination}")
+            
+        if max_contigs is not None:
+            quality_conditions.append(f"contig_count <= {max_contigs}")
+        
+        if quality_conditions:
+            quality_where = " AND ".join(quality_conditions)
+            conn.execute(f"""
+                CREATE VIEW quality_filtered AS
+                SELECT * FROM {source_view}
+                WHERE {quality_where}
+            """)
+            print(f"Applied quality filters: {', '.join(quality_conditions)}")
+            
+            # Print detailed statistics for each filter
+            if checkm_completeness is not None:
+                failed_completeness = conn.execute(f"""
+                    SELECT COUNT(*) FROM {source_view} 
+                    WHERE checkm_completeness < {checkm_completeness}
+                """).fetchone()[0]
+                print(f"  - Filtered out {failed_completeness} genomes with completeness < {checkm_completeness}%")
+            
+            if checkm_contamination is not None:
+                failed_contamination = conn.execute(f"""
+                    SELECT COUNT(*) FROM {source_view} 
+                    WHERE checkm_contamination > {checkm_contamination}
+                """).fetchone()[0]
+                print(f"  - Filtered out {failed_contamination} genomes with contamination > {checkm_contamination}%")
+            
+            if max_contigs is not None:
+                failed_contigs = conn.execute(f"""
+                    SELECT COUNT(*) FROM {source_view} 
+                    WHERE contig_count > {max_contigs}
+                """).fetchone()[0]
+                print(f"  - Filtered out {failed_contigs} genomes with > {max_contigs} contigs")
+                
+        else:
+            conn.execute(f"""
+                CREATE VIEW quality_filtered AS
+                SELECT * FROM {source_view}
+            """)
+            print("No quality filters applied")
+        
+        # Count after step 2
+        count_step2 = conn.execute("SELECT COUNT(*) FROM quality_filtered").fetchone()[0]
+        print(f"Rows remaining after quality filtering: {count_step2} (filtered out: {count_step1 - count_step2})")
+        
+        # Step 3: Optional SQLite filtering
+        if sqlite_db:
+            sqlite_name = Path(sqlite_db).name
+            print(f"\nStep 3: Filtering against SQLite database ({sqlite_name})...")
+            
+            # Connect to SQLite database
+            conn.execute(f"""
+                ATTACH '{sqlite_db}' AS sqlite_db (TYPE sqlite)
+            """)
+            
+            # Create a view with cleaned accessions from quality_filtered
+            # Remove prefix pattern like 'GB_', 'RS_', etc. from accession column
+            conn.execute("""
+                CREATE VIEW cleaned_accessions AS
+                SELECT 
+                    *,
+                    CASE 
+                        WHEN accession LIKE '%_%' THEN substr(accession, position('_' in accession) + 1)
+                        ELSE accession
+                    END as cleaned_accession
+                FROM quality_filtered
+            """)
+            
+            # Debug: Print first 10 cleaned_accession values
+            print("  DEBUG: First 10 cleaned_accession values:")
+            cleaned_sample = conn.execute("""
+                SELECT accession, cleaned_accession 
+                FROM cleaned_accessions 
+                LIMIT 10
+            """).fetchall()
+            for orig, cleaned in cleaned_sample:
+                print(f"    {orig} -> {cleaned}")
+            
+            # Debug: Print first 10 sg.key values from SQLite database
+            print("  DEBUG: First 10 sg.key values from SQLite database:")
+            sqlite_keys = conn.execute("""
+                SELECT key 
+                FROM sqlite_db.genomes 
+                LIMIT 10
+            """).fetchall()
+            for (key,) in sqlite_keys:
+                print(f"    {key}")
+            
+            # Count how many would be filtered by SQLite (using cleaned accessions)
+            sqlite_matches = conn.execute("""
+                SELECT COUNT(*) 
+                FROM cleaned_accessions ca
+                INNER JOIN sqlite_db.genomes sg ON ca.cleaned_accession = sg.key
+            """).fetchone()[0]
+            
+            # Final filtering: remove any that exist in SQLite (comparing cleaned accession with key)
+            # We need to exclude the cleaned_accession column from the final output
+            conn.execute("""
+                CREATE VIEW final_result AS
+                SELECT ca.* EXCLUDE (cleaned_accession)
+                FROM cleaned_accessions ca
+                LEFT JOIN sqlite_db.genomes sg ON ca.cleaned_accession = sg.key
+                WHERE sg.key IS NULL
+            """)
+            
+            # Count after step 3
+            count_step3 = conn.execute("SELECT COUNT(*) FROM final_result").fetchone()[0]
+            print(f"  - Cleaned accession format for comparison (removed prefix pattern)")
+            print(f"  - Filtered out {sqlite_matches} genomes already present in {sqlite_name}")
+            print(f"Rows remaining after SQLite filtering: {count_step3} (filtered out: {count_step2 - count_step3})")
+            
+            final_view = "final_result"
+            
+        else:
+            print("\nStep 3: No SQLite filtering requested")
+            final_view = "quality_filtered"
+        
+        # Execute final query and get results
+        result = conn.execute(f"SELECT * FROM {final_view}")
+        
+        if output_path:
+            # Write results to output file as TSV
+            conn.execute(f"""
+                COPY (SELECT * FROM {final_view}) 
+                TO '{output_path}' (FORMAT CSV, DELIMITER '\t', HEADER true)
+            """)
+            print(f"\n{'='*50}")
+            print(f"SUMMARY:")
+            print(f"{'='*50}")
+            if file1_path:
+                print(f"Initial rows in {file2_name}: {conn.execute('SELECT COUNT(*) FROM file2').fetchone()[0]}")
+                print(f"Rows unique to {file2_name}: {count_step1}")
+            else:
+                print(f"Initial rows in {file2_name}: {count_step1}")
+            if sqlite_db:
+                print(f"After quality filtering: {count_step2}")
+                print(f"After SQLite filtering: {conn.execute(f'SELECT COUNT(*) FROM {final_view}').fetchone()[0]}")
+            else:
+                print(f"After quality filtering: {conn.execute(f'SELECT COUNT(*) FROM {final_view}').fetchone()[0]}")
+            print(f"Results written to: {output_path}")
+            
+        else:
+            # Print results to stdout
+            rows = result.fetchall()
+            columns = [desc[0] for desc in result.description]
+            
+            # Print header
+            print('\t'.join(columns))
+            
+            # Print data rows
+            for row in rows:
+                print('\t'.join(str(val) if val is not None else '' for val in row))
+            
+            print(f"\n# Final output contains {len(rows)} rows", file=sys.stderr)
+    
+    except Exception as e:
+        print(f"Error processing files: {e}", file=sys.stderr)
+        raise
+    
+    finally:
+        conn.close()
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Extract rows from file2 that don't exist in file1 (optional), apply quality filters, and optionally filter against SQLite database"
+    )
+    parser.add_argument("file1", nargs='?', help="Path to first TSV file (optional)")
+    parser.add_argument("file2", help="Path to second TSV file")
+    parser.add_argument("-o", "--output", help="Output file path (optional, defaults to stdout)")
+    
+    # Additional filtering options
+    parser.add_argument("--sqlite", help="Path to SQLite database for additional filtering (optional)")
+    
+    # Quality filtering options
+    parser.add_argument("--checkm_completeness", type=float, default=97,
+                       help="Minimum CheckM completeness threshold (default: 97)")
+    parser.add_argument("--checkm_contamination", type=float, default=3,
+                       help="Maximum CheckM contamination threshold (default: 3)")
+    parser.add_argument("--max_contigs", type=int, default=100,
+                       help="Maximum number of contigs allowed (default: 100)")
+    
+    args = parser.parse_args()
+    
+    # Validate that we have either file1 or sqlite for comparison
+    if not args.file1 and not args.sqlite:
+        parser.error("Either file1 or --sqlite must be provided for comparison")
+    
+    try:
+        extract_unique_rows(args.file1, args.file2, args.output,
+                          args.checkm_completeness, args.checkm_contamination, 
+                          args.max_contigs, args.sqlite)
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
