@@ -38,6 +38,7 @@ setup(
            'tqdm',
            'h5py',
            'networkx'
+           'psutil'
 
        ],
     license='GPLv3',

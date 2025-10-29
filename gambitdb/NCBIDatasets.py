@@ -89,6 +89,7 @@ class NCBIDatasetClient:
                     url: str, 
                     method: str = 'GET', 
                     max_attempts: int = 5,
+                    headers: Optional[Dict[str, str]] = None,
                     **kwargs) -> requests.Response:
         """
         Make an API request with advanced error handling and retries.
@@ -110,10 +111,14 @@ class NCBIDatasetClient:
         # Ensure timeout is set
         kwargs['timeout'] = kwargs.get('timeout', self.timeout)
         
+        request_headers = {}
+        if headers:
+            request_headers.update(headers)
+        
         last_exception = None
         for attempt in range(max_attempts):
             try:
-                response = self.session.request(method, url, **kwargs)
+                response = self.session.request(method, url, headers=request_headers, **kwargs)
                 
                 # If the request was successful, return the response
                 if response.ok:
