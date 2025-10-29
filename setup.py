@@ -37,7 +37,7 @@ setup(
            'numpy',
            'tqdm',
            'h5py',
-           'networkx'
+           'networkx',
            'psutil'
 
        ],
