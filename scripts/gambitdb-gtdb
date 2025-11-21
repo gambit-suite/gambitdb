@@ -23,6 +23,7 @@ parser.add_argument('--include_novel_species', '-f', help='Include novel species
 parser.add_argument('--minimum_genomes_per_species', '-i',  help='Minimum number of genomes in a species, otherwise exclude the species', type=float, default=2)
 parser.add_argument('--species_filter', '-j',  help='Only include species that match this string', type=str, default='')
 parser.add_argument('--ncbi_whitelist', '-w', help='File containing list of species or genus names (one per line) to use NCBI taxonomy for instead of GTDB taxonomy', type=str, default=None)
+parser.add_argument('--use_ncbi_taxonomy', '-nt', help='Use NCBI taxonomy for all species (takes precedence over ncbi_whitelist)', action='store_true', default=False)
 
 # Output files
 parser.add_argument('--species_taxon_output_filename', '-s', help='Output filename for with the taxonomy', default = 'species_taxa.csv', type=str)
@@ -48,7 +49,7 @@ if options.ncbi_whitelist:
         print(f"Error: Whitelist file '{options.ncbi_whitelist}' not found")
         sys.exit(1)
 
-GtdbSpreadsheetParser(options.gtdb_metadata_spreadsheet, 
+GtdbSpreadsheetParser(options.gtdb_metadata_spreadsheet,
                       options.checkm_completeness,
                       options.checkm_contamination,
                       options.max_contigs,
@@ -56,10 +57,11 @@ GtdbSpreadsheetParser(options.gtdb_metadata_spreadsheet,
                       options.include_novel_species,
                       options.minimum_genomes_per_species,
                       options.species_filter,
-                      options.species_taxon_output_filename, 
-                      options.genome_assembly_metadata_output_filename, 
-                      options.accessions_output_filename, 
+                      options.species_taxon_output_filename,
+                      options.genome_assembly_metadata_output_filename,
+                      options.accessions_output_filename,
                       options.representative_genomes,
                       options.debug,
                       options.verbose,
-                      ncbi_whitelist).generate_spreadsheets()
+                      ncbi_whitelist,
+                      options.use_ncbi_taxonomy).generate_spreadsheets()
