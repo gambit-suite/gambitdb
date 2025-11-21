@@ -8,22 +8,23 @@ class GtdbSpreadsheetParser:
     """
     Reads in a GTDB spreadsheet, parses each row and outputs a modified spreadsheet.
     """
-    def __init__(self, 
-                 gtdb_metadata_spreadsheet, 
-                 checkm_completeness, 
-                 checkm_contamination, 
-                 max_contigs, 
-                 include_derived_samples, 
+    def __init__(self,
+                 gtdb_metadata_spreadsheet,
+                 checkm_completeness,
+                 checkm_contamination,
+                 max_contigs,
+                 include_derived_samples,
                  include_novel_species,
                  minimum_genomes_per_species,
                  species_filter,
-                 species_taxon_output_filename, 
-                 genome_assembly_metadata_output_filename, 
-                 accessions_output_filename, 
+                 species_taxon_output_filename,
+                 genome_assembly_metadata_output_filename,
+                 accessions_output_filename,
                  representative_genomes_filename,
-                 debug, 
+                 debug,
                  verbose,
-                 ncbi_whitelist=None):
+                 ncbi_whitelist=None,
+                 use_ncbi_taxonomy=False):
         """
     Initializes the GtdbSpreadsheetParser class.
     Args:
@@ -40,6 +41,7 @@ class GtdbSpreadsheetParser:
       debug (bool): Whether to enable debugging mode.
       verbose (bool): Whether to enable verbose mode.
       ncbi_whitelist (list): Optional list of species or genus names to use NCBI taxonomy for instead of GTDB taxonomy.
+      use_ncbi_taxonomy (bool): If True, use NCBI taxonomy for all species (takes precedence over ncbi_whitelist).
     Side Effects:
       Sets the following attributes:
         gtdb_metadata_spreadsheet
@@ -96,6 +98,7 @@ class GtdbSpreadsheetParser:
         self.debug = debug
         self.verbose = verbose
         self.ncbi_whitelist = ncbi_whitelist or []
+        self.use_ncbi_taxonomy = use_ncbi_taxonomy
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)
         self.logger.addHandler(logging.StreamHandler(sys.stdout))
@@ -384,34 +387,50 @@ class GtdbSpreadsheetParser:
 
         # create a new column called species which will be formed from the gtdb_taxonomy column where the text after s__ is the species
         spreadsheet['species'] = spreadsheet['gtdb_taxonomy'].str.extract(r's__([a-zA-Z0-9_\-\s]+)', expand=False)
-        
-        # If ncbi_whitelist is provided, use NCBI taxonomy for whitelisted species or genera
-        if self.ncbi_whitelist:
+
+        # If use_ncbi_taxonomy is True, use NCBI taxonomy for all species (takes precedence over whitelist)
+        if self.use_ncbi_taxonomy:
             ncbi_species = spreadsheet['ncbi_taxonomy'].str.extract(r's__([a-zA-Z0-9_\-\s]+)', expand=False)
-            
+
+            # Only use NCBI taxonomy if it has species-level information, otherwise remove the entry
+            has_ncbi_species = ncbi_species.notna() & (ncbi_species != '')
+
+            # Update species column with NCBI taxonomy where available
+            spreadsheet.loc[has_ncbi_species, 'species'] = ncbi_species.loc[has_ncbi_species]
+
+            # Remove entries without NCBI species information
+            entries_without_ncbi = ~has_ncbi_species
+            spreadsheet = spreadsheet[~entries_without_ncbi]
+
+            self.logger.info(f"Updated species for {has_ncbi_species.sum()} entries using NCBI taxonomy (all species)")
+
+        # If ncbi_whitelist is provided, use NCBI taxonomy for whitelisted species or genera
+        elif self.ncbi_whitelist:
+            ncbi_species = spreadsheet['ncbi_taxonomy'].str.extract(r's__([a-zA-Z0-9_\-\s]+)', expand=False)
+
             # Extract genus from species name
             spreadsheet['genus'] = spreadsheet['species'].str.split(' ').str[0]
-            
+
             # Check for matches in whitelist - either species OR genus
             species_match = spreadsheet['species'].isin(self.ncbi_whitelist)
             genus_match = spreadsheet['genus'].isin(self.ncbi_whitelist)
             whitelist_mask = species_match | genus_match
-            
+
             # Only use NCBI taxonomy if it has species-level information, otherwise remove the entry as decided with team
             has_ncbi_species = ncbi_species.notna() & (ncbi_species != '')
             valid_whitelist_entries = whitelist_mask & has_ncbi_species
             invalid_whitelist_entries = whitelist_mask & ~has_ncbi_species
-            
+
             spreadsheet.loc[valid_whitelist_entries, 'species'] = ncbi_species.loc[valid_whitelist_entries]
-            
+
             # Log matches by type
             species_matches = (valid_whitelist_entries & species_match).sum()
             genus_matches = (valid_whitelist_entries & genus_match & ~species_match).sum()
             self.logger.info(f"Updated species for {valid_whitelist_entries.sum()} entries using NCBI taxonomy ({species_matches} by species, {genus_matches} by genus)")
-            
+
             # Remove invalid entries so we don't consider them downstream
             spreadsheet = spreadsheet[~invalid_whitelist_entries]
-            
+
             # Clean up temporary genus column
             del spreadsheet['genus']
 

@@ -51,7 +51,7 @@ os.system(' '.join(['gambitdb-sync-signatures-db', '--signatures_output_filename
 
 def replace_species(gtdb_filename, species_filter, signatures_filename, output_signatures_filename, database_filename, output_database_filename, cpus, debug, verbose, checkm_completeness):
     try:
-        spreadsheet_parser = GtdbSpreadsheetParser(gtdb_filename, 90, 10, 1000, False, False, 1, '', 'species_taxa.csv',  'assembly_metadata.csv',  'accessions_to_download.csv', 'representative_genomes.csv', debug, verbose )
+        spreadsheet_parser = GtdbSpreadsheetParser(gtdb_filename, 90, 10, 1000, False, False, 1, '', 'species_taxa.csv',  'assembly_metadata.csv',  'accessions_to_download.csv', 'representative_genomes.csv', debug, verbose, None, False)
         spreadsheet_df = spreadsheet_parser.read_in_gtdb_spreadsheet()
        # filter the spreadsheet to only include the species we are interested in
         spreadsheet_df = spreadsheet_df[spreadsheet_df['ncbi_taxonomy'].str.contains(species_filter)]

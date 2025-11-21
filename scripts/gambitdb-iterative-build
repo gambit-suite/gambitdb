@@ -114,7 +114,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
                 o.write(line+'\n')
 
     # now we have a spreadsheet with novel species
-    g = GtdbSpreadsheetParser(filtered_spreadsheet, 
+    g = GtdbSpreadsheetParser(filtered_spreadsheet,
                       checkm_completeness,
                       checkm_contamination,
                       num_contigs,
@@ -122,7 +122,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
                       True,
                       options.min_genomes,
                       '',
-                      temp_dir+'/species_taxa.csv', temp_dir+'/assembly_metadata.csv', temp_dir+'/accessions_to_download.csv', None, False, False )
+                      temp_dir+'/species_taxa.csv', temp_dir+'/assembly_metadata.csv', temp_dir+'/accessions_to_download.csv', None, False, False, None, False)
     g.generate_spreadsheets()
     os.system('rm '+temp_dir+'/assembly_metadata.csv')
     os.system('rm '+temp_dir+'/accessions_to_download.csv')
@@ -144,7 +144,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
     # for each species, create a new database
     for species_index, s in enumerate(species):
         print("Creating database for species "+ str(s) + "("+ str(species_index) +"/"+ str(len(species)) +")")
-        g = GtdbSpreadsheetParser(filtered_spreadsheet, 
+        g = GtdbSpreadsheetParser(filtered_spreadsheet,
                       checkm_completeness,
                       checkm_contamination,
                       num_contigs,
@@ -152,7 +152,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
                       True,
                       options.min_genomes,
                       s,
-                      temp_dir+'/species_taxa.csv', temp_dir+'/assembly_metadata.csv', temp_dir+'/accessions_to_download.csv', None, False, False )
+                      temp_dir+'/species_taxa.csv', temp_dir+'/assembly_metadata.csv', temp_dir+'/accessions_to_download.csv', None, False, False, None, False)
         g.generate_spreadsheets()
         
         # count the number of lines in the file temp_dir+'/accessions_to_download.csv'

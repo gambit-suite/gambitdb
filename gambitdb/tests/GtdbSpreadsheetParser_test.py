@@ -65,6 +65,8 @@ class TestGtdbSpreadsheetParser(unittest.TestCase):
                                     os.path.join(data_dir, 'output_accessions_to_download.csv'),
                                     None,
                                     False,
+                                    False,
+                                    None,
                                     False)
         g.generate_spreadsheets()
 
@@ -93,6 +95,8 @@ class TestGtdbSpreadsheetParser(unittest.TestCase):
                                     os.path.join(data_dir, 'output_accessions_to_download.csv'),
                                     None,
                                     False,
+                                    False,
+                                    None,
                                     False)
         g.generate_spreadsheets()
         output_filename = os.path.join(data_dir, 'output_representative_genomes.csv')
