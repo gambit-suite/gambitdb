@@ -81,16 +81,23 @@ class SplitSpecies:
                     single_species, genome_metadata, pairwise_distances
                 )
             )
-            # the single species gets updated within the method as does the genome_metadata
-            # concat subspecies to the species dataframe
 
             if subspecies is not None and not subspecies.empty:
+                # 2+ viable clusters — subspeciate
                 species = pd.concat([species, subspecies], ignore_index=False, sort=False)
                 species.loc[
                     species["name"] == single_species[1]["name"], "diameter"
-                ] = 0.0  # Changed to 0.0 for consistency
+                ] = 0.0
+            elif subspecies is not None and subspecies.empty:
+                # Singleton outliers removed, 1 cluster remains — keep species with recalculated diameter
+                species.loc[
+                    species["name"] == single_species[1]["name"], "diameter"
+                ] = single_species[1]["diameter"]
+                species.loc[
+                    species["name"] == single_species[1]["name"], "ngenomes"
+                ] = single_species[1]["ngenomes"]
             else:
-                # The species gets removed so need to remove the accessions
+                # No viable clusters (all singletons or 2-genome species) — remove species entirely
                 genome_accessions = genome_metadata[
                     genome_metadata["species_taxid"] == single_species[0]
                 ]
@@ -133,6 +140,16 @@ class SplitSpecies:
         genome_accessions = genome_metadata[
             genome_metadata["species_taxid"] == single_species[0]
         ]
+
+        # Remove species with only 2 genomes and high diameter - these cannot be
+        # meaningfully split and likely represent mislabeled genomes
+        if len(genome_accessions) == 2:
+            self.logger.debug(
+                "Removing species %s with only 2 genomes and diameter > %s (likely mislabeled)",
+                single_species[1]["name"], self.maximum_diameter
+            )
+            return None, genome_metadata, single_species
+
         # get the pairwise distance matrix for this species and make sure the rows and columns are sorted the same
         pairwise_distances_single = pairwise_distances.loc[
             genome_accessions.index.tolist(), genome_accessions.index.tolist()
@@ -153,16 +170,43 @@ class SplitSpecies:
         # get the clusters
         clusters = self.get_clusters(cluster_identity, pairwise_distances_single)
 
-        # remove clusters with <2 genomes per cluster
+        # remove singleton clusters (likely mislabeled outliers)
         small_clusters, clusters = self.remove_clusters_with_too_few_genomes(clusters)
 
-        # Check if we have at least 2 viable clusters, otherwise keep as single species, after talking to Zach this is more conservative
         num_clusters = clusters['cluster_identity'].nunique()
-        if num_clusters < 2:
-            self.logger.debug(f"Only {num_clusters} viable cluster(s) found, keeping as single species")
+
+        if num_clusters == 0:
+            # All genomes are singletons — all likely mislabeled, remove species
+            self.logger.debug(
+                "All clusters are singletons for species %s, removing entirely",
+                single_species[1]["name"]
+            )
+            self.save_small_clusters_accessions_removed(small_clusters, single_species)
             return None, genome_metadata, single_species
 
+        # Always record singleton accessions as removed
         self.save_small_clusters_accessions_removed(small_clusters, single_species)
+
+        if num_clusters == 1:
+            # Single viable cluster remains — the singleton outlier(s) caused the high diameter
+            # Recalculate diameter for remaining genomes and keep species as-is
+            remaining_accessions = clusters['assembly_accession'].tolist()
+            inds = pairwise_distances.index.get_indexer(remaining_accessions)
+            new_diameter = float(pairwise_distances.values[np.ix_(inds, inds)].max())
+            new_ngenomes = len(remaining_accessions)
+
+            self.logger.debug(
+                "Singleton outlier(s) removed from %s, recalculated diameter: %.4f (was %.4f), ngenomes: %d",
+                single_species[1]["name"], new_diameter, single_species[1]["diameter"], new_ngenomes
+            )
+
+            single_species[1]["diameter"] = new_diameter
+            single_species[1]["ngenomes"] = new_ngenomes
+            # Return empty DataFrame to signal: species kept, no subspeciation
+            empty_subspecies = pd.DataFrame(columns=single_species[1].index.tolist())
+            return empty_subspecies, genome_metadata, single_species
+
+        # 2+ viable clusters — proceed with subspeciation
         subspecies, genome_metadata, single_species = (
             self.create_subspecies_from_clusters(
                 clusters, single_species, genome_metadata
@@ -298,12 +342,13 @@ class SplitSpecies:
         Examples:
           >>> remove_clusters_with_too_few_genomes(clusters)
         """
-        # remove clusters with <=X genomes per cluster
-        clusters = clusters.groupby("cluster_identity").filter(
-            lambda x: len(x) > self.minimum_cluster_size
-        )
+        # identify small clusters first, before filtering them out
         small_clusters = clusters.groupby("cluster_identity").filter(
             lambda x: len(x) <= self.minimum_cluster_size
+        )
+        # keep only clusters with enough genomes
+        clusters = clusters.groupby("cluster_identity").filter(
+            lambda x: len(x) > self.minimum_cluster_size
         )
         return small_clusters, clusters
 
@@ -361,6 +406,7 @@ class SplitSpecies:
     def read_input_files(self):
         """
         Reads in the input files using memory mapping for pairwise distances.
+        Supports both CSV and npy (with .idx) formats.
         Args:
           None
         Returns:
@@ -370,38 +416,39 @@ class SplitSpecies:
         Examples:
           >>> read_input_files()
         """
-        # Read in the pairwise distances index
-        self.logger.debug(f"Reading distance matrix index from {self.pairwise_distances_filename}")
-        with open(self.pairwise_distances_filename.replace('.npy', '.idx'), 'r') as f:
-            dist_matrix_index_labels = [line.strip() for line in f]
-        
-        # Handle case where index labels are stored as byte string representations due to memmap
-        # Convert "b'GCF_014932875.1'" to "GCF_014932875.1"
-        processed_labels = []
-        for label in dist_matrix_index_labels:
-            if label.startswith("b'") and label.endswith("'"):
-                # Remove b' prefix and ' suffix
-                processed_labels.append(label[2:-1])
-            else:
-                processed_labels.append(label)
-        
-        pairwise_distances_index = pd.Index(processed_labels)
+        self.logger.debug(f"Reading distance matrix from {self.pairwise_distances_filename}")
 
-        # Memory-map the pairwise distances file instead of loading it
-        self.logger.debug(f"Memory-mapping distance matrix from {self.pairwise_distances_filename}")
-        pairwise_distances_matrix = np.memmap(self.pairwise_distances_filename, dtype='float32', mode='r')
-        
-        # The shape of the matrix on disk must be inferred from the index length
-        n_genomes = len(pairwise_distances_index)
-        if pairwise_distances_matrix.size == n_genomes * n_genomes:
-            pairwise_distances_matrix = pairwise_distances_matrix.reshape((n_genomes, n_genomes))
+        if self.pairwise_distances_filename.endswith('.csv'):
+            pairwise_distances = pd.read_csv(self.pairwise_distances_filename, index_col=0)
         else:
-            raise ValueError("The size of the .npy file does not match the index size for a square matrix.")
+            # Read in the pairwise distances index
+            with open(self.pairwise_distances_filename.replace('.npy', '.idx'), 'r') as f:
+                dist_matrix_index_labels = [line.strip() for line in f]
 
-        # Create DataFrame from memmap with proper index and columns
-        pairwise_distances = pd.DataFrame(pairwise_distances_matrix, 
-                                            index=pairwise_distances_index, 
-                                            columns=pairwise_distances_index)
-        
+            # Handle case where index labels are stored as byte string representations due to memmap
+            # Convert "b'GCF_014932875.1'" to "GCF_014932875.1"
+            processed_labels = []
+            for label in dist_matrix_index_labels:
+                if label.startswith("b'") and label.endswith("'"):
+                    processed_labels.append(label[2:-1])
+                else:
+                    processed_labels.append(label)
+
+            pairwise_distances_index = pd.Index(processed_labels)
+
+            # Memory-map the pairwise distances file instead of loading it
+            self.logger.debug(f"Memory-mapping distance matrix from {self.pairwise_distances_filename}")
+            pairwise_distances_matrix = np.memmap(self.pairwise_distances_filename, dtype='float32', mode='r')
+
+            n_genomes = len(pairwise_distances_index)
+            if pairwise_distances_matrix.size == n_genomes * n_genomes:
+                pairwise_distances_matrix = pairwise_distances_matrix.reshape((n_genomes, n_genomes))
+            else:
+                raise ValueError("The size of the .npy file does not match the index size for a square matrix.")
+
+            pairwise_distances = pd.DataFrame(pairwise_distances_matrix,
+                                                index=pairwise_distances_index,
+                                                columns=pairwise_distances_index)
+
         self.logger.debug('read_input_files: pairwise_distances size: %s' % pairwise_distances.shape[0])
         return self.species, self.genome_assembly_metadata, pairwise_distances
