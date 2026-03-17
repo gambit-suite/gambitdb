@@ -107,11 +107,13 @@ class SplitSpecies:
 
     def filter_high_diameter_species(self, species):
         """
-        Identifies all species with a diameter of > 0.7.
-        Args:
-          species (DataFrame): The species table.
-        Returns:
-          DataFrame: High diameter species.
+        Selects species with diameter exceeding maximum_diameter for 
+        subspeciation. Species above this threshold likely contain 
+        either genuinely diverse clusters (which become subspecies) 
+        or mislabeled genomes (which appear as singletons and are removed).
+        
+        Species at or below the threshold are assumed to correctly 
+        represent their labeled species and are not examined.
         """
         # identify all species with a diameter of > 0.7
         high_diameter_species = species[species["diameter"] > self.maximum_diameter]
@@ -188,16 +190,23 @@ class SplitSpecies:
         self.save_small_clusters_accessions_removed(small_clusters, single_species)
 
         if num_clusters == 1:
-            # Single viable cluster remains — the singleton outlier(s) caused the high diameter
-            # Recalculate diameter for remaining genomes and keep species as-is
+            # Single viable cluster remains after removing singletons.
+            # The singleton genome(s) were > 0.7 distance from all other
+            # genomes in this species — likely mislabeled and not truly 
+            # representative of this species. Recalculate diameter from
+            # the remaining genomes only.
             remaining_accessions = clusters['assembly_accession'].tolist()
             inds = pairwise_distances.index.get_indexer(remaining_accessions)
             new_diameter = float(pairwise_distances.values[np.ix_(inds, inds)].max())
             new_ngenomes = len(remaining_accessions)
 
+            removed_accessions = small_clusters['assembly_accession'].tolist()
             self.logger.debug(
-                "Singleton outlier(s) removed from %s, recalculated diameter: %.4f (was %.4f), ngenomes: %d",
-                single_species[1]["name"], new_diameter, single_species[1]["diameter"], new_ngenomes
+                "Removed singleton outlier(s) from %s: %s (mean distances: %s)",
+                single_species[1]["name"],
+                removed_accessions,
+                [round(float(pairwise_distances.loc[acc, remaining_accessions].mean()), 4) 
+                for acc in removed_accessions]
             )
 
             single_species[1]["diameter"] = new_diameter
