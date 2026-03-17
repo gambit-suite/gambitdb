@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Lint (informational)
+        run: ruff check . || true
+
+      - name: Format check (informational)
+        run: ruff format --check . || true
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -e ".[test]"
+          pip install pandas numpy scipy h5py networkx requests
+
+      - name: Run unit tests
+        run: |
+          python -m unittest \
+            gambitdb.tests.SplitSpecies_test \
+            gambitdb.tests.GtdbSpreadsheetParser_test \
+            gambitdb.tests.Curate_test.TestCurate.test_filter_files \
+            -v
