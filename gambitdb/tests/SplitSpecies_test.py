@@ -195,3 +195,73 @@ class TestSplitSpecies(unittest.TestCase):
             self.assertIn('GCA_3', accessions_removed)
         finally:
             os.unlink(pw_path)
+
+    def test_pair_outliers_removed_with_default_cluster_size(self):
+        """
+        Tests that a pair of consistently mislabeled genomes is removed when
+        minimum_cluster_size=2 (the CLI default).
+        Species has 6 genomes: GCA_1,2,3,4 are close (0.1), GCA_5,6 are close
+        to each other (0.1) but distant from the main group (0.9).
+        With minimum_cluster_size=2, the pair cluster (<=2) is removed as likely
+        mislabeled, and the species is kept with recalculated diameter from the
+        main group only.
+        """
+        species = pd.DataFrame({
+            'name': ['Mixed species', 'Good species', 'Parent'],
+            'rank': ['species', 'species', 'genus'],
+            'parent_taxid': [5, 5, None],
+            'ncbi_taxid': [10, 11, 2],
+            'gambit_taxid': [10, 11, 2],
+            'diameter': [0.9, 0.3, 0.1],
+            'ngenomes': [6, 3, 0],
+            'report': [1, 1, 0]
+        }, index=pd.Index([1, 2, 5], name='species_taxid'))
+
+        genome_metadata = pd.DataFrame({
+            'uuid': ['A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'B1', 'B2', 'B3'],
+            'species_taxid': [1, 1, 1, 1, 1, 1, 2, 2, 2],
+            'species': ['Mixed species'] * 6 + ['Good species'] * 3
+        }, index=pd.Index(
+            ['GCA_1', 'GCA_2', 'GCA_3', 'GCA_4', 'GCA_5', 'GCA_6',
+             'GCA_11', 'GCA_12', 'GCA_13'],
+            name='assembly_accession'))
+
+        # GCA_1-4 are close (0.1), GCA_5-6 are close to each other (0.1) but 0.9 from main group
+        pw_data = {
+            'GCA_1':  [0.0, 0.1, 0.1, 0.1, 0.9, 0.9, 0.9, 0.9, 0.9],
+            'GCA_2':  [0.1, 0.0, 0.1, 0.1, 0.9, 0.9, 0.9, 0.9, 0.9],
+            'GCA_3':  [0.1, 0.1, 0.0, 0.1, 0.9, 0.9, 0.9, 0.9, 0.9],
+            'GCA_4':  [0.1, 0.1, 0.1, 0.0, 0.9, 0.9, 0.9, 0.9, 0.9],
+            'GCA_5':  [0.9, 0.9, 0.9, 0.9, 0.0, 0.1, 0.9, 0.9, 0.9],
+            'GCA_6':  [0.9, 0.9, 0.9, 0.9, 0.1, 0.0, 0.9, 0.9, 0.9],
+            'GCA_11': [0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.0, 0.1, 0.1],
+            'GCA_12': [0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.1, 0.0, 0.1],
+            'GCA_13': [0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.1, 0.1, 0.0],
+        }
+        idx = ['GCA_1', 'GCA_2', 'GCA_3', 'GCA_4', 'GCA_5', 'GCA_6',
+               'GCA_11', 'GCA_12', 'GCA_13']
+        pairwise = pd.DataFrame(pw_data, index=idx)
+
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+            pairwise.to_csv(f)
+            pw_path = f.name
+
+        try:
+            # minimum_cluster_size=2 (CLI default): clusters with <=2 genomes are removed
+            ss = SplitSpecies(species, genome_metadata, pw_path, [],
+                              0.7, 2, 'average', False)
+            s, g, accessions_removed = ss.split_high_diameter_species()
+            # The pair GCA_5, GCA_6 should be removed (cluster size 2 <= minimum_cluster_size 2)
+            self.assertIn('GCA_5', accessions_removed)
+            self.assertIn('GCA_6', accessions_removed)
+            self.assertEqual(len(accessions_removed), 2)
+            # Species should be kept with recalculated diameter from GCA_1-4 only
+            mixed = s[s['name'] == 'Mixed species']
+            self.assertEqual(len(mixed), 1)
+            self.assertAlmostEqual(float(mixed['diameter'].iloc[0]), 0.1, places=2)
+            self.assertEqual(int(mixed['ngenomes'].iloc[0]), 4)
+            # No subspecies created
+            self.assertNotIn('subspecies', ' '.join(s['name'].tolist()))
+        finally:
+            os.unlink(pw_path)
