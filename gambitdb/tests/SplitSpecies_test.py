@@ -91,6 +91,14 @@ class TestSplitSpecies(unittest.TestCase):
         self.assertEqual(s.shape[0], 5)
         self.assertEqual(g.shape[0], 13)
         self.assertEqual(len(accessions_removed), 0)
+        # Parent species 'Yellow black' was subspeciated; its genomes are
+        # reassigned to the subspecies rows, so parent ngenomes must be 0.
+        parent_row = s[s['name'] == 'Yellow black']
+        self.assertEqual(len(parent_row), 1)
+        self.assertEqual(int(parent_row['ngenomes'].iloc[0]), 0)
+        self.assertEqual(float(parent_row['diameter'].iloc[0]), 0.0)
+        # No genomes in genome_metadata should still be labeled with the parent name.
+        self.assertEqual((g['species'] == 'Yellow black').sum(), 0)
 
     def test_two_genome_high_diameter_species_removed(self):
         """
@@ -145,6 +153,11 @@ class TestSplitSpecies(unittest.TestCase):
         self.assertEqual(int(red_black['ngenomes'].iloc[0]), 3)
         # No subspecies should have been created
         self.assertNotIn('subspecies', ' '.join(s['name'].tolist()))
+        # Singleton outliers GCA_4 and GCA_5 should have been physically dropped
+        # from genome_metadata (8 original rows - 2 removed = 6).
+        self.assertEqual(g.shape[0], 6)
+        self.assertNotIn('GCA_4', g.index)
+        self.assertNotIn('GCA_5', g.index)
 
     def test_all_singletons_species_removed(self):
         """
