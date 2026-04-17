@@ -85,9 +85,10 @@ class SplitSpecies:
             if subspecies is not None and not subspecies.empty:
                 # 2+ viable clusters — subspeciate
                 species = pd.concat([species, subspecies], ignore_index=False, sort=False)
-                species.loc[
-                    species["name"] == single_species[1]["name"], "diameter"
-                ] = 0.0
+                parent_name = single_species[1]["name"]
+                parent_count = int((genome_metadata["species"] == parent_name).sum())
+                species.loc[species["name"] == parent_name, "diameter"] = 0.0
+                species.loc[species["name"] == parent_name, "ngenomes"] = parent_count
             elif subspecies is not None and subspecies.empty:
                 # Singleton outliers removed, 1 cluster remains — keep species with recalculated diameter
                 species.loc[
@@ -183,11 +184,11 @@ class SplitSpecies:
                 "All clusters are singletons for species %s, removing entirely",
                 single_species[1]["name"]
             )
-            self.save_small_clusters_accessions_removed(small_clusters, single_species)
+            self.save_small_clusters_accessions_removed(small_clusters, single_species, genome_metadata)
             return None, genome_metadata, single_species
 
         # Always record singleton accessions as removed
-        self.save_small_clusters_accessions_removed(small_clusters, single_species)
+        self.save_small_clusters_accessions_removed(small_clusters, single_species, genome_metadata)
 
         if num_clusters == 1:
             # Single viable cluster remains after removing singletons.
@@ -317,22 +318,14 @@ class SplitSpecies:
         
         return subspecies, genome_metadata, single_species
 
-    def save_small_clusters_accessions_removed(self, small_clusters, single_species):
+    def save_small_clusters_accessions_removed(self, small_clusters, single_species, genome_metadata):
         """
-        Saves the accessions of small clusters to a file.
-        Args:
-          small_clusters (DataFrame): A DataFrame containing the small clusters.
-          single_species (DataFrame): A DataFrame containing the single species.
-        Returns:
-          None
-        Side Effects:
-          Updates the accessions_removed attribute.
-        Examples:
-          >>> save_small_clusters_accessions_removed(small_clusters, single_species)
+        Records singleton/small-cluster accessions as removed and drops them from genome_metadata
+        so downstream counts reflect the post-removal state.
         """
-        # save the accessions of the small clusters to a file
         small_clusters_accessions = small_clusters["assembly_accession"].tolist()
         self.accessions_removed = self.accessions_removed + small_clusters_accessions
+        genome_metadata.drop(small_clusters_accessions, inplace=True)
 
         self.logger.debug(
             "Remove small clusters: "
