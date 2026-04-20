@@ -115,12 +115,15 @@ class TestSplitSpecies(unittest.TestCase):
                           1, 'average', False)
         s, g, accessions_removed = ss.split_high_diameter_species()
         # Yellow black (2 genomes, diameter 0.9) should be removed entirely
-        # Remaining: Yellow white + Yellow genus = 2 species rows, diameter set to 0.0 for Yellow black
+        # Remaining: Yellow white + Yellow genus = 2 species rows
         self.assertNotIn('Yellow black subspecies', ' '.join(s['name'].tolist()))
-        # GCA_1 and GCA_2 should be in accessions_removed
+        self.assertNotIn('Yellow black', s['name'].tolist())
+        # Both genomes should be removed from genome_metadata and recorded in accessions_removed
         self.assertIn('GCA_1', accessions_removed)
         self.assertIn('GCA_2', accessions_removed)
         self.assertEqual(len(accessions_removed), 2)
+        self.assertNotIn('GCA_1', g.index)
+        self.assertNotIn('GCA_2', g.index)
 
     def test_singleton_outliers_removed_species_kept(self):
         """
@@ -206,6 +209,11 @@ class TestSplitSpecies(unittest.TestCase):
             self.assertIn('GCA_1', accessions_removed)
             self.assertIn('GCA_2', accessions_removed)
             self.assertIn('GCA_3', accessions_removed)
+            # Species row should be dropped entirely; genomes dropped from metadata
+            self.assertNotIn('All apart', s['name'].tolist())
+            self.assertNotIn('GCA_1', g.index)
+            self.assertNotIn('GCA_2', g.index)
+            self.assertNotIn('GCA_3', g.index)
         finally:
             os.unlink(pw_path)
 
