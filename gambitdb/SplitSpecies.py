@@ -103,6 +103,8 @@ class SplitSpecies:
                     genome_metadata["species_taxid"] == single_species[0]
                 ]
                 self.accessions_removed.extend(genome_accessions.index.tolist())
+                genome_metadata.drop(genome_accessions.index, inplace=True)
+                species = species[species["name"] != single_species[1]["name"]]
 
         return species, genome_metadata, self.accessions_removed
 
