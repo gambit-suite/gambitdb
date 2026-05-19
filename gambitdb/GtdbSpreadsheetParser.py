@@ -156,10 +156,14 @@ class GtdbSpreadsheetParser:
         input_spreadsheet_df = input_spreadsheet_df[input_spreadsheet_df['contig_count'] <= self.max_contigs]
         self.stats_contig_count = len(input_spreadsheet_df.index)
 
-        # filter spreadsheet so that if the gtdb_taxonomy column ends with ' sp' followed by digits, then remove the row
+        # filter spreadsheet so that if the species column ends with ' sp' followed by digits, then remove the row
         # These are novel species that GTDB has made up that dont exist in NCBI.
+        # We check 'species' (not 'gtdb_taxonomy') so that --use_ncbi_taxonomy is honoured: once
+        # the species column has been rewritten to NCBI names, placeholder GTDB clades (e.g.
+        # "ECMA0423 sp047199055") will no longer match and genuine NCBI species (e.g. "Shigella
+        # flexneri") won't be incorrectly dropped.
         if not self.include_novel_species:
-            input_spreadsheet_df = input_spreadsheet_df[~input_spreadsheet_df['gtdb_taxonomy'].str.contains(r' sp\d+$')]
+            input_spreadsheet_df = input_spreadsheet_df[~input_spreadsheet_df['species'].str.contains(r' sp\d+$', na=False)]
         self.stats_include_novel_species =  len(input_spreadsheet_df.index)
 
         # if include_derived_samples is False then only include rows with 'none' from ncbi_genome_category
